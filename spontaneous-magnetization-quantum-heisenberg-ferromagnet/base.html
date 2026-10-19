@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Ferromagnétique de Heisenberg — Spins, Gauss, Parallélépipède, Domaines</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; background: #000;
+    overflow: hidden; height: 100%;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #ddd; user-select: none;
+  }
+  canvas { display: block; cursor: grab; }
+  canvas.dragging { cursor: none; }
+
+  #figureTitle {
+    position: fixed; top: 30px; left: 50%;
+    transform: translateX(-50%);
+    text-align: center; pointer-events: none;
+    z-index: 5; transition: opacity 0.3s;
+  }
+  #figureTitle .fig-name {
+    display: block; color: #f0f0f0; font-size: 30px;
+    font-style: italic; letter-spacing: 1.5px;
+    text-shadow: 0 0 20px rgba(255,255,255,0.18);
+  }
+  #figureTitle .fig-equation {
+    display: block; color: #aaccff; font-size: 20px;
+    font-style: italic; letter-spacing: 1px; margin-top: 10px;
+    text-shadow: 0 0 14px rgba(120,180,255,0.25);
+  }
+  #figureTitle .fig-rule {
+    width: 90px; height: 1px;
+    background: linear-gradient(to right, transparent, #666, transparent);
+    margin: 14px auto 0;
+  }
+
+  #panel {
+    position: fixed; top: 20px; left: 20px;
+    background: rgba(18, 18, 24, 0.92);
+    border: 1px solid #3a3a44; border-radius: 10px;
+    padding: 14px 16px; width: 300px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+    z-index: 10; font-size: 12px;
+    transition: width 0.25s ease, padding 0.25s ease, opacity 0.3s;
+    overflow: hidden;
+  }
+  #panel.collapsed { width: 48px; padding: 10px 8px; }
+  #panel.collapsed .panel-body,
+  #panel.collapsed h3 .title-text { display: none; }
+  #panel.collapsed h3 { justify-content: center; border-bottom: none; padding-bottom: 0; margin: 0; }
+  #panel h3 {
+    margin: 0 0 10px 0; font-size: 12px; color: #fff;
+    font-weight: normal; letter-spacing: 2px;
+    text-transform: uppercase; cursor: move;
+    border-bottom: 1px solid #3a3a44;
+    padding-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  #panel h3 .title-text { flex: 1; }
+  #panel h3 .collapse-btn {
+    background: transparent; border: 1px solid #555;
+    color: #aaa; width: 22px; height: 22px;
+    border-radius: 4px; cursor: pointer;
+    font-size: 13px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; transition: all 0.15s; flex-shrink: 0;
+  }
+  #panel h3 .collapse-btn:hover { background: #333; color: #fff; border-color: #888; }
+  #panel h3 span.grip { color: #666; font-size: 14px; }
+  #panel .row {
+    display: flex; justify-content: space-between;
+    align-items: center; margin: 7px 0; gap: 8px;
+  }
+  #panel label { flex: 1; color: #999; font-size: 11px; }
+  #panel input[type="range"] { flex: 1.2; accent-color: #55ff88; height: 4px; }
+  #panel select {
+    flex: 1.4; background: #22222a; color: #fff;
+    border: 1px solid #444; padding: 5px 6px;
+    border-radius: 5px; font-family: inherit;
+    font-size: 11px; cursor: pointer;
+  }
+  #panel .value {
+    width: 50px; text-align: right; color: #55ff88;
+    font-variant-numeric: tabular-nums; font-size: 11px;
+  }
+  #panel button {
+    width: 100%; margin-top: 8px; background: #22222a;
+    color: #ddd; border: 1px solid #444; padding: 7px;
+    border-radius: 6px; cursor: pointer; font-family: inherit;
+    font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; transition: all 0.2s;
+  }
+  #panel button:hover { background: #2e2e3a; border-color: #666; color: #fff; }
+  #panel button.rec { background: #3a1a1a; border-color: #ff4040; color: #ff8080; }
+  #panel button.rec:hover { background: #5a2020; color: #ffaaaa; }
+  #panel .hint {
+    font-size: 10px; color: #666; margin-top: 10px;
+    line-height: 1.5; border-top: 1px solid #2a2a33;
+    padding-top: 8px; font-style: italic;
+  }
+  #panel .checkbox-row {
+    display: flex; align-items: center; gap: 6px; margin: 5px 0;
+  }
+  #panel .checkbox-row input { accent-color: #55ff88; cursor: pointer; }
+  #panel .checkbox-row label { cursor: pointer; flex: 1; }
+  #panel .section-title {
+    font-size: 10px; color: #55ff88; margin-top: 10px;
+    margin-bottom: 4px; text-transform: uppercase;
+    letter-spacing: 1.5px; border-top: 1px solid #2a2a33;
+    padding-top: 7px;
+  }
+  #panel .badge {
+    display: inline-block; padding: 2px 6px; border-radius: 4px;
+    background: #1a2a1a; border: 1px solid #2a5a2a; color: #88ff88;
+    font-size: 10px; margin-left: 4px;
+  }
+
+  #legend {
+    position: fixed; bottom: 30px; left: 30px;
+    background: rgba(18, 18, 24, 0.92);
+    border: 1px solid rgba(120, 120, 150, 0.55);
+    border-radius: 12px; z-index: 20;
+    min-width: 260px; max-width: 340px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    transition: box-shadow 0.2s, opacity 0.3s;
+  }
+  #legend:hover { box-shadow: 0 8px 40px rgba(85, 255, 136, 0.15); }
+  #legend .legend-header {
+    padding: 12px 18px; display: flex; justify-content: space-between;
+    align-items: center; color: #55ff88;
+    font-size: 16px; letter-spacing: 3px;
+    text-transform: uppercase; cursor: move;
+    user-select: none;
+    border-bottom: 1px solid rgba(85, 255, 136, 0.2);
+  }
+  #legend .legend-header .grip { color: #666; font-size: 14px; letter-spacing: 0; margin-right: 8px; }
+  #legend .legend-header .collapse { color: #888; font-size: 14px; cursor: pointer; padding: 2px 6px; transition: transform 0.3s; }
+  #legend.collapsed .legend-header .collapse { transform: rotate(-90deg); }
+  #legend .legend-header .collapse:hover { color: #55ff88; }
+  #legend .legend-body {
+    padding: 14px 18px 16px 18px; max-height: 500px;
+    transition: max-height 0.3s, padding 0.3s, opacity 0.3s; opacity: 1;
+  }
+  #legend.collapsed .legend-body { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; }
+  #legend .legend-item {
+    display: flex; align-items: center; gap: 12px; margin: 8px 0;
+    font-size: 14px; color: #e8e8e8; line-height: 1.35; font-style: italic;
+  }
+  #legend .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    flex-shrink: 0; box-shadow: 0 0 10px currentColor;
+  }
+
+  body.recording #panel { opacity: 0 !important; pointer-events: none !important; }
+  body.recording #legend { opacity: 0 !important; pointer-events: none !important; }
+  body.recording #figureTitle { opacity: 0 !important; }
+
+  #recordingExit {
+    display: none; position: fixed; top: 16px; right: 16px;
+    z-index: 100; background: rgba(200, 40, 40, 0.85); color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 8px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+    backdrop-filter: blur(4px);
+  }
+  body.recording #recordingExit { display: block; }
+  #recordingExit:hover { background: rgba(230, 60, 60, 0.95); }
+
+  #recIndicator {
+    display: none; position: fixed; top: 16px; left: 16px;
+    z-index: 100; background: rgba(30, 0, 0, 0.85); color: #fff;
+    border: 1px solid rgba(255, 60, 60, 0.6);
+    padding: 8px 14px; border-radius: 6px;
+    font-family: 'Courier New', monospace; font-size: 13px;
+    letter-spacing: 1px; backdrop-filter: blur(4px);
+    align-items: center; gap: 10px;
+  }
+  body.recording #recIndicator { display: flex; }
+  #recIndicator .rec-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #ff2222; animation: rec-pulse 1s infinite;
+  }
+  @keyframes rec-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.85); }
+  }
+
+  #recordingNav {
+    display: none; position: fixed; bottom: 16px; right: 16px;
+    z-index: 100; background: rgba(18, 18, 24, 0.85); color: #aaa;
+    border: 1px solid rgba(90,90,110,0.5);
+    padding: 8px 14px; border-radius: 6px;
+    font-size: 12px; letter-spacing: 0.5px; backdrop-filter: blur(4px);
+    pointer-events: none;
+  }
+  body.recording #recordingNav { display: block; }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="figureTitle">
+  <span class="fig-name" id="figCaption">Ferromagnétique de Heisenberg</span>
+  <span class="fig-equation" id="figEquation">H = −J Σ S_i · S_j   ·   M = ⟨Σ S_i⟩ / V</span>
+  <div class="fig-rule"></div>
+</div>
+
+<div id="panel">
+  <h3 id="panelHeader">
+    <span class="title-text">Paramètres</span>
+    <span class="grip">⠿</span>
+    <button class="collapse-btn" id="collapseBtn" title="Réduire / déplier">−</button>
+  </h3>
+
+  <div class="panel-body">
+    <div class="row">
+      <label>Scène</label>
+      <select id="sceneSelect">
+        <option value="all">Tout (réseau + sphère + R)</option>
+        <option value="lattice">Réseau de spins 3D</option>
+        <option value="gauss">Sphère de Gauss (flux)</option>
+        <option value="resultant">Parallélépipède (résultante R)</option>
+        <option value="domains">Domaines 2D (Monte-Carlo)</option>
+      </select>
+    </div>
+
+    <div class="section-title">Physique</div>
+    <div class="row">
+      <label>Température T</label>
+      <input type="range" id="tempSlider" min="0.05" max="3" step="0.05" value="0.5">
+      <span class="value" id="tempValue">0.50</span>
+    </div>
+    <div class="row">
+      <label>Champ h</label>
+      <input type="range" id="fieldSlider" min="0" max="1.5" step="0.05" value="0">
+      <span class="value" id="fieldValue">0.00</span>
+    </div>
+    <div class="row">
+      <label>Taille réseau</label>
+      <select id="sizeSelect">
+        <option value="3">3 × 3 × 3</option>
+        <option value="4" selected>4 × 4 × 4</option>
+        <option value="5">5 × 5 × 5</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Couplage J</label>
+      <input type="range" id="jSlider" min="0" max="2" step="0.05" value="1">
+      <span class="value" id="jValue">1.00</span>
+    </div>
+
+    <div class="section-title">Affichage</div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="showLattice" checked>
+      <label for="showLattice">Réseau de spins 3D</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="showGauss" checked>
+      <label for="showGauss">Sphère de Gauss</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="showResultant" checked>
+      <label for="showResultant">Résultante R (parallélépipède)</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="showDomains" checked>
+      <label for="showDomains">Domaines 2D (Monte-Carlo)</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="showMagnons" checked>
+      <label for="showMagnons">Magnons (perturbations)</label>
+    </div>
+
+    <div class="section-title">Animation</div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="animateTemp">
+      <label for="animateTemp">Refroidir automatiquement</label>
+    </div>
+    <div class="row">
+      <label>Vitesse T</label>
+      <input type="range" id="tempSpeed" min="0.1" max="2" step="0.05" value="0.5">
+      <span class="value" id="tempSpeedValue">0.50</span>
+    </div>
+
+    <div class="section-title">Enregistrement</div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="showTitleRec" checked>
+      <label for="showTitleRec">Titre + équation + auteurs</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="showLegendRec" checked>
+      <label for="showLegendRec">Afficher la légende</label>
+    </div>
+    <div class="row">
+      <label>Résolution</label>
+      <select id="resSelect">
+        <option value="auto">Auto (fenêtre)</option>
+        <option value="1080">1920 × 1080 (Full HD)</option>
+        <option value="1440">2560 × 1440 (QHD)</option>
+        <option value="2160">3840 × 2160 (4K)</option>
+      </select>
+    </div>
+
+    <button id="recordBtn">● Enregistrer (Espace)</button>
+    <button id="resetBtn">↻ Reset (R)</button>
+
+    <div class="hint">
+      ← → : scène · Espace : enregistrer · R : reset<br>
+      Clic + glisser : tourner · Molette : zoom<br>
+      <span class="badge">m = <span id="magReadout">0.000</span></span>
+      <span class="badge">Φ = <span id="fluxReadout">0.000</span></span>
+    </div>
+  </div>
+</div>
+
+<button id="recordingExit">■ Arrêter &amp; télécharger</button>
+
+<div id="recIndicator">
+  <div class="rec-dot"></div>
+  <span id="recTime">REC 00:00</span>
+</div>
+
+<div id="recordingNav">← → : changer de scène</div>
+
+<div id="legend">
+  <div class="legend-header" id="legendHeader">
+    <span><span class="grip">⠿</span>Légende</span>
+    <span class="collapse" id="legendCollapse">▼</span>
+  </div>
+  <div class="legend-body" id="legendBody"></div>
+</div>
+
+<script>
+// ============================================================
+//  CANVAS
+// ============================================================
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+let recordingResolution = null;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', () => { if (!isRecording) resize(); });
+resize();
+
+// ============================================================
+//  PARAMÈTRES PHYSIQUES
+// ============================================================
+const SCENES = ['all', 'lattice', 'gauss', 'resultant', 'domains'];
+let currentScene = 'all';
+
+let temperature = 0.5;
+let field = 0.0;
+let couplingJ = 1.0;
+let latticeN = 4;
+
+let showLattice = true;
+let showGauss = true;
+let showResultant = true;
+let showDomains = true;
+let showMagnons = true;
+
+let animateTemp = false;
+let tempAnimSpeed = 0.5;
+
+let showTitleInRecording = true;
+let showLegendInRecording = true;
+
+// ============================================================
+//  CAMÉRA
+// ============================================================
+let camTheta = 0.5;
+let camPhi = 0.25;
+let zoomFactor = 1.2;
+let isDragging = false;
+let lastMouseX = 0, lastMouseY = 0;
+const PHI_MIN = -Math.PI / 2 + 0.05;
+const PHI_MAX =  Math.PI / 2 - 0.05;
+
+// ============================================================
+//  PROJECTION 3D
+// ============================================================
+const FOCAL = 900;
+function project(x, y, z) {
+  const cosT = Math.cos(camTheta), sinT = Math.sin(camTheta);
+  let x1 =  x * cosT + z * sinT;
+  let z1 = -x * sinT + z * cosT;
+  let y1 =  y;
+
+  const cosP = Math.cos(camPhi), sinP = Math.sin(camPhi);
+  let y2 = y1 * cosP - z1 * sinP;
+  let z2 = y1 * sinP + z1 * cosP;
+  let x2 = x1;
+
+  const camDist = 700;
+  const zCam = z2 + camDist;
+  const scale = (FOCAL / zCam) * zoomFactor;
+
+  return { x: W / 2 + x2 * scale, y: H / 2 - y2 * scale, z: zCam, scale };
+}
+
+// ============================================================
+//  ÉTAT DU RÉSEAU DE SPINS
+// ============================================================
+const SPACING = 80;
+const SPIN_LENGTH = 32;
+
+let spins = [];           // [{i,j,k, x,y,z, sx,sy,sz}]
+let domains2D = [];       // grille 2D Monte-Carlo
+let domainN = 20;
+
+// Magnons : liste de perturbations locales animées
+let magnons = [];
+
+// Sphère de Gauss : centre et rayon
+const GAUSS_RADIUS = 200;
+
+// Résultante R (parallélépipède) — 3 vecteurs "spins" de référence
+// On utilise 3 directions fixes pour visualiser la composition vectorielle
+const P_VEC = [ 200,   0,   0];
+const Q_VEC = [   0, -180,   0];
+const S_VEC = [   0,   0,  160];
+
+// ============================================================
+//  INITIALISATION DU RÉSEAU
+// ============================================================
+function randomUnitVector() {
+  const z = Math.random() * 2 - 1;
+  const a = Math.random() * Math.PI * 2;
+  const r = Math.sqrt(1 - z * z);
+  return [r * Math.cos(a), r * Math.sin(a), z];
+}
+
+function normalize(v) {
+  const m = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0]/m, v[1]/m, v[2]/m];
+}
+
+function initSpins() {
+  spins = [];
+  const n = latticeN;
+  const offset = (n - 1) * SPACING / 2;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      for (let k = 0; k < n; k++) {
+        const [sx, sy, sz] = randomUnitVector();
+        spins.push({
+          i, j, k,
+          x: i * SPACING - offset,
+          y: j * SPACING - offset,
+          z: k * SPACING - offset,
+          sx, sy, sz,
+          // phase propre pour les oscillations de magnon
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+  }
+}
+
+function getSpinAt(i, j, k) {
+  const n = latticeN;
+  if (i < 0 || i >= n || j < 0 || j >= n || k < 0 || k >= n) return null;
+  return spins[(i * n + j) * n + k];
+}
+
+// ============================================================
+//  ÉVOLUTION DES SPINS SOUS T ET h (Heisenberg classique)
+// ============================================================
+// Implémentation simple : alignement progressif vers un état
+// ferromagnétique + bruit thermique, biais par le champ h.
+// C'est une approximation visuelle du comportement de Heisenberg,
+// pas une simulation Monte-Carlo exacte sur le réseau 3D (le 2D
+// est fait séparément par Metropolis).
+
+function updateSpins(dt) {
+  const n = latticeN;
+  const T = temperature;
+  const h = field;
+  const J = couplingJ;
+
+  // Température critique approx (pour le rendu visuel)
+  const Tc = 1.5 * J;
+
+  // Facteur d'ordre : 1 = ordonné, 0 = désordonné
+  const order = Math.max(0, Math.min(1, 1 - T / Tc));
+
+  // Biais du champ : incline vers +z
+  const hz = h * 0.15;
+
+  spins.forEach(sp => {
+    // 1) Alignement progressif vers +z (ferromagnétique moyen)
+    const targetZ = order > 0 ? 1 : 0;
+    sp.sx += (0 - sp.sx) * order * dt * 2;
+    sp.sy += (0 - sp.sy) * order * dt * 2;
+    sp.sz += (targetZ - sp.sz) * order * dt * 2;
+
+    // 2) Bruit thermique
+    const noise = Math.sqrt(T) * 0.8 * dt;
+    sp.sx += (Math.random() - 0.5) * noise;
+    sp.sy += (Math.random() - 0.5) * noise;
+    sp.sz += (Math.random() - 0.5) * noise;
+
+    // 3) Champ externe
+    sp.sz += hz * dt;
+
+    // 4) Interaction avec voisins (approximation de champ moyen local)
+    if (J > 0 && order > 0.05) {
+      let ax = 0, ay = 0, az = 0, cnt = 0;
+      const neigh = [
+        getSpinAt(sp.i+1, sp.j, sp.k),
+        getSpinAt(sp.i-1, sp.j, sp.k),
+        getSpinAt(sp.i, sp.j+1, sp.k),
+        getSpinAt(sp.i, sp.j-1, sp.k),
+        getSpinAt(sp.i, sp.j, sp.k+1),
+        getSpinAt(sp.i, sp.j, sp.k-1)
+      ];
+      neigh.forEach(s2 => {
+        if (s2) { ax += s2.sx; ay += s2.sy; az += s2.sz; cnt++; }
+      });
+      if (cnt > 0) {
+        ax /= cnt; ay /= cnt; az /= cnt;
+        const k = J * order * dt * 1.2;
+        sp.sx += (ax - sp.sx) * k;
+        sp.sy += (ay - sp.sy) * k;
+        sp.sz += (az - sp.sz) * k;
+      }
+    }
+
+    // 5) Normalisation
+    const m = Math.hypot(sp.sx, sp.sy, sp.sz) || 1;
+    sp.sx /= m; sp.sy /= m; sp.sz /= m;
+
+    // 6) Magnon : oscillation locale si activée et T modérée
+    if (showMagnons && T > 0.1 && T < Tc * 1.2) {
+      sp.phase += dt * 3;
+      const amp = 0.08 * Math.min(1, T / Tc);
+      sp.sx += Math.sin(sp.phase) * amp;
+      sp.sy += Math.cos(sp.phase * 1.3) * amp;
+      const m2 = Math.hypot(sp.sx, sp.sy, sp.sz) || 1;
+      sp.sx /= m2; sp.sy /= m2; sp.sz /= m2;
+    }
+  });
+}
+
+// ============================================================
+//  MONTE-CARLO 2D (domaines)
+// ============================================================
+function initDomains() {
+  domains2D = [];
+  for (let i = 0; i < domainN; i++) {
+    domains2D.push([]);
+    for (let j = 0; j < domainN; j++) {
+      domains2D[i].push(Math.random() < 0.5 ? +1 : -1);
+    }
+  }
+}
+
+function mcStep2D() {
+  const T = Math.max(0.05, temperature * 1.2);
+  const J = couplingJ;
+  const h = field;
+  const steps = domainN * domainN;
+  for (let s = 0; s < steps; s++) {
+    const i = Math.floor(Math.random() * domainN);
+    const j = Math.floor(Math.random() * domainN);
+    const cur = domains2D[i][j];
+    const nbrs = [
+      domains2D[(i+1) % domainN][j],
+      domains2D[(i-1+domainN) % domainN][j],
+      domains2D[i][(j+1) % domainN],
+      domains2D[i][(j-1+domainN) % domainN]
+    ];
+    const sumN = nbrs.reduce((a, b) => a + b, 0);
+    const dE = 2 * cur * (-J * sumN - h);
+    if (dE < 0 || Math.random() < Math.exp(-dE / T)) {
+      domains2D[i][j] = -cur;
+    }
+  }
+}
+
+function magnetization2D() {
+  let s = 0;
+  for (let i = 0; i < domainN; i++)
+    for (let j = 0; j < domainN; j++)
+      s += domains2D[i][j];
+  return Math.abs(s) / (domainN * domainN);
+}
+
+// ============================================================
+//  MAGNÉTISATION & FLUX 3D
+// ============================================================
+function computeMagnetization() {
+  let mx = 0, my = 0, mz = 0;
+  spins.forEach(sp => { mx += sp.sx; my += sp.sy; mz += sp.sz; });
+  const N = spins.length || 1;
+  return { mx: mx / N, my: my / N, mz: mz / N, norm: Math.hypot(mx, my, mz) / N };
+}
+
+function computeFluxThroughGauss() {
+  // Flux de M à travers la sphère de Gauss centrée en (0,0,0)
+  // Φ = ∮ M · dS = M · (4πR²) si M uniforme
+  const M = computeMagnetization();
+  return M.norm * 4 * Math.PI * GAUSS_RADIUS * GAUSS_RADIUS / 1e5;
+}
+
+// ============================================================
+//  DESSIN : FLÈCHE 3D
+// ============================================================
+function drawArrow3D(x1, y1, z1, x2, y2, z2, color, lineWidth, headLen, label) {
+  const p1 = project(x1, y1, z1);
+  const p2 = project(x2, y2, z2);
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;
+  const ang = Math.atan2(dy, dx);
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth * p2.scale;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(p1.x, p1.y);
+  ctx.lineTo(p2.x, p2.y);
+  ctx.stroke();
+
+  const hl = headLen * p2.scale;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(p2.x, p2.y);
+  ctx.lineTo(p2.x - hl * Math.cos(ang - Math.PI / 6),
+             p2.y - hl * Math.sin(ang - Math.PI / 6));
+  ctx.lineTo(p2.x - hl * Math.cos(ang + Math.PI / 6),
+             p2.y - hl * Math.sin(ang + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+
+  if (label) {
+    const fs = Math.max(12, Math.round(18 * p2.scale));
+    ctx.font = `italic ${fs}px Georgia, serif`;
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, p2.x + Math.cos(ang) * 20 * p2.scale,
+                       p2.y + Math.sin(ang) * 20 * p2.scale);
+  }
+}
+
+// ============================================================
+//  DESSIN : RÉSEAU DE SPINS
+// ============================================================
+function colorFromSpin(sx, sy, sz) {
+  // Couleur = direction du spin (rouge +x, vert +y, bleu +z)
+  const r = Math.round(128 + 127 * sx);
+  const g = Math.round(128 + 127 * sy);
+  const b = Math.round(128 + 127 * sz);
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawLattice() {
+  // Tri par profondeur pour un rendu correct
+  const sorted = [...spins].sort((a, b) => {
+    const pa = project(a.x, a.y, a.z);
+    const pb = project(b.x, b.y, b.z);
+    return pb.z - pa.z;
+  });
+
+  sorted.forEach(sp => {
+    const p = project(sp.x, sp.y, sp.z);
+    const ex = sp.x + sp.sx * SPIN_LENGTH;
+    const ey = sp.y + sp.sy * SPIN_LENGTH;
+    const ez = sp.z + sp.sz * SPIN_LENGTH;
+
+    const col = colorFromSpin(sp.sx, sp.sy, sp.sz);
+
+    // Petite sphère au pied
+    ctx.fillStyle = 'rgba(60, 60, 80, 0.7)';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.5 * p.scale, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Flèche du spin
+    drawArrow3D(sp.x, sp.y, sp.z, ex, ey, ez, col, 1.8, 5, null);
+
+    // Halo
+    ctx.save();
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6 * p.scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+// ============================================================
+//  DESSIN : SPHÈRE DE GAUSS + FLUX
+// ============================================================
+function drawGaussSphere() {
+  const M = computeMagnetization();
+  const R = GAUSS_RADIUS;
+
+  // Sphère wireframe : 3 cercles
+  const circles = ['equator', 'meridian', 'meridian2'];
+  const colors = [
+    'rgba(100, 220, 255, 0.45)',
+    'rgba(100, 220, 255, 0.30)',
+    'rgba(100, 220, 255, 0.25)'
+  ];
+  circles.forEach((plane, idx) => {
+    const pts = [];
+    const seg = 72;
+    for (let s = 0; s <= seg; s++) {
+      const a = (s / seg) * Math.PI * 2;
+      let x, y, z;
+      if (plane === 'equator') { x = R * Math.cos(a); y = 0; z = R * Math.sin(a); }
+      else if (plane === 'meridian') { x = R * Math.cos(a); y = R * Math.sin(a); z = 0; }
+      else { x = 0; y = R * Math.cos(a); z = R * Math.sin(a); }
+      pts.push(project(x, y, z));
+    }
+    ctx.strokeStyle = colors[idx];
+    ctx.lineWidth = (idx === 0 ? 2.2 : 1.5);
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s].x, pts[s].y);
+    ctx.stroke();
+  });
+
+  // Flèche M au centre (aimantation)
+  const p0 = project(0, 0, 0);
+  const scaleM = 180;
+  const mx = M.mx * scaleM;
+  const my = M.my * scaleM;
+  const mz = M.mz * scaleM;
+  drawArrow3D(0, 0, 0, mx, my, mz, '#ff4488', 3.5, 8, 'M');
+
+  // Étiquette flux
+  const flux = computeFluxThroughGauss();
+  const labelPos = project(0, R + 30, 0);
+  const fs = Math.max(12, Math.round(16 * labelPos.scale));
+  ctx.font = `italic ${fs}px Georgia, serif`;
+  ctx.fillStyle = 'rgba(100, 220, 255, 0.9)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(`Φ = ${flux.toFixed(2)}`, labelPos.x, labelPos.y);
+}
+
+// ============================================================
+//  DESSIN : PARALLÉLÉPIPÈDE + RÉSULTANTE R
+// ============================================================
+function drawResultant() {
+  const M = computeMagnetization();
+
+  // Les trois "spins" de référence du parallélépipède
+  // On les oriente selon la magnétisation pour lier les deux vues
+  const P = [P_VEC[0] * M.mx, P_VEC[1] * M.mx, P_VEC[2] * M.mx];
+  const Q = [Q_VEC[0] * M.my, Q_VEC[1] * M.my, Q_VEC[2] * M.my];
+  const S = [S_VEC[0] * M.mz, S_VEC[1] * M.mz, S_VEC[2] * M.mz];
+  const Rv = [P[0]+Q[0]+S[0], P[1]+Q[1]+S[1], P[2]+Q[2]+S[2]];
+
+  // Points du parallélépipède (simplifié : origine + 3 vecteurs)
+  const A = [0, 0, 0];
+  const B = P;
+  const C = Q;
+  const D = S;
+  const E = [P[0]+Q[0], P[1]+Q[1], P[2]+Q[2]];
+  const F = [P[0]+S[0], P[1]+S[1], P[2]+S[2]];
+  const G = [Q[0]+S[0], Q[1]+S[1], Q[2]+S[2]];
+  const Hp = Rv;
+
+  // Arêtes (pointillés)
+  const edges = [
+    [A, B], [B, E], [E, C], [C, A],
+    [D, F], [F, Hp], [Hp, G], [G, D],
+    [A, D], [B, F], [C, G], [E, Hp]
+  ];
+  ctx.save();
+  ctx.setLineDash([6, 6]);
+  edges.forEach(e => {
+    const p1 = project(...e[0]);
+    const p2 = project(...e[1]);
+    ctx.strokeStyle = 'rgba(140, 140, 170, 0.30)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+  });
+  ctx.restore();
+
+  // Les 3 vecteurs P, Q, S
+  drawArrow3D(0, 0, 0, P[0], P[1], P[2], '#ff5555', 2.8, 7, 'P');
+  drawArrow3D(0, 0, 0, Q[0], Q[1], Q[2], '#55aaff', 2.8, 7, 'Q');
+  drawArrow3D(0, 0, 0, S[0], S[1], S[2], '#ffcc55', 2.8, 7, 'S');
+
+  // Résultante R
+  drawArrow3D(0, 0, 0, Rv[0], Rv[1], Rv[2], '#55ff88', 3.8, 9, 'R');
+
+  // Point A et H
+  const pa = project(0, 0, 0);
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(pa.x, pa.y, 4 * pa.scale, 0, Math.PI * 2); ctx.fill();
+}
+
+// ============================================================
+//  DESSIN : DOMAINES 2D (Monte-Carlo)
+// ============================================================
+function drawDomains() {
+  const size = 14;
+  const ox = W - domainN * size - 30;
+  const oy = H - domainN * size - 30;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(10, 10, 18, 0.85)';
+  ctx.strokeStyle = 'rgba(90, 90, 110, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.rect(ox - 10, oy - 24, domainN * size + 20, domainN * size + 34);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#aaa';
+  ctx.font = '11px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Domaines 2D — Monte-Carlo', ox + domainN * size / 2, oy - 8);
+
+  for (let i = 0; i < domainN; i++) {
+    for (let j = 0; j < domainN; j++) {
+      const v = domains2D[i][j];
+      ctx.fillStyle = v > 0 ? 'rgba(255, 90, 90, 0.85)' : 'rgba(90, 150, 255, 0.85)';
+      ctx.fillRect(ox + i * size, oy + j * size, size - 1, size - 1);
+    }
+  }
+  ctx.restore();
+}
+
+// ============================================================
+//  TITRE + ÉQUATION + AUTEURS (canvas, pendant l'enregistrement)
+// ============================================================
+const SCENE_META = {
+  'all': {
+    title: 'Ferromagnétique de Heisenberg',
+    equation: 'H = −J Σ⟨i,j⟩ S_i · S_j − h Σ S_i^z',
+    authors: 'd\'après Heisenberg, Holstein & Primakoff'
+  },
+  'lattice': {
+    title: 'Réseau de spins quantiques',
+    equation: 'S_i = (S_i^x, S_i^y, S_i^z)   ·   [S_i^a, S_j^b] = iε^{abc} S_i^c δ_ij',
+    authors: 'd\'après Dirac & Van Vleck'
+  },
+  'gauss': {
+    title: 'Flux de magnétisation — Sphère de Gauss',
+    equation: 'Φ_M = ∮ M · dS = M · 4πR²   ·   ∇·M ≠ 0 aux bords',
+    authors: 'd\'après Gauss & Poisson'
+  },
+  'resultant': {
+    title: 'Parallélépipède des spins — Résultante R',
+    equation: 'R = Σ_i S_i   ·   m = |R| / (N·S)',
+    authors: 'd\'après Lagrange & Maxwell'
+  },
+  'domains': {
+    title: 'Domaines ferromagnétiques — Monte-Carlo 2D',
+    equation: 'H = −J Σ⟨i,j⟩ σ_i σ_j − h Σ σ_i',
+    authors: 'd\'après Ising, Metropolis & Onsager'
+  }
+};
+
+function drawTitleInCanvas() {
+  if (!isRecording || !showTitleInRecording) return;
+  const meta = SCENE_META[currentScene];
+  const s = Math.min(W / 1920, H / 1080);
+  const sc = Math.max(0.6, Math.min(2.5, s));
+  const cx = W / 2;
+  const topY = 28 * sc;
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  ctx.font = `italic ${Math.round(34 * sc)}px Georgia, serif`;
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.fillText(meta.title, cx + 2, topY + 2);
+  ctx.fillStyle = '#f5f5f5';
+  ctx.shadowColor = 'rgba(255,255,255,0.18)';
+  ctx.shadowBlur = 20;
+  ctx.fillText(meta.title, cx, topY);
+  ctx.shadowBlur = 0;
+
+  const ruleW = 160 * sc;
+  const ruleY = topY + 52 * sc;
+  const grad = ctx.createLinearGradient(cx - ruleW/2, 0, cx + ruleW/2, 0);
+  grad.addColorStop(0, 'rgba(120,120,120,0)');
+  grad.addColorStop(0.5, 'rgba(220,220,220,0.7)');
+  grad.addColorStop(1, 'rgba(120,120,120,0)');
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(cx - ruleW/2, ruleY); ctx.lineTo(cx + ruleW/2, ruleY); ctx.stroke();
+
+  const eqY = ruleY + 18 * sc;
+  ctx.font = `italic ${Math.round(22 * sc)}px Georgia, serif`;
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  ctx.fillText(meta.equation, cx + 1, eqY + 1);
+  ctx.fillStyle = '#b8e6ff';
+  ctx.shadowColor = 'rgba(120,180,255,0.25)';
+  ctx.shadowBlur = 14;
+  ctx.fillText(meta.equation, cx, eqY);
+  ctx.shadowBlur = 0;
+
+  const authY = eqY + 34 * sc;
+  ctx.font = `italic ${Math.round(16 * sc)}px Georgia, serif`;
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillText(meta.authors, cx + 1, authY + 1);
+  ctx.fillStyle = '#a0a0b0';
+  ctx.fillText(meta.authors, cx, authY);
+
+  ctx.restore();
+}
+
+// ============================================================
+//  LÉGENDE
+// ============================================================
+function getLegendItems() {
+  const items = [];
+  if (currentScene === 'all' || currentScene === 'lattice') {
+    items.push({ color: '#ff5555', text: 'Spin orienté +x (rouge)' });
+    items.push({ color: '#55ff55', text: 'Spin orienté +y (vert)' });
+    items.push({ color: '#5555ff', text: 'Spin orienté +z (bleu)' });
+  }
+  if (currentScene === 'all' || currentScene === 'gauss') {
+    items.push({ color: '#64dcff', text: 'Sphère de Gauss (rayon R)' });
+    items.push({ color: '#ff4488', text: 'Aimantation M = ⟨Σ S_i⟩ / V' });
+  }
+  if (currentScene === 'all' || currentScene === 'resultant') {
+    items.push({ color: '#55ff88', text: 'Résultante R = P + Q + S' });
+    items.push({ color: '#8c8caa', text: 'Parallélépipède des spins' });
+  }
+  if (currentScene === 'all' || currentScene === 'domains') {
+    items.push({ color: '#ff5a5a', text: 'Domaine ↑ (spin up)' });
+    items.push({ color: '#5a96ff', text: 'Domaine ↓ (spin down)' });
+  }
+  items.push({ color: '#888', text: 'm = |R|/(N·S) — paramètre d\'ordre (0 à 1)', note: true });
+  return items;
+}
+
+function updateLegendHTML() {
+  const body = document.getElementById('legendBody');
+  body.innerHTML = '';
+  getLegendItems().forEach(it => {
+    const div = document.createElement('div');
+    div.className = 'legend-item' + (it.note ? ' legend-note' : '');
+    div.innerHTML = `<span class="legend-dot" style="background:${it.color};color:${it.color}"></span><span>${it.text}</span>`;
+    body.appendChild(div);
+  });
+}
+
+function drawLegendInCanvas() {
+  if (!isRecording || !showLegendInRecording) return;
+  const items = getLegendItems();
+  const s = Math.min(W / 1920, H / 1080);
+  const sc = Math.max(0.6, Math.min(2.5, s));
+
+  const padding = Math.round(20 * sc);
+  const lineHeight = Math.round(32 * sc);
+  const dotRadius = Math.round(7 * sc);
+  const fontSize = Math.round(18 * sc);
+  const noteFontSize = Math.round(15 * sc);
+  const textPadding = Math.round(16 * sc);
+
+  ctx.save();
+  let maxW = 0;
+  items.forEach(item => {
+    ctx.font = `${item.note ? noteFontSize : fontSize}px Georgia, serif`;
+    const w = ctx.measureText(item.text).width;
+    if (w > maxW) maxW = w;
+  });
+  ctx.restore();
+
+  const panelW = maxW + padding * 2 + dotRadius * 2 + textPadding;
+  const panelH = padding * 2 + items.length * lineHeight;
+  const panelX = 30 * sc;
+  const panelY = H - panelH - 30 * sc;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(18, 18, 24, 0.85)';
+  ctx.strokeStyle = 'rgba(120, 120, 150, 0.55)';
+  ctx.lineWidth = 1.4;
+  roundRectPath(ctx, panelX, panelY, panelW, panelH, 12 * sc);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.font = `${Math.round(14 * sc)}px Georgia, serif`;
+  ctx.fillStyle = 'rgba(85, 255, 136, 0.85)';
+  ctx.fillText('LÉGENDE', panelX + panelW / 2, panelY + padding * 0.4);
+  ctx.restore();
+
+  const headerRuleY = panelY + padding * 0.4 + Math.round(14 * sc) + 6 * sc;
+  const hGrad = ctx.createLinearGradient(panelX + padding, 0, panelX + panelW - padding, 0);
+  hGrad.addColorStop(0, 'rgba(85, 255, 136, 0)');
+  hGrad.addColorStop(0.5, 'rgba(85, 255, 136, 0.45)');
+  hGrad.addColorStop(1, 'rgba(85, 255, 136, 0)');
+  ctx.fillStyle = hGrad;
+  ctx.fillRect(panelX + padding, headerRuleY, panelW - padding * 2, 1);
+
+  const itemsStartY = headerRuleY + Math.round(12 * sc);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  items.forEach((item, i) => {
+    const y = itemsStartY + i * lineHeight + lineHeight / 2;
+    const dotX = panelX + padding + dotRadius;
+    const textX = dotX + dotRadius + textPadding;
+
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = item.color;
+    ctx.beginPath();
+    ctx.arc(dotX, y, dotRadius + 4 * sc, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = item.color;
+    ctx.beginPath();
+    ctx.arc(dotX, y, dotRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = item.note ? '#aaa' : '#e8e8e8';
+    ctx.font = `${item.note ? 'italic ' : ''}${item.note ? noteFontSize : fontSize}px Georgia, serif`;
+    ctx.fillText(item.text, textX, y + 1);
+  });
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ============================================================
+//  GRILLE DE SOL
+// ============================================================
+function drawFloorGrid() {
+  const gridSize = 400;
+  const step = 80;
+  const yFloor = -320;
+  ctx.strokeStyle = 'rgba(60, 60, 80, 0.10)';
+  ctx.lineWidth = 1;
+  for (let i = -gridSize; i <= gridSize; i += step) {
+    let p1 = project(i, yFloor, -gridSize);
+    let p2 = project(i, yFloor,  gridSize);
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+
+    p1 = project(-gridSize, yFloor, i);
+    p2 = project( gridSize, yFloor, i);
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+  }
+}
+
+// ============================================================
+//  BOUCLE PRINCIPALE
+// ============================================================
+let lastFrameTime = null;
+let mcAccumulator = 0;
+
+function drawScene(now) {
+  if (lastFrameTime === null) lastFrameTime = now;
+  let dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+  lastFrameTime = now;
+
+  // Refroidissement automatique
+  if (animateTemp) {
+    temperature = Math.max(0.05, temperature - tempAnimSpeed * dt * 0.5);
+    document.getElementById('tempSlider').value = temperature.toFixed(2);
+    document.getElementById('tempValue').textContent = temperature.toFixed(2);
+  }
+
+  // Physique
+  updateSpins(dt);
+
+  mcAccumulator += dt;
+  if (mcAccumulator > 0.08) {
+    mcStep2D();
+    mcAccumulator = 0;
+  }
+
+  // Effacer
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  drawFloorGrid();
+
+  // Scène
+  const showLat = (currentScene === 'all' || currentScene === 'lattice') && showLattice;
+  const showG = (currentScene === 'all' || currentScene === 'gauss') && showGauss;
+  const showR = (currentScene === 'all' || currentScene === 'resultant') && showResultant;
+  const showD = (currentScene === 'all' || currentScene === 'domains') && showDomains;
+
+  if (showLat) drawLattice();
+  if (showG) drawGaussSphere();
+  if (showR) drawResultant();
+  if (showD) drawDomains();
+
+  // Readouts
+  const M = computeMagnetization();
+  const flux = computeFluxThroughGauss();
+  document.getElementById('magReadout').textContent = M.norm.toFixed(3);
+  document.getElementById('fluxReadout').textContent = flux.toFixed(3);
+
+  // Titre + légende canvas pendant l'enregistrement
+  if (isRecording) {
+    drawTitleInCanvas();
+    drawLegendInCanvas();
+  }
+
+  requestAnimationFrame(drawScene);
+}
+
+// ============================================================
+//  CONTRÔLES
+// ============================================================
+const tempSlider = document.getElementById('tempSlider');
+const tempValue = document.getElementById('tempValue');
+tempSlider.addEventListener('input', () => {
+  temperature = parseFloat(tempSlider.value);
+  tempValue.textContent = temperature.toFixed(2);
+});
+
+const fieldSlider = document.getElementById('fieldSlider');
+const fieldValue = document.getElementById('fieldValue');
+fieldSlider.addEventListener('input', () => {
+  field = parseFloat(fieldSlider.value);
+  fieldValue.textContent = field.toFixed(2);
+});
+
+const jSlider = document.getElementById('jSlider');
+const jValue = document.getElementById('jValue');
+jSlider.addEventListener('input', () => {
+  couplingJ = parseFloat(jSlider.value);
+  jValue.textContent = couplingJ.toFixed(2);
+});
+
+const tempSpeedSlider = document.getElementById('tempSpeed');
+const tempSpeedValue = document.getElementById('tempSpeedValue');
+tempSpeedSlider.addEventListener('input', () => {
+  tempAnimSpeed = parseFloat(tempSpeedSlider.value);
+  tempSpeedValue.textContent = tempAnimSpeed.toFixed(2);
+});
+
+document.getElementById('animateTemp').addEventListener('change', (e) => {
+  animateTemp = e.target.checked;
+});
+
+document.getElementById('sizeSelect').addEventListener('change', (e) => {
+  latticeN = parseInt(e.target.value);
+  initSpins();
+});
+
+document.getElementById('showLattice').addEventListener('change', (e) => { showLattice = e.target.checked; });
+document.getElementById('showGauss').addEventListener('change', (e) => { showGauss = e.target.checked; });
+document.getElementById('showResultant').addEventListener('change', (e) => { showResultant = e.target.checked; });
+document.getElementById('showDomains').addEventListener('change', (e) => { showDomains = e.target.checked; });
+document.getElementById('showMagnons').addEventListener('change', (e) => { showMagnons = e.target.checked; });
+
+document.getElementById('showTitleRec').addEventListener('change', (e) => { showTitleInRecording = e.target.checked; });
+document.getElementById('showLegendRec').addEventListener('change', (e) => { showLegendInRecording = e.target.checked; });
+
+const sceneSelect = document.getElementById('sceneSelect');
+sceneSelect.addEventListener('change', () => setScene(sceneSelect.value));
+
+function setScene(name) {
+  if (!SCENES.includes(name)) return;
+  currentScene = name;
+  sceneSelect.value = name;
+  updateLegendHTML();
+  const meta = SCENE_META[name];
+  document.getElementById('figCaption').textContent = meta.title;
+  document.getElementById('figEquation').textContent = meta.equation;
+}
+
+// ============================================================
+//  ROTATION 3D
+// ============================================================
+canvas.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  lastMouseX = e.clientX; lastMouseY = e.clientY;
+  canvas.classList.add('dragging');
+});
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - lastMouseX;
+  const dy = e.clientY - lastMouseY;
+  lastMouseX = e.clientX; lastMouseY = e.clientY;
+  camTheta += dx * 0.005;
+  camPhi   -= dy * 0.005;
+  camPhi = Math.max(PHI_MIN, Math.min(PHI_MAX, camPhi));
+});
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+  canvas.classList.remove('dragging');
+});
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  zoomFactor *= (e.deltaY > 0 ? 0.95 : 1.05);
+  zoomFactor = Math.max(0.3, Math.min(3, zoomFactor));
+}, { passive: false });
+
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) {
+    isDragging = true;
+    lastMouseX = e.touches[0].clientX;
+    lastMouseY = e.touches[0].clientY;
+  }
+}, { passive: true });
+canvas.addEventListener('touchmove', (e) => {
+  if (!isDragging || e.touches.length !== 1) return;
+  const dx = e.touches[0].clientX - lastMouseX;
+  const dy = e.touches[0].clientY - lastMouseY;
+  lastMouseX = e.touches[0].clientX;
+  lastMouseY = e.touches[0].clientY;
+  camTheta += dx * 0.005;
+  camPhi   -= dy * 0.005;
+  camPhi = Math.max(PHI_MIN, Math.min(PHI_MAX, camPhi));
+}, { passive: true });
+canvas.addEventListener('touchend', () => { isDragging = false; });
+
+// ============================================================
+//  PANNEAU DRAG
+// ============================================================
+const panel = document.getElementById('panel');
+const panelHeader = document.getElementById('panelHeader');
+const collapseBtn = document.getElementById('collapseBtn');
+let panelDragging = false;
+let panelOffsetX = 0, panelOffsetY = 0;
+
+panelHeader.addEventListener('mousedown', (e) => {
+  if (e.target === collapseBtn) return;
+  panelDragging = true;
+  const rect = panel.getBoundingClientRect();
+  panelOffsetX = e.clientX - rect.left;
+  panelOffsetY = e.clientY - rect.top;
+  e.stopPropagation();
+});
+window.addEventListener('mousemove', (e) => {
+  if (!panelDragging) return;
+  panel.style.left = (e.clientX - panelOffsetX) + 'px';
+  panel.style.top  = (e.clientY - panelOffsetY) + 'px';
+});
+window.addEventListener('mouseup', () => { panelDragging = false; });
+
+collapseBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  panel.classList.toggle('collapsed');
+  collapseBtn.textContent = panel.classList.contains('collapsed') ? '+' : '−';
+});
+
+// ============================================================
+//  LÉGENDE HTML
+// ============================================================
+document.getElementById('legendCollapse').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('legend').classList.toggle('collapsed');
+});
+
+const legendEl = document.getElementById('legend');
+const legendHeader = document.getElementById('legendHeader');
+let legendDragging = false;
+let legendOffsetX = 0, legendOffsetY = 0;
+
+legendHeader.addEventListener('mousedown', (e) => {
+  if (e.target.id === 'legendCollapse') return;
+  legendDragging = true;
+  const rect = legendEl.getBoundingClientRect();
+  legendOffsetX = e.clientX - rect.left;
+  legendOffsetY = e.clientY - rect.top;
+  legendEl.style.left = rect.left + 'px';
+  legendEl.style.top  = rect.top + 'px';
+  legendEl.style.bottom = 'auto';
+  e.preventDefault();
+});
+window.addEventListener('mousemove', (e) => {
+  if (!legendDragging) return;
+  let nl = e.clientX - legendOffsetX;
+  let nt = e.clientY - legendOffsetY;
+  nl = Math.max(0, Math.min(nl, window.innerWidth - legendEl.offsetWidth));
+  nt = Math.max(0, Math.min(nt, window.innerHeight - legendEl.offsetHeight));
+  legendEl.style.left = nl + 'px';
+  legendEl.style.top  = nt + 'px';
+});
+window.addEventListener('mouseup', () => { legendDragging = false; });
+
+// ============================================================
+//  ENREGISTREMENT VIDÉO
+// ============================================================
+const recTimeEl = document.getElementById('recTime');
+const resSelect = document.getElementById('resSelect');
+const recordBtn = document.getElementById('recordBtn');
+const recordingExit = document.getElementById('recordingExit');
+
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingStartTime = 0;
+let recordingTimerInterval = null;
+let isRecording = false;
+let savedW = 0, savedH = 0;
+
+function formatTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `REC ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function pickBestMimeType() {
+  const candidates = [
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+    'video/mp4;codecs=h264',
+    'video/mp4'
+  ];
+  for (const c of candidates) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c;
+  }
+  return '';
+}
+
+function applyRecordingResolution() {
+  const val = resSelect.value;
+  if (val === 'auto') recordingResolution = null;
+  else {
+    const h = parseInt(val);
+    const w = Math.round(h * 16 / 9);
+    recordingResolution = { w, h };
+  }
+}
+
+function toggleRecording() {
+  if (!isRecording) startRecording();
+  else stopRecordingAndDownload();
+}
+
+function startRecording() {
+  if (isRecording) return;
+
+  resetAll();
+  applyRecordingResolution();
+
+  savedW = W; savedH = H;
+  if (recordingResolution) {
+    W = canvas.width = recordingResolution.w;
+    H = canvas.height = recordingResolution.h;
+    canvas.style.width = savedW + 'px';
+    canvas.style.height = savedH + 'px';
+  }
+
+  isRecording = true;
+  document.body.classList.add('recording');
+
+  const stream = canvas.captureStream(60);
+  const mimeType = pickBestMimeType();
+  if (!mimeType) {
+    alert("Votre navigateur ne supporte pas l'enregistrement vidéo via MediaRecorder.");
+    isRecording = false;
+    document.body.classList.remove('recording');
+    W = canvas.width = savedW; H = canvas.height = savedH;
+    canvas.style.width = ''; canvas.style.height = '';
+    return;
+  }
+
+  let bitrate = 20_000_000;
+  if (recordingResolution && recordingResolution.h >= 2160) bitrate = 60_000_000;
+  else if (recordingResolution && recordingResolution.h >= 1440) bitrate = 35_000_000;
+  else if (recordingResolution && recordingResolution.h >= 1080) bitrate = 20_000_000;
+
+  try {
+    mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate });
+  } catch (err) {
+    alert("Impossible de démarrer l'enregistrement : " + err.message);
+    isRecording = false;
+    document.body.classList.remove('recording');
+    W = canvas.width = savedW; H = canvas.height = savedH;
+    canvas.style.width = ''; canvas.style.height = '';
+    return;
+  }
+
+  recordedChunks = [];
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: mimeType.split(';')[0] });
+    const url = URL.createObjectURL(blob);
+    const now = new Date();
+    const stamp = now.getFullYear()
+      + String(now.getMonth()+1).padStart(2,'0')
+      + String(now.getDate()).padStart(2,'0') + '_'
+      + String(now.getHours()).padStart(2,'0')
+      + String(now.getMinutes()).padStart(2,'0')
+      + String(now.getSeconds()).padStart(2,'0');
+    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+    const resTag = recordingResolution ? `${recordingResolution.h}p` : 'auto';
+    const filename = `heisenberg_${currentScene}_${resTag}_${stamp}.${ext}`;
+
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+    recordedChunks = [];
+    mediaRecorder = null;
+    W = canvas.width = savedW; H = canvas.height = savedH;
+    canvas.style.width = ''; canvas.style.height = '';
+    recordBtn.textContent = '● Enregistrer (Espace)';
+    recordBtn.classList.remove('rec');
+  };
+
+  mediaRecorder.start(100);
+  recordingStartTime = performance.now();
+  recTimeEl.textContent = 'REC 00:00';
+  recordingTimerInterval = setInterval(() => {
+    const elapsed = performance.now() - recordingStartTime;
+    recTimeEl.textContent = formatTime(elapsed);
+  }, 200);
+
+  recordBtn.textContent = '■ Arrêter (Espace)';
+  recordBtn.classList.add('rec');
+}
+
+function stopRecordingAndDownload() {
+  if (!isRecording) return;
+  isRecording = false;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  if (recordingTimerInterval) {
+    clearInterval(recordingTimerInterval);
+    recordingTimerInterval = null;
+  }
+  document.body.classList.remove('recording');
+}
+
+recordBtn.addEventListener('click', toggleRecording);
+recordingExit.addEventListener('click', stopRecordingAndDownload);
+
+// ============================================================
+//  RESET
+// ============================================================
+function resetAll() {
+  initSpins();
+  initDomains();
+  temperature = 0.5;
+  field = 0;
+  tempSlider.value = temperature;
+  tempValue.textContent = temperature.toFixed(2);
+  fieldSlider.value = field;
+  fieldValue.textContent = field.toFixed(2);
+  animateTemp = false;
+  document.getElementById('animateTemp').checked = false;
+}
+
+document.getElementById('resetBtn').addEventListener('click', resetAll);
+
+// ============================================================
+//  CLAVIER
+// ============================================================
+window.addEventListener('keydown', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    const idx = SCENES.indexOf(currentScene);
+    const ni = e.key === 'ArrowRight'
+      ? (idx + 1) % SCENES.length
+      : (idx - 1 + SCENES.length) % SCENES.length;
+    setScene(SCENES[ni]);
+    return;
+  }
+  if (e.key === ' ') { e.preventDefault(); toggleRecording(); }
+  if (e.key === 'r' || e.key === 'R') { e.preventDefault(); resetAll(); }
+  if (e.key === 'Escape' && isRecording) stopRecordingAndDownload();
+});
+
+// ============================================================
+//  INITIALISATION
+// ============================================================
+initSpins();
+initDomains();
+setScene('all');
+requestAnimationFrame(drawScene);
+</script>
+</body>
+</html>
