@@ -326,7 +326,7 @@
     <span><span class="dot"></span><b>Vitesse</b> : <span id="optSpeed">1.0×</span></span>
     <span><span class="dot"></span><b>Prop.</b> : <span id="optProp">2.1</span></span>
     <span><span class="dot"></span><b>|E|²</b> : <span id="optE">on</span></span>
-    <span><span class="dot"></span><b>Wire</b> : <span id="optWire">on</span></span>
+    <span><span class="dot"></span><b>Wire</b> : <span id="optWire">off</span></span>
     <span><span class="dot"></span><b>Ombre</b> : <span id="optShadow">on</span></span>
   </div>
 </div>
@@ -376,14 +376,14 @@
   </div>
 
   <div class="panel-section">
-    <div class="sec-label">Affichage (mode Simulation)</div>
+    <div class="sec-label">Affichage</div>
     <div class="toggle-row">
-      <span>Champ |E<sub>g</sub>|² coloré<small>Texture de la surface par |E|²</small></span>
+      <span>Champ |E<sub>g</sub>|² coloré<small>Colore la surface par |E|²</small></span>
       <div class="switch on" id="colorESwitch" role="switch" aria-checked="true"></div>
     </div>
     <div class="toggle-row">
-      <span>Wireframe<small>Lignes par-dessus les faces</small></span>
-      <div class="switch on" id="wireSwitch" role="switch" aria-checked="true"></div>
+      <span>Wireframe<small>Grillage seul (sans faces pleines)</small></span>
+      <div class="switch" id="wireSwitch" role="switch" aria-checked="false"></div>
     </div>
     <div class="toggle-row">
       <span>Ombre au sol<small>Ellipse floutée sous la manifold</small></span>
@@ -1159,7 +1159,7 @@ const state = {
   speed: 1.0,
   rx: -0.6, ry: 0.4, zoom: 1.9,
   dragging: false, lx: 0, ly: 0,
-  showE: true, showWire: true, showShadow: true,
+  showE: true, showWire: false, showShadow: true,
   paused: false,
   pausedT: 0,
   recordingRes: 1080,
@@ -1199,10 +1199,12 @@ function hideModeLoader(){
 function scheduleOptionRedraw(reason){
   state.optionEpoch++;
   state.needsHeavyRedraw = true;
-  // Les options Affichage ciblent le mode Simulation (texture / wire / ombre).
-  // Court feedback uniquement en simulation ; heatmap réagit aussi à |E|² et wire.
-  if(state.mode === 'simulation' || state.mode === 'heatmap'){
-    showModeLoader(reason || 'Options appliquées', 160);
+  // Heatmap / artiste redraws are heavier on the main thread — show brief loader
+  if(state.mode === 'heatmap' || state.mode === 'artiste'){
+    showModeLoader(reason || 'Application des options…', 380);
+  } else {
+    // Simulation is continuous; short pulse so the user sees the toggle took effect
+    showModeLoader(reason || 'Options appliquées', 200);
   }
   updateDescription();
 }
@@ -1398,8 +1400,9 @@ function drawS4Sim(t,cx,cy,scale,rgb){
     pts.push(row); pts2.push(row2);
   }
   drawGroundShadow(cx, cy, scale);
-  drawFacesShader(pts, pts2, scale, rgb, 's4', cx, cy);
-  if(state.showWire) drawWire(pts2, scale, rgb, 0.28, cx, cy);
+  // Wireframe ON = grillage seul ; OFF = faces pleines (éventuellement colorées par |E|²)
+  if(state.showWire) drawWire(pts2, scale, rgb, 0.85, cx, cy);
+  else drawFacesShader(pts, pts2, scale, rgb, 's4', cx, cy);
 }
 function drawCP2Sim(t,cx,cy,scale,rgb){
   const N_LAT=26, N_LON=38;
@@ -1415,9 +1418,8 @@ function drawCP2Sim(t,cx,cy,scale,rgb){
     pts.push(row); pts2.push(row2);
   }
   drawGroundShadow(cx, cy, scale);
-  drawFacesShader(pts, pts2, scale, rgb, 'cp2', cx, cy);
   if(state.showWire){
-    drawWire(pts2, scale, rgb, 0.28, cx, cy);
+    drawWire(pts2, scale, rgb, 0.85, cx, cy);
     for(let k=0;k<6;k++){
       const th=Math.PI*(k+0.5)/6;
       const ph=t*0.3+k*Math.PI/3;
@@ -1425,7 +1427,7 @@ function drawCP2Sim(t,cx,cy,scale,rgb){
       const pc=project(c);
       const px=cx+pc.x*scale, py=cy+pc.y*scale;
       const r=0.045*scale;
-      ctx.strokeStyle='rgba(255,255,255,0.5)';
+      ctx.strokeStyle='rgba(255,255,255,0.55)';
       ctx.lineWidth=1.5*dpr;
       ctx.beginPath();
       for(let m=0;m<=20;m++){
@@ -1435,6 +1437,8 @@ function drawCP2Sim(t,cx,cy,scale,rgb){
       }
       ctx.stroke();
     }
+  } else {
+    drawFacesShader(pts, pts2, scale, rgb, 'cp2', cx, cy);
   }
 }
 function drawS2xS2Sim(t,cx,cy,scale,rgb){
@@ -1452,8 +1456,8 @@ function drawS2xS2Sim(t,cx,cy,scale,rgb){
       pts.push(row); pts2.push(row2);
     }
     if(sign===-1) drawGroundShadow(cx, cy, scale, 1.6);
-    drawFacesShader(pts, pts2, scale, rgb, 's2s2', cx, cy);
-    if(state.showWire) drawWire(pts2, scale, rgb, 0.28, cx, cy);
+    if(state.showWire) drawWire(pts2, scale, rgb, 0.85, cx, cy);
+    else drawFacesShader(pts, pts2, scale, rgb, 's2s2', cx, cy);
   }
 }
 function drawGapSim(t,cx,cy,scale,rgb){
@@ -1470,8 +1474,8 @@ function drawGapSim(t,cx,cy,scale,rgb){
     pts.push(row); pts2.push(row2);
   }
   drawGroundShadow(cx, cy, scale);
-  drawFacesShader(pts, pts2, scale, rgb, 'gap', cx, cy);
-  if(state.showWire) drawWire(pts2, scale, rgb, 0.28, cx, cy);
+  if(state.showWire) drawWire(pts2, scale, rgb, 0.85, cx, cy);
+  else drawFacesShader(pts, pts2, scale, rgb, 'gap', cx, cy);
 }
 function drawFacesShader(pts, pts2, scale, rgb, kind, cx, cy){
   const Ni=pts.length, Nj=pts[0].length;
@@ -1510,19 +1514,24 @@ function drawFacesShader(pts, pts2, scale, rgb, kind, cx, cy){
   }
 }
 function drawWire(pts2, scale, rgb, alpha, cx, cy){
-  ctx.lineWidth=0.8*dpr;
+  ctx.lineWidth = Math.max(1.2, 1.4*dpr);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
   for(let i=0;i<pts2.length;i++){
     for(let j=0;j<pts2[i].length;j++){
       const q=pts2[i][j];
       const px=cx+q.x*scale, py=cy+q.y*scale;
+      // depth fade: points facing away are dimmer
+      const depthA = Math.max(0.25, Math.min(1, 0.45 + 0.55*((q.z+1.2)/2.4)));
+      const a = alpha * depthA;
       if(j<pts2[i].length-1){
         const q1=pts2[i][j+1];
-        ctx.strokeStyle=`rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+        ctx.strokeStyle=`rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
         ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(cx+q1.x*scale, cy+q1.y*scale); ctx.stroke();
       }
       if(i<pts2.length-1){
         const q2=pts2[i+1][j];
-        ctx.strokeStyle=`rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+        ctx.strokeStyle=`rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
         ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(cx+q2.x*scale, cy+q2.y*scale); ctx.stroke();
       }
     }
@@ -1763,11 +1772,11 @@ function basePointFn(shapeId){
   return baseGapPoint;
 }
 function drawArtiste(shape, t, rgb){
-  // Vue d'artiste : rendu fixe (lignes + points), indépendant des options Affichage
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(0,0,CW,CH);
   const cx = CW/2, cy = CH/2;
   const scale = Math.min(CW, CH) * 0.38;
+  if(state.showShadow) drawGroundShadow(cx, cy, scale, 1.5, 0.4);
   const fn = basePointFn(shape.id);
   const N_LAT = 40, N_LON = 52;
   const cols = N_LON+1;
@@ -1788,12 +1797,12 @@ function drawArtiste(shape, t, rgb){
       const px0 = cx+p0.x*scale, py0 = cy+p0.y*scale;
       const depth = (p0.z+1.5)/3;
       const aLine = 0.55*Math.max(0.06, Math.min(1, 0.30+depth*0.75));
-      if(j+1<cols){
+      if(state.showWire && j+1<cols){
         const p1 = projPts[idx0+1];
         ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${aLine})`;
         ctx.beginPath(); ctx.moveTo(px0,py0); ctx.lineTo(cx+p1.x*scale, cy+p1.y*scale); ctx.stroke();
       }
-      if(i+1<=N_LAT){
+      if(state.showWire && i+1<=N_LAT){
         const p2 = projPts[idx0+cols];
         ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${aLine})`;
         ctx.beginPath(); ctx.moveTo(px0,py0); ctx.lineTo(cx+p2.x*scale, cy+p2.y*scale); ctx.stroke();
@@ -2058,7 +2067,7 @@ bindToggleRow(wireSwitch, ()=>{
   state.showWire=!state.showWire;
   wireSwitch.classList.toggle('on', state.showWire);
   wireSwitch.setAttribute('aria-checked', state.showWire);
-  scheduleOptionRedraw(state.showWire ? 'Wireframe activé' : 'Wireframe désactivé');
+  scheduleOptionRedraw(state.showWire ? 'Wireframe (grillage seul)' : 'Rendu faces pleines');
 });
 bindToggleRow(shadowSwitch, ()=>{
   state.showShadow=!state.showShadow;
