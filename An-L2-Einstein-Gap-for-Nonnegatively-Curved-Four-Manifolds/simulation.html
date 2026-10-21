@@ -29,6 +29,7 @@
     transition:max-width .4s ease, border-radius .4s ease;}
   .stage canvas{width:100%;height:100%;display:block;cursor:grab;touch-action:none;}
   .stage canvas:active{cursor:grabbing;}
+  .stage canvas:focus{outline:none;}
   .stage .badge{position:absolute;top:14px;left:50%;transform:translateX(-50%);
     font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);
     background:rgba(0,0,0,.55);padding:6px 16px;border-radius:20px;
@@ -145,6 +146,31 @@
   .theorems-btn:hover{transform:scale(1.05);box-shadow:0 10px 34px rgba(212,175,106,.25);}
   body.recording .menu-btn,body.recording .theorems-btn{display:none;}
 
+  /* Bouton Arrêter flottant, toujours visible pendant l'enregistrement */
+  .stop-rec-btn{
+    position:fixed;top:14px;left:14px;z-index:120;
+    display:none;align-items:center;gap:8px;
+    padding:10px 16px;border-radius:10px;
+    border:1px solid rgba(255,179,107,.7);
+    background:linear-gradient(180deg,rgba(255,179,107,.4),rgba(255,179,107,.2));
+    color:#ffd18a;font-family:'Georgia',serif;font-size:14px;letter-spacing:.6px;
+    cursor:pointer;backdrop-filter:blur(6px);
+    box-shadow:0 8px 28px rgba(0,0,0,.7), 0 0 24px rgba(255,179,107,.35);
+    animation:stopRecPulse 1.6s infinite;
+  }
+  .stop-rec-btn.visible{display:flex;}
+  .stop-rec-btn .stop-icon{
+    width:12px;height:12px;border-radius:2px;background:#ffb36b;
+    box-shadow:0 0 10px #ffb36b;
+  }
+  .stop-rec-btn:hover{transform:translateY(-1px);}
+  @keyframes stopRecPulse{
+    0%,100%{box-shadow:0 8px 28px rgba(0,0,0,.7), 0 0 24px rgba(255,179,107,.35);}
+    50%{box-shadow:0 8px 28px rgba(0,0,0,.7), 0 0 44px rgba(255,179,107,.75);}
+  }
+  /* Pendant l'enregistrement, garder la légende & le badge visibles */
+  body.recording .stage .badge{display:block !important;}
+
   .panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(3px);z-index:70;opacity:0;pointer-events:none;transition:opacity .3s ease;}
   .panel-overlay.open{opacity:1;pointer-events:auto;}
 
@@ -206,7 +232,7 @@
   .validation .v-sub{font-size:10px;color:var(--muted);font-style:italic;
     margin-top:6px;padding-top:6px;border-top:1px dashed rgba(143,224,122,.25);}
 
-  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 2px;font-size:13px;color:var(--text);}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 2px;font-size:13px;color:var(--text);cursor:pointer;user-select:none;}
   .toggle-row span small{display:block;color:var(--muted);font-size:10px;font-style:italic;margin-top:1px;}
   .switch{position:relative;width:42px;height:22px;flex-shrink:0;border-radius:11px;background:#232838;border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:background .25s ease;}
   .switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#8b93a8;transition:transform .25s ease, background .25s ease;}
@@ -272,6 +298,12 @@
 </head>
 <body>
 
+<!-- Bouton Arrêter flottant, toujours visible pendant l'enregistrement -->
+<button class="stop-rec-btn" id="stopRecBtn" title="Arrêter l'enregistrement (Échap)">
+  <span class="stop-icon"></span>
+  <span>Arrêter l'enregistrement</span>
+</button>
+
 <div class="preloader" id="preloader">
   <div class="pl-title">An L² Einstein Gap</div>
   <div class="pl-sub">Préchargement du pipeline géométrique</div>
@@ -289,7 +321,7 @@
 </header>
 
 <div class="stage" id="stage">
-  <canvas id="mainCanvas"></canvas>
+  <canvas id="mainCanvas" tabindex="0"></canvas>
   <div class="badge" id="badge">S⁴ · Einstein</div>
   <div class="mode-badge" id="modeBadge">Mode : Simulation 3D</div>
   <button class="pause-btn" id="pauseBtn" title="Pause (Espace)">⏸</button>
@@ -544,65 +576,28 @@ const S4 = (()=> {
 
 /* =====================
    ℂP² : métrique de Fubini–Study en coordonnées réelles (carte affine ℂ²)
-   Potentiel K = log(1 + |z₁|² + |z₂|²), h_{αβ̄} = ∂²K/∂z_α ∂z̄_β
-   En composantes réelles z_α = x^α + i y^α :
-     h_{αβ̄} = δ_{αβ}/F − z_α z̄_β / F²,   F = 1 + |z₁|² + |z₂|²
-   Métrique réelle :
-     g_{x^α x^β} = 2·Re(h_{αβ̄})
-     g_{y^α y^β} = 2·Re(h_{αβ̄})
-     g_{x^α y^β} = −2·Im(h_{αβ̄}) (α≠β)
-   Avec cette convention standard FS, Ric = 3g et R = 12 (facteur _LAMBDA = 1 mesuré).
-   Un facteur _LAMBDA correctif est calculé au démarrage par échantillonnage
-   pour forcer R = 12 exactement, garantissant Ric = 3g partout.
    ===================== */
 const CP2 = (()=> {
-  let _LAMBDA = 1.0; // facteur global, mesuré au démarrage
+  let _LAMBDA = 1.0;
 
   function hFS(x){
     const x0=x[0], y0=x[1], x1=x[2], y1=x[3];
     const F = 1 + x0*x0 + y0*y0 + x1*x1 + y1*y1;
     const F2 = F*F;
-    // z_0 = x0 + i y0, z_1 = x1 + i y1
-    // h_{00̄} = 1/F - z_0 z̄_0 / F² = 1/F - (x0² + y0²)/F²
     const h00_re = 1/F - (x0*x0 + y0*y0)/F2;
     const h11_re = 1/F - (x1*x1 + y1*y1)/F2;
-    // h_{01̄} = -z_0 z̄_1 / F² ; z̄_1 = x1 - i y1
-    // z_0 z̄_1 = (x0 + i y0)(x1 - i y1) = (x0 x1 + y0 y1) + i(y0 x1 - x0 y1)
     const h01_re = -(x0*x1 + y0*y1)/F2;
-    const h01_im = -(y0*x1 - x0*y1)/F2; // = (x0 y1 - y0 x1)/F²
+    const h01_im = -(y0*x1 - x0*y1)/F2;
     return { h00_re, h11_re, h01_re, h01_im };
   }
   function g(x){
     const { h00_re, h11_re, h01_re, h01_im } = hFS(x);
-    // g_{x0 x0} = 2 Re(h00) ; g_{y0 y0} = 2 Re(h00)
-    // g_{x1 x1} = 2 Re(h11) ; g_{y1 y1} = 2 Re(h11)
-    // g_{x0 x1} = 2 Re(h01) ; g_{y0 y1} = 2 Re(h01)   (partie symétrique)
-    // g_{x0 y1} = -2 Im(h01) = -2 h01_im ; g_{x1 y0} = -2 Im(h01)? Attention :
-    //   En conventions kählériennes, on a g_{x^α y^β} = -2 Im(h_{αβ̄}) pour α≠β
-    //   et g_{y^α x^β} = +2 Im(h_{αβ̄}) — la métrique est symétrique donc
-    //   g_{x^α y^β} + g_{y^β x^α} = 0 si α=β (diagonale) → pas de couplage x-y diagonal.
-    // On pose la matrice hermitienne réelle :
-    //   g = 2 * [[Re(h00),  Re(h01),  -Im(h01),  0      ?],  -- en réalité il faut placer correctement
-    // On utilise la forme standard :
-    //   g_{x^α x^β} = 2 Re(h_{αβ̄})
-    //   g_{y^α y^β} = 2 Re(h_{αβ̄})
-    //   g_{x^α y^β} = -2 Im(h_{αβ̄})  (pour tous α,β, avec h_{βᾱ} = conj(h_{αβ̄}))
-    // Cela donne une matrice 4x4 symétrique si l'on range (x0,y0,x1,y1).
     const g00 = 2*h00_re;
     const g11 = 2*h11_re;
-    const gxx = 2*h01_re;               // g_{x0 x1}
-    const gxy = -2*h01_im;              // g_{x0 y1}
-    const gyy = 2*h01_re;               // g_{y0 y1} (même Re)
-    const gyx = 2*h01_im;               // g_{y0 x1} = +2 Im(h01)
-    // Matrice symétrique (x0, y0, x1, y1) :
-    //   g[0][0]=g00,  g[1][1]=g00,  g[2][2]=g11,  g[3][3]=g11
-    //   g[0][2]=g[2][0]=gxx
-    //   g[0][3]=g[3][0]=gxy
-    //   g[1][2]=g[2][1]=gyx
-    //   g[1][3]=g[3][1]=gyy
-    // Note : symétrie g[0][3] vs g[3][0] = gxy (même chose)
-    //        g[1][2] vs g[2][1] = gyx (même chose)
-    // On multiplie tout par _LAMBDA pour forcer R=12.
+    const gxx = 2*h01_re;
+    const gxy = -2*h01_im;
+    const gyy = 2*h01_re;
+    const gyx = 2*h01_im;
     const L = _LAMBDA;
     return [
       [ L*g00, 0,     L*gxx, L*gxy],
@@ -623,17 +618,13 @@ const CP2 = (()=> {
   function geometry(x){ return geometryFrom(g,dg,x); }
   function setLambda(L){ _LAMBDA = L; }
   function getLambda(){ return _LAMBDA; }
-  /* Calibre _LAMBDA pour forcer R = 12 au point de référence (0.3,0.2,0.1,0.05) */
   function calibrate(){
     const xRef = [0.3, 0.2, 0.1, 0.05];
     _LAMBDA = 1.0;
     let geo = geometry(xRef);
     if(!geo || !isFinite(geo.R) || Math.abs(geo.R) < 1e-6){ _LAMBDA = 1.0; return 1; }
     const R0 = geo.R;
-    // R est linéaire en _LAMBDA ? Non, mais R = trace(g^{-1} Ric). Pour une métrique
-    // homothétique g → L g, R → R / L. Donc L = R0 / 12.
     _LAMBDA = R0 / 12.0;
-    // Vérifier et itérer une fois si besoin (au cas où l'homogénéité ne serait pas parfaite)
     for(let it=0; it<3; it++){
       geo = geometry(xRef);
       if(!geo) break;
@@ -648,8 +639,6 @@ const CP2 = (()=> {
 
 /* =====================
    S²×S² : métrique produit
-   g = r²(dθ₁² + sin²θ₁ dφ₁²) + r²(dθ₂² + sin²θ₂ dφ₂²), r = 1/√3
-   Ric = 3g, R = 12, sec ∈ [0, 3]
    ===================== */
 const S2xS2 = (()=> {
   const r=1/Math.sqrt(3), r2=r*r;
@@ -728,16 +717,6 @@ const GAP = (()=> {
     const detG=det4(G);
     return {E2:Math.max(E2,0), dmu:Math.sqrt(Math.max(detG,0))};
   }
-  /*
-     Intégrale D(g) = ∫_{ℝ⁴} |E|² dµ (compactifiée sur S⁴).
-     Coordonnées stéréographiques : u = φ·n, φ = |u| ∈ [0,∞), n ∈ S³.
-     Jacobien euclidien : dV = φ³ dφ dΩ_{S³}, Ω_{S³} = 2π².
-     Substitution ρ ↦ φ = ρ/(1−ρ²) :
-       dφ/dρ = (1+ρ²)/(1−ρ²)²
-     Poids total (par échantillon normalisé) :
-       w(ρ) = 2π² · φ³ · dφ/dρ = 2π² · ρ³(1+ρ²)/(1−ρ²)⁵.
-     VÉRIFIÉ — c'est bien le jacobien attendu.
-  */
   function D(eps, rhoStrata=12, dirPerStratum=5){
     let total=0, count=0;
     for(let s=0;s<rhoStrata;s++){
@@ -817,19 +796,11 @@ function computeE2(x, model, eps){
   return Math.max(0,E2);
 }
 
-/*
-   VALIDATION NUMÉRIQUE — formule par formule, pour un modèle donné :
-   - échantillonne N points
-   - calcule R, Ric, |Ric − 3g|, |R − 12|
-   - calcule sec sur M plans aléatoires à chaque point
-   Retourne un résumé quantitatif.
-*/
 function validateModel(model, opts){
   opts = opts || {};
   const N = opts.N || 24;
   const M = opts.M || 24;
   const eps = opts.eps || 0;
-  // Points déterministes mais bien répartis dans le domaine
   const points = [];
   let seed = 42;
   function rnd(){ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; }
@@ -843,7 +814,6 @@ function validateModel(model, opts){
     }
   } else {
     for(let i=0;i<N;i++){
-      // Rayon entre 0.1 et 1.2 pour éviter l'infini en FS
       const r = 0.1 + 1.1*rnd();
       const u = [rnd()*2-1, rnd()*2-1, rnd()*2-1, rnd()*2-1];
       const n = Math.hypot(u[0],u[1],u[2],u[3])||1;
@@ -861,7 +831,6 @@ function validateModel(model, opts){
     validCount++;
     sumR += geo.R;
     sumR2 += geo.R*geo.R;
-    // |Ric − 3g|² en norme g
     let ricErr2 = 0;
     for(let i=0;i<4;i++) for(let j=0;j<4;j++){
       const Lij = geo.Ric[i][j] - 3*geo.g[i][j];
@@ -874,8 +843,6 @@ function validateModel(model, opts){
     sumRicErr += ricErr;
     sumRicErr2 += ricErr*ricErr;
     if(ricErr > maxRicErr) maxRicErr = ricErr;
-    // Courbure sectionnelle sur M plans
-    // On génère des vecteurs pseudo-aléatoires orthonormés pour g
     let localMin = Infinity, localMax = -Infinity;
     let ss = 12345 + validCount*7919;
     function rnd2(){ ss=(ss*1103515245+12345)&0x7fffffff; return ss/0x7fffffff; }
@@ -886,7 +853,6 @@ function validateModel(model, opts){
       const nX=Math.sqrt(Math.max(dot(X,X),1e-12)); X=X.map(v=>v/nX);
       let dYX=dot(Y,X); Y=Y.map((v,i)=>v-dYX*X[i]);
       const nY=Math.sqrt(Math.max(dot(Y,Y),1e-12)); Y=Y.map(v=>v/nY);
-      // K = <Riem(X,Y)Y, X>_g — formule utilisée dans GAP.sectionalK
       const K = GAP_sectionalK(geo, X, Y);
       if(K < localMin) localMin = K;
       if(K > localMax) localMax = K;
@@ -910,7 +876,6 @@ function validateModel(model, opts){
     model_name: model.name,
   };
 }
-/* Copie de GAP.sectionalK pour validation externe */
 function GAP_sectionalK(geo,X,Y){
   const G=geo.g, Riem=geo.Riem;
   let s=0;
@@ -928,7 +893,6 @@ function GAP_sectionalK(geo,X,Y){
   return s;
 }
 
-/* ----- Grilles ----- */
 function buildE2Grid(shapeId, N){
   const model = ({s4:S4, cp2:CP2, s2s2:S2xS2, gap:GAP})[shapeId];
   const grid = new Float32Array(N*N);
@@ -1040,7 +1004,6 @@ function buildGapCurve(){
   return data;
 }
 
-/* ----- Worker handler ----- */
 function postProgress(label){ self.postMessage({type:'progress', label}); }
 
 self.onmessage = function(ev){
@@ -1049,12 +1012,10 @@ self.onmessage = function(ev){
     const N = msg.e2GridSize;
     const M = msg.eigenGridSize;
     try{
-      // 1. Calibrer CP² pour forcer R = 12
       postProgress('Calibration ℂP² (R=12)…');
       const lam = CP2.calibrate();
       self.postMessage({type:'cp2lambda', value: lam});
 
-      // 2. Validation numérique (formule par formule)
       postProgress('Validation S⁴ (Ric=3g, R=12, sec)…');
       const vS4 = validateModel(S4, {N: 12, M: 24});
       self.postMessage({type:'validation', id:'s4', data: vS4});
@@ -1067,24 +1028,19 @@ self.onmessage = function(ev){
       const vS2S2 = validateModel(S2xS2, {N: 12, M: 24});
       self.postMessage({type:'validation', id:'s2s2', data: vS2S2});
 
-      // 3. Grilles |E|²
       postProgress('Grilles |E|²…');
       for(const id of ['s4','cp2','s2s2','gap']){
         const grid = buildE2Grid(id, N);
         self.postMessage({type:'e2grid', id, N, buffer: grid.buffer}, [grid.buffer]);
       }
 
-      // 4. Vecteurs propres
       postProgress('Vecteurs propres…');
       for(const id of ['s4','cp2','s2s2','gap']){
         const data = buildEigenGrid(id, id==='gap' ? 4 : M);
         self.postMessage({type:'eigengrid', id, data});
       }
 
-      // 5. Paysages 3D
       postProgress('Paysages 3D…');
-      // On renvoie les grilles E2 depuis le cache pour construire les bowls
-      // (les grilles ont déjà été transférées ; on les reçoit du main thread)
       self.postMessage({type:'needBowls'});
 
     }catch(err){
@@ -1092,7 +1048,6 @@ self.onmessage = function(ev){
     }
   }
   else if(msg.type === 'buildBowls'){
-    // Le main thread renvoie les buffers pour construire les paysages
     try{
       for(const id of ['s4','cp2','s2s2','gap']){
         const e2 = msg.e2[id];
@@ -1136,8 +1091,9 @@ const CACHE = {
   cp2Lambda: null,
   lastOverlayUpdate: 0,
   curveDrawn: false,
-  loading: { e2:{}, eigen:{}, bowl:{} },
 };
+
+let preloaderHiddenOnce = false;
 
 function sampleE2(shapeId, u, v){
   const grid=CACHE.e2Cache[shapeId];
@@ -1163,7 +1119,6 @@ const state = {
   paused: false,
   pausedT: 0,
   recordingRes: 1080,
-  needsHeavyRedraw: false,
   optionEpoch: 0,
 };
 
@@ -1172,8 +1127,13 @@ const modeLoaderEl = document.getElementById('modeLoader');
 const mlLabelEl = document.getElementById('mlLabel');
 const mlBarEl = document.getElementById('mlBar');
 let modeLoaderTimer = null;
+let modeLoaderHideTimer = null;
+let modeLoaderShowCounter = 0;
+
 function showModeLoader(label, durationMs){
   if(!modeLoaderEl) return;
+  modeLoaderShowCounter++;
+  if(modeLoaderHideTimer){ clearTimeout(modeLoaderHideTimer); modeLoaderHideTimer = null; }
   if(mlLabelEl) mlLabelEl.textContent = label || 'Mise à jour…';
   if(mlBarEl) mlBarEl.style.width = '15%';
   modeLoaderEl.classList.add('visible');
@@ -1184,27 +1144,31 @@ function showModeLoader(label, durationMs){
     if(mlBarEl) mlBarEl.style.width = p + '%';
   }, 90);
   if(durationMs && durationMs > 0){
-    setTimeout(()=>hideModeLoader(), durationMs);
+    const myToken = modeLoaderShowCounter;
+    modeLoaderHideTimer = setTimeout(()=>{
+      if(myToken === modeLoaderShowCounter) hideModeLoader();
+    }, durationMs);
   }
 }
 function hideModeLoader(){
   if(modeLoaderTimer){ clearInterval(modeLoaderTimer); modeLoaderTimer=null; }
+  if(modeLoaderHideTimer){ clearTimeout(modeLoaderHideTimer); modeLoaderHideTimer=null; }
   if(!modeLoaderEl) return;
   if(mlBarEl) mlBarEl.style.width = '100%';
-  setTimeout(()=>{
-    modeLoaderEl.classList.remove('visible');
-    if(mlBarEl) mlBarEl.style.width = '0%';
+  const el = modeLoaderEl;
+  const bar = mlBarEl;
+  modeLoaderHideTimer = setTimeout(()=>{
+    el.classList.remove('visible');
+    if(bar) bar.style.width = '0%';
+    modeLoaderHideTimer = null;
   }, 180);
 }
 function scheduleOptionRedraw(reason){
   state.optionEpoch++;
-  state.needsHeavyRedraw = true;
-  // Heatmap / artiste redraws are heavier on the main thread — show brief loader
+  // En simulation, pas de loader : la RAF réagit immédiatement.
+  // En heatmap / artiste, on affiche un bref loader car le redraw est plus lourd.
   if(state.mode === 'heatmap' || state.mode === 'artiste'){
     showModeLoader(reason || 'Application des options…', 380);
-  } else {
-    // Simulation is continuous; short pulse so the user sees the toggle took effect
-    showModeLoader(reason || 'Options appliquées', 200);
   }
   updateDescription();
 }
@@ -1217,7 +1181,7 @@ const SHAPES = [
       desc:'(1/V)∫R dµ = 12, ‖R−12‖₂ ≤ 4‖E‖₂.' } },
   { id:'cp2', name:'Plan projectif ℂP²', sub:'Fubini–Study · Ric = 3g',
     color:'#c9a3ff', rgb:{r:201,g:163,b:255},
-    desc:'ℂP² en carte affine ℂ², métrique de Fubini–Study kählérienne exacte (h_{αβ̄} = δ_{αβ}/F − z_α z̄_β/F²), calibrée par échantillonnage pour forcer R = 12 exactement. Validation numérique : |Ric−3g| et R mesurés ci-dessous.',
+    desc:'ℂP² en carte affine ℂ², métrique de Fubini–Study kählérienne exacte (h_{αβ̄} = δ_{αβ}/F − z_α z̄_β/F²), calibrée par échantillonnage pour forcer R = 12 exactement.',
     prop:{ tag:'Prop. 3.1', title:'Sobolev pondérée par l\'entropie',
       desc:'‖f‖²₄ ≤ S₁∫(4|∇f|²+(R+1)f²)dµ.' } },
   { id:'s2s2', name:'Produit S² × S²', sub:'métrique produit · Ric = 3g',
@@ -1300,13 +1264,10 @@ function render(now){
   else if(state.mode==='artiste') drawArtiste(shape, t, rgb);
   else drawSimulation(shape, t, rgb);
 
-  // Hide persistent loader once heatmap grids are available
-  if(state.mode==='heatmap' && CACHE.e2Cache[shape.id] && CACHE.bowlCache[shape.id]
-      && modeLoaderEl && modeLoaderEl.classList.contains('visible')){
-    hideModeLoader();
-  }
-  if(state.needsHeavyRedraw){
-    state.needsHeavyRedraw = false;
+  // Garde-fou : cacher le loader si les données sont arrivées OU si le preloader est terminé
+  if(state.mode==='heatmap' && modeLoaderEl && modeLoaderEl.classList.contains('visible')){
+    if(CACHE.e2Cache[shape.id] && CACHE.bowlCache[shape.id]) hideModeLoader();
+    else if(preloaderHiddenOnce && CACHE.e2Cache[shape.id]) hideModeLoader();
   }
 
   if(state.rotation && !state.dragging && !state.paused){
@@ -1400,7 +1361,6 @@ function drawS4Sim(t,cx,cy,scale,rgb){
     pts.push(row); pts2.push(row2);
   }
   drawGroundShadow(cx, cy, scale);
-  // Wireframe ON = grillage seul ; OFF = faces pleines (éventuellement colorées par |E|²)
   if(state.showWire) drawWire(pts2, scale, rgb, 0.85, cx, cy);
   else drawFacesShader(pts, pts2, scale, rgb, 's4', cx, cy);
 }
@@ -1521,7 +1481,6 @@ function drawWire(pts2, scale, rgb, alpha, cx, cy){
     for(let j=0;j<pts2[i].length;j++){
       const q=pts2[i][j];
       const px=cx+q.x*scale, py=cy+q.y*scale;
-      // depth fade: points facing away are dimmer
       const depthA = Math.max(0.25, Math.min(1, 0.45 + 0.55*((q.z+1.2)/2.4)));
       const a = alpha * depthA;
       if(j<pts2[i].length-1){
@@ -1574,7 +1533,6 @@ function drawHeatmapPanel(shape, x0, y0, w, h){
   if(maxV<1e-9) maxV=1;
 
   if(!state.showE){
-    // afficher une grille neutre si le champ coloré est désactivé
     for(let i=0;i<N;i++) for(let j=0;j<N;j++){
       ctx.fillStyle='rgba(60,60,80,0.5)';
       ctx.fillRect(x0+i*cellX, y0+j*cellY, cellX+1, cellY+1);
@@ -1807,7 +1765,8 @@ function drawArtiste(shape, t, rgb){
         ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${aLine})`;
         ctx.beginPath(); ctx.moveTo(px0,py0); ctx.lineTo(cx+p2.x*scale, cy+p2.y*scale); ctx.stroke();
       }
-      if(i%4===0 && j%4===0){
+      // Dots suivent showWire (bug corrigé)
+      if(state.showWire && i%4===0 && j%4===0){
         const aDot = 0.12+0.20*Math.max(0, p0.z*0.4+0.6);
         ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${aDot})`;
         ctx.beginPath(); ctx.arc(px0, py0, 1.4*dpr, 0, Math.PI*2); ctx.fill();
@@ -1883,7 +1842,6 @@ function updateProofOverlay(shape){
   apVals.innerHTML=av;
   optProp.textContent=p.tag;
 
-  // Bloc validation dans le panneau
   renderValidationBox(shape);
 }
 
@@ -1897,11 +1855,9 @@ function renderValidationBox(shape){
     </div>`;
     return;
   }
-  // Tolérances
   const tolR = 1e-3, tolRic = 1e-3;
   const okR = Math.abs(v.R_mean - 12) < tolR;
   const okRic = v.Ric3g_err_max < tolRic;
-  // bornes sec attendues
   const expSec = {
     s4:{min:0.999, max:1.001},
     cp2:{min:0.3, max:2.1},
@@ -1920,7 +1876,7 @@ function renderValidationBox(shape){
     <div class="v-row"><span>|Ric−3g| moy</span><b>${v.Ric3g_err_mean.toExponential(2)}</b></div>
     <div class="v-row"><span>sec min / max</span><b class="${okSec?'ok':'warn'}">[${v.sec_min.toFixed(3)}, ${v.sec_max.toFixed(3)}]</b></div>
     <div class="v-row"><span>sec attendu</span><b>${shape.id==='s4'?'≡ 1':(shape.id==='cp2'?'[½, 2]':'[0, 3]')}</b></div>
-    <div class="v-sub">Mesure sur ${v.N} points × ${v.sec_N_plans} plans orthonormés. La tolérance Ric−3g est ≤ 10⁻³ (erreur de différences finies).</div>
+    <div class="v-sub">Mesure sur ${v.N} points × ${v.sec_N_plans} plans orthonormés. Tolérance Ric−3g ≤ 10⁻³ (erreur de différences finies).</div>
   </div>`;
 }
 
@@ -1978,7 +1934,8 @@ function drawCurveOverlay(){
 /* ----- Interactions ----- */
 canvas.addEventListener('pointerdown', e=>{
   state.dragging=true; state.lx=e.clientX; state.ly=e.clientY;
-  canvas.setPointerCapture(e.pointerId);
+  try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
+  canvas.focus && canvas.focus();
 });
 canvas.addEventListener('pointermove', e=>{
   if(!state.dragging) return;
@@ -2020,7 +1977,6 @@ function selectShape(i){
   } else {
     document.getElementById('curveOverlay').classList.remove('visible');
   }
-  // Loader when target mode needs data not yet ready
   if(state.mode === 'heatmap' && (!CACHE.e2Cache[SHAPES[i].id] || !CACHE.bowlCache[SHAPES[i].id])){
     showModeLoader('Chargement de la grille…', 0);
   } else {
@@ -2040,9 +1996,15 @@ const shadowSwitch=document.getElementById('shadowSwitch');
 function bindToggleRow(switchEl, onToggle){
   if(!switchEl) return;
   const row = switchEl.closest('.toggle-row') || switchEl;
-  row.style.cursor = 'pointer';
   row.addEventListener('click', (e)=>{
+    // Éviter le double déclenchement si on clique directement sur le switch
+    if(e.target === switchEl) return;
     e.preventDefault();
+    onToggle();
+  });
+  switchEl.addEventListener('click', (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
     onToggle();
   });
 }
@@ -2067,7 +2029,7 @@ bindToggleRow(wireSwitch, ()=>{
   state.showWire=!state.showWire;
   wireSwitch.classList.toggle('on', state.showWire);
   wireSwitch.setAttribute('aria-checked', state.showWire);
-  scheduleOptionRedraw(state.showWire ? 'Wireframe (grillage seul)' : 'Rendu faces pleines');
+  scheduleOptionRedraw(state.showWire ? 'Wireframe activé' : 'Wireframe désactivé');
 });
 bindToggleRow(shadowSwitch, ()=>{
   state.showShadow=!state.showShadow;
@@ -2089,11 +2051,9 @@ function setMode(mode){
   if(mode==='heatmap' && state.showE) eLegend.classList.add('visible');
   else eLegend.classList.remove('visible');
   if(mode==='artiste') document.getElementById('curveOverlay').classList.remove('visible');
-  // Loader if switching to a mode that may need grid data
   const shape = SHAPES[state.shapeIndex];
   if(mode === 'heatmap' && (!CACHE.e2Cache[shape.id] || !CACHE.bowlCache[shape.id])){
     showModeLoader('Préparation heatmap…', 0);
-    // hide when data appears (polled once in render)
   } else if(mode !== prev){
     showModeLoader('Changement de mode…', 280);
   }
@@ -2151,8 +2111,15 @@ panelOverlay.addEventListener('click',closePanel);
 
 const fsCanvasBtn=document.getElementById('fsCanvasBtn');
 const fsPanelBtn=document.getElementById('fsPanelBtn');
-function enterFullscreenFigure(){document.body.classList.add('figure-fullscreen');closePanel();setTimeout(resizeCanvas,420);}
-function exitFullscreenFigure(){document.body.classList.remove('figure-fullscreen');setTimeout(resizeCanvas,420);}
+function enterFullscreenFigure(){
+  document.body.classList.add('figure-fullscreen');
+  closePanel();
+  setTimeout(()=>{ resizeCanvas(); canvas.focus && canvas.focus(); }, 420);
+}
+function exitFullscreenFigure(){
+  document.body.classList.remove('figure-fullscreen');
+  setTimeout(()=>{ resizeCanvas(); canvas.focus && canvas.focus(); }, 420);
+}
 fsCanvasBtn.addEventListener('click',()=>{document.body.classList.contains('figure-fullscreen')?exitFullscreenFigure():enterFullscreenFigure();});
 fsPanelBtn.addEventListener('click',enterFullscreenFigure);
 
@@ -2171,7 +2138,11 @@ document.addEventListener('keydown', e=>{
   }
   else if(k==='h'||k==='H'){ setMode('heatmap'); }
   else if(k==='a'||k==='A'){ setMode('artiste'); }
-  else if(k==='Escape'){ closePanel(); closeTheorems(); if(document.body.classList.contains('figure-fullscreen')) exitFullscreenFigure(); }
+  else if(k==='Escape'){
+    closePanel(); closeTheorems();
+    if(recorder && recorder.state!=='inactive'){ recorder.stop(); }
+    if(document.body.classList.contains('figure-fullscreen')) exitFullscreenFigure();
+  }
 });
 
 /* ----- Théorèmes ----- */
@@ -2233,7 +2204,9 @@ panelOverlay.addEventListener('click',closeTheorems);
 const recBtn=document.getElementById('recBtn');
 const recBtnLabel=document.getElementById('recBtnLabel');
 const recStatus=document.getElementById('recStatus');
+const stopRecBtn=document.getElementById('stopRecBtn');
 let recorder=null, chunks=[], stream=null, recCanvas=null, recCtx=null, recRAF=null;
+
 async function startRecording(){
   try{
     closePanel(); closeTheorems();
@@ -2271,6 +2244,9 @@ async function startRecording(){
     recBtn.classList.add('stop');
     recBtnLabel.textContent='■ Arrêter';
     recStatus.textContent=`Enregistrement ${state.recordingRes}p en cours…`;
+    if(stopRecBtn) stopRecBtn.classList.add('visible');
+    // S'assurer que le canvas garde le focus clavier pour les flèches
+    canvas.focus && canvas.focus();
   }catch(err){
     console.warn(err);
     recStatus.textContent='Erreur : '+err.message;
@@ -2282,10 +2258,16 @@ function cleanupRec(){
   recBtn.classList.remove('stop');
   recBtnLabel.textContent='Enregistrer en plein écran';
   recStatus.textContent='';
+  if(stopRecBtn) stopRecBtn.classList.remove('visible');
   if(recRAF){ cancelAnimationFrame(recRAF); recRAF=null; }
   if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
   recorder=null; chunks=[]; recCanvas=null; recCtx=null;
-  setTimeout(resizeCanvas,420);
+  setTimeout(()=>{ resizeCanvas(); canvas.focus && canvas.focus(); },420);
+}
+if(stopRecBtn){
+  stopRecBtn.addEventListener('click', ()=>{
+    if(recorder && recorder.state!=='inactive'){ recorder.stop(); }
+  });
 }
 recBtn.addEventListener('click', ()=>{
   if(recorder && recorder.state!=='inactive'){ recorder.stop(); }
@@ -2300,15 +2282,6 @@ const plBar = document.getElementById('plBar');
 const plLabel = document.getElementById('plLabel');
 const plPercent = document.getElementById('plPercent');
 
-let stepIdx = 0;
-function setPreStep(i, label){
-  stepIdx = Math.max(stepIdx, i);
-  const pct = Math.min(99, Math.round(100 * stepIdx / 17));
-  plBar.style.width = pct + '%';
-  plPercent.textContent = pct + ' %';
-  if(label) plLabel.textContent = label;
-}
-
 function finishPreload(){
   plBar.style.width = '100%';
   plPercent.textContent = '100 %';
@@ -2317,6 +2290,7 @@ function finishPreload(){
   updateProofOverlay(SHAPES[state.shapeIndex]);
   setTimeout(()=>{
     preloader.classList.add('hidden');
+    preloaderHiddenOnce = true;
     requestAnimationFrame(render);
   }, 380);
 }
@@ -2338,7 +2312,7 @@ function startPreload(){
     return;
   }
 
-  let expected = 4 + 4 + 4 + 3 + 3; // e2 + eigen + bowl + gap + 3 validations
+  let expected = 4 + 4 + 4 + 3 + 3;
   let received = 0;
 
   worker.onmessage = function(ev){
@@ -2360,7 +2334,6 @@ function startPreload(){
       CACHE.bowlCache[msg.id] = msg.data;
       received++;
     } else if(msg.type === 'needBowls'){
-      // Le worker a besoin des grilles E2 pour construire les bowls
       const e2 = {};
       for(const id of ['s4','cp2','s2s2','gap']) e2[id] = CACHE.e2Cache[id];
       worker.postMessage({type:'buildBowls', e2, N: CACHE.e2GridSize});
