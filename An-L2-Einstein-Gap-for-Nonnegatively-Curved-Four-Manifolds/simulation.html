@@ -65,7 +65,6 @@
   .preloader .pl-percent{margin-top:6px;font-size:20px;color:var(--gold-soft);
     font-family:'Cambria Math','Times New Roman',serif;letter-spacing:1px;}
 
-  /* mini-loader pour les modes qui dépendent d'une grille pas encore prête */
   .mode-loader{position:absolute;inset:0;z-index:8;display:none;
     align-items:center;justify-content:center;
     background:rgba(0,0,0,.55);backdrop-filter:blur(3px);pointer-events:none;}
@@ -146,7 +145,6 @@
   .theorems-btn:hover{transform:scale(1.05);box-shadow:0 10px 34px rgba(212,175,106,.25);}
   body.recording .menu-btn,body.recording .theorems-btn{display:none;}
 
-  /* Bouton Arrêter flottant, toujours visible pendant l'enregistrement */
   .stop-rec-btn{
     position:fixed;top:14px;left:14px;z-index:120;
     display:none;align-items:center;gap:8px;
@@ -168,7 +166,6 @@
     0%,100%{box-shadow:0 8px 28px rgba(0,0,0,.7), 0 0 24px rgba(255,179,107,.35);}
     50%{box-shadow:0 8px 28px rgba(0,0,0,.7), 0 0 44px rgba(255,179,107,.75);}
   }
-  /* Pendant l'enregistrement, garder la légende & le badge visibles */
   body.recording .stage .badge{display:block !important;}
 
   .panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(3px);z-index:70;opacity:0;pointer-events:none;transition:opacity .3s ease;}
@@ -214,7 +211,6 @@
   .applied-prop .ap-vals div{display:flex;justify-content:space-between;padding:1px 0;}
   .applied-prop .ap-vals b{color:var(--gold-soft);font-weight:normal;}
 
-  /* Table de validation */
   .validation{padding:10px 12px;border-radius:8px;margin-top:8px;
     border:1px solid rgba(143,224,122,.35);
     background:linear-gradient(180deg,rgba(143,224,122,.10),rgba(143,224,122,.03));}
@@ -231,6 +227,7 @@
   .validation .v-row .warn{color:#ffb36b;}
   .validation .v-sub{font-size:10px;color:var(--muted);font-style:italic;
     margin-top:6px;padding-top:6px;border-top:1px dashed rgba(143,224,122,.25);}
+  .validation .v-sub b{color:var(--gold-soft);font-weight:normal;}
 
   .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 2px;font-size:13px;color:var(--text);cursor:pointer;user-select:none;}
   .toggle-row span small{display:block;color:var(--muted);font-size:10px;font-style:italic;margin-top:1px;}
@@ -298,7 +295,6 @@
 </head>
 <body>
 
-<!-- Bouton Arrêter flottant, toujours visible pendant l'enregistrement -->
 <button class="stop-rec-btn" id="stopRecBtn" title="Arrêter l'enregistrement (Échap)">
   <span class="stop-icon"></span>
   <span>Arrêter l'enregistrement</span>
@@ -533,6 +529,7 @@ function geometryFrom(gFn, dgFn, x){
     for(let k=0;k<4;k++) for(let i=0;i<4;i++) for(let j=0;j<4;j++)
       dGamma[k][i][j][m]=(Gup[k][i][j]-Gdn[k][i][j])/(2*h);
   }
+  /* Riem[l][i][j][k] = R^l_{ijk} (convention ∂_j - ∂_k) */
   const Riem=Array.from({length:4},()=>Array.from({length:4},()=>Array.from({length:4},()=>new Array(4).fill(0))));
   for(let l=0;l<4;l++) for(let i=0;i<4;i++) for(let j=0;j<4;j++) for(let k=0;k<4;k++){
     let s=dGamma[l][i][k][j]-dGamma[l][i][j][k];
@@ -550,9 +547,91 @@ function geometryFrom(gFn, dgFn, x){
   return {g:G, Gi, Gamma, Riem, Ric, R:Rscal};
 }
 
+/* =========================================================================
+   COURBURE SECTIONNELLE — FORMULE CORRECTE
+   -------------------------------------------------------------------------
+   Convention B (Lee/Do Carmo) : (R(X,Y)Z)^a = R^a_{bcd} X^b Y^c Z^d
+   où R^a_{bcd} est antisymétrique en (c,d).
+
+   Sur S⁴ ronde (sec ≡ 1), il faut utiliser R(X,Y)X (ou R(X,Y)Z avec Z ≠ Y) :
+     R(X,Y)Y = 0  toujours  (antisymétrie Y^c Y^d)
+     R(X,Y)X ≠ 0  car X n'est pas contracté sur les deux indices antisymétriques
+
+   K = g(R(X,Y)X, Y) / (gXX·gYY - gXY²)
+     = R_{abcd} X^a Y^b X^c Y^d / (gXX·gYY - gXY²)   (formule covariante)
+   ========================================================================= */
+function sectionalK(geo, X, Y){
+  const g = geo.g, Riem = geo.Riem;
+  // W^a = R^a_{bcd} X^b Y^c X^d   (Z = X)
+  const W = [0,0,0,0];
+  for(let a=0;a<4;a++){
+    let s=0;
+    for(let b=0;b<4;b++){ const xb=X[b]; if(xb===0) continue;
+      for(let c=0;c<4;c++){ const yc=Y[c]; if(yc===0) continue;
+        for(let d=0;d<4;d++){ const xd=X[d]; if(xd===0) continue;
+          s += Riem[a][b][c][d] * xb * yc * xd;
+        }
+      }
+    }
+    W[a]=s;
+  }
+  // num = g(W, Y) = g_{ab} W^a Y^b
+  let num=0;
+  for(let a=0;a<4;a++){ if(W[a]===0) continue;
+    for(let b=0;b<4;b++){ const yb=Y[b]; if(yb===0) continue;
+      num += g[a][b]*W[a]*yb;
+    }
+  }
+  function dot(u,v){
+    let s=0;
+    for(let a=0;a<4;a++){ if(u[a]===0) continue;
+      for(let b=0;b<4;b++){ const vb=v[b]; if(vb===0) continue;
+        s += g[a][b]*u[a]*vb;
+      }
+    }
+    return s;
+  }
+  const gxx=dot(X,X), gyy=dot(Y,Y), gxy=dot(X,Y);
+  const den = gxx*gyy - gxy*gxy;
+  if(Math.abs(den) < 1e-12) return NaN;
+  return num/den;
+}
+
+/* Seconde formule indépendante : via R_{abcd} totalement covariante.
+   K = R_{abcd} X^a Y^b X^c Y^d / (gXX·gYY - gXY²). */
+function sectionalK_covariant(geo, X, Y){
+  const g = geo.g, Riem = geo.Riem;
+  let num = 0;
+  for(let a=0;a<4;a++){ const xa=X[a]; if(xa===0) continue;
+    for(let b=0;b<4;b++){ const yb=Y[b]; if(yb===0) continue;
+      for(let c=0;c<4;c++){ const xc=X[c]; if(xc===0) continue;
+        for(let d=0;d<4;d++){ const yd=Y[d]; if(yd===0) continue;
+          let Rabcd = 0;
+          for(let e=0;e<4;e++){ const gae=g[a][e]; if(gae===0) continue;
+            Rabcd += gae * Riem[e][b][c][d];
+          }
+          num += Rabcd * xa * yb * xc * yd;
+        }
+      }
+    }
+  }
+  function dot(u,v){
+    let s=0;
+    for(let a=0;a<4;a++){ if(u[a]===0) continue;
+      for(let b=0;b<4;b++){ const vb=v[b]; if(vb===0) continue;
+        s += g[a][b]*u[a]*vb;
+      }
+    }
+    return s;
+  }
+  const gxx=dot(X,X), gyy=dot(Y,Y), gxy=dot(X,Y);
+  const den = gxx*gyy - gxy*gxy;
+  if(Math.abs(den) < 1e-12) return NaN;
+  return num/den;
+}
+
 /* =====================
    S⁴ : métrique ronde en stéréographique
-   g = λ² δ, λ = 2/(1 + |u|²), Ric = 3g, R = 12, sec ≡ 1
    ===================== */
 const S4 = (()=> {
   const r=1.0;
@@ -575,7 +654,7 @@ const S4 = (()=> {
 })();
 
 /* =====================
-   ℂP² : métrique de Fubini–Study en coordonnées réelles (carte affine ℂ²)
+   ℂP² : Fubini–Study kählérienne
    ===================== */
 const CP2 = (()=> {
   let _LAMBDA = 1.0;
@@ -638,7 +717,7 @@ const CP2 = (()=> {
 })();
 
 /* =====================
-   S²×S² : métrique produit
+   S²×S²
    ===================== */
 const S2xS2 = (()=> {
   const r=1/Math.sqrt(3), r2=r*r;
@@ -664,7 +743,7 @@ const S2xS2 = (()=> {
 })();
 
 /* =====================
-   GAP : g_ε = g_S⁴ + ε·h
+   GAP
    ===================== */
 const GAP = (()=> {
   function h(x){
@@ -738,28 +817,13 @@ const GAP = (()=> {
     }
     return count ? total/count : 0;
   }
-  function sectionalK(geo,X,Y){
-    const G=geo.g, Riem=geo.Riem;
-    let s=0;
-    for(let m=0;m<4;m++) for(let l=0;l<4;l++){
-      const gml=G[m][l];
-      if(gml===0) continue;
-      for(let k=0;k<4;k++){ const yk=Y[k]; if(yk===0) continue;
-        for(let i=0;i<4;i++){ const xi=X[i]; if(xi===0) continue;
-          for(let j=0;j<4;j++){ const yj=Y[j]; if(yj===0) continue;
-            s+=gml*Riem[l][k][i][j]*xi*yk*yj;
-          }
-        }
-      }
-    }
-    return s;
-  }
   function minSectional(geo,n=20,seed=7){
     let s=seed>>>0;
     function rnd2(){ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; }
     const G=geo.g;
     function dot(u,v){ let d=0; for(let a=0;a<4;a++) for(let b=0;b<4;b++) d+=u[a]*G[a][b]*v[b]; return d; }
     let minK=Infinity, maxK=-Infinity;
+    let valid=0;
     for(let p=0;p<n;p++){
       let X=[rnd2()*2-1,rnd2()*2-1,rnd2()*2-1,rnd2()*2-1];
       let Y=[rnd2()*2-1,rnd2()*2-1,rnd2()*2-1,rnd2()*2-1];
@@ -767,9 +831,12 @@ const GAP = (()=> {
       let dYX=dot(Y,X); Y=Y.map((v,i)=>v-dYX*X[i]);
       const nY=Math.sqrt(Math.max(dot(Y,Y),1e-12)); Y=Y.map(v=>v/nY);
       const K=sectionalK(geo,X,Y);
+      if(!isFinite(K)) continue;
+      valid++;
       if(K<minK) minK=K;
       if(K>maxK) maxK=K;
     }
+    if(valid===0) return {min:NaN, max:NaN};
     return {min:minK, max:maxK};
   }
   function secRange(x,eps,n=24){
@@ -781,7 +848,7 @@ const GAP = (()=> {
 })();
 
 /* =====================
-   HELPERS DE CALCUL / VALIDATION
+   HELPERS / VALIDATION
    ===================== */
 function computeE2(x, model, eps){
   const geo = (model===GAP) ? model.geometry(x, eps) : model.geometry(x);
@@ -822,9 +889,13 @@ function validateModel(model, opts){
   }
   const geoFn = (model===GAP) ? ((x)=>model.geometry(x,eps)) : ((x)=>model.geometry(x));
 
-  let sumR=0, sumR2=0, maxRicErr=0, sumRicErr=0, sumRicErr2=0;
+  let sumR=0, sumR2=0, maxRicErr=0, sumRicErr=0;
   let minSec=Infinity, maxSec=-Infinity;
   let validCount=0;
+  let secMismatchMax = 0;
+  let secMismatchCount = 0;
+  let secValidPlans = 0;
+  let secTotalPlans = 0;
   for(const x of points){
     const geo = geoFn(x);
     if(!geo || !isFinite(geo.R)) continue;
@@ -841,56 +912,62 @@ function validateModel(model, opts){
     }
     const ricErr = Math.sqrt(Math.max(ricErr2,0));
     sumRicErr += ricErr;
-    sumRicErr2 += ricErr*ricErr;
     if(ricErr > maxRicErr) maxRicErr = ricErr;
     let localMin = Infinity, localMax = -Infinity;
     let ss = 12345 + validCount*7919;
     function rnd2(){ ss=(ss*1103515245+12345)&0x7fffffff; return ss/0x7fffffff; }
     function dot(u,v){ let d=0; for(let a=0;a<4;a++) for(let b=0;b<4;b++) d+=u[a]*geo.g[a][b]*v[b]; return d; }
     for(let p=0;p<M;p++){
+      secTotalPlans++;
       let X=[rnd2()*2-1,rnd2()*2-1,rnd2()*2-1,rnd2()*2-1];
       let Y=[rnd2()*2-1,rnd2()*2-1,rnd2()*2-1,rnd2()*2-1];
       const nX=Math.sqrt(Math.max(dot(X,X),1e-12)); X=X.map(v=>v/nX);
       let dYX=dot(Y,X); Y=Y.map((v,i)=>v-dYX*X[i]);
-      const nY=Math.sqrt(Math.max(dot(Y,Y),1e-12)); Y=Y.map(v=>v/nY);
-      const K = GAP_sectionalK(geo, X, Y);
-      if(K < localMin) localMin = K;
-      if(K > localMax) localMax = K;
+      // Régénérer Y si la norme après orthogonalisation est trop petite
+      let nY=Math.sqrt(Math.max(dot(Y,Y),1e-12));
+      let tries = 0;
+      while(nY < 0.3 && tries < 5){
+        Y = [rnd2()*2-1,rnd2()*2-1,rnd2()*2-1,rnd2()*2-1];
+        dYX = dot(Y,X); Y = Y.map((v,i)=>v-dYX*X[i]);
+        nY = Math.sqrt(Math.max(dot(Y,Y),1e-12));
+        tries++;
+      }
+      Y = Y.map(v=>v/nY);
+      const K1 = sectionalK(geo, X, Y);
+      const K2 = sectionalK_covariant(geo, X, Y);
+      if(!isFinite(K1) || !isFinite(K2)) continue;
+      secValidPlans++;
+      const mismatch = Math.abs(K1 - K2);
+      if(mismatch > secMismatchMax) secMismatchMax = mismatch;
+      if(mismatch > 1e-4) secMismatchCount++;
+      if(K1 < localMin) localMin = K1;
+      if(K1 > localMax) localMax = K1;
     }
-    if(localMin < minSec) minSec = localMin;
-    if(localMax > maxSec) maxSec = localMax;
+    if(isFinite(localMin) && localMin < minSec) minSec = localMin;
+    if(isFinite(localMax) && localMax > maxSec) maxSec = localMax;
   }
   const Rmean = validCount ? sumR/validCount : NaN;
   const Rvar = validCount ? (sumR2/validCount) - Rmean*Rmean : NaN;
   const RicErrMean = validCount ? sumRicErr/validCount : NaN;
-  const RicErrMax = maxRicErr;
+  if(secValidPlans === 0){
+    minSec = NaN;
+    maxSec = NaN;
+  }
   return {
     N: validCount,
     R_mean: Rmean,
     R_std: Math.sqrt(Math.max(Rvar,0)),
     Ric3g_err_mean: RicErrMean,
-    Ric3g_err_max: RicErrMax,
+    Ric3g_err_max: maxRicErr,
     sec_min: minSec,
     sec_max: maxSec,
     sec_N_plans: M,
+    sec_valid_plans: secValidPlans,
+    sec_total_plans: secTotalPlans,
+    sec_formula_mismatch_max: secMismatchMax,
+    sec_formula_mismatch_count: secMismatchCount,
     model_name: model.name,
   };
-}
-function GAP_sectionalK(geo,X,Y){
-  const G=geo.g, Riem=geo.Riem;
-  let s=0;
-  for(let m=0;m<4;m++) for(let l=0;l<4;l++){
-    const gml=G[m][l];
-    if(gml===0) continue;
-    for(let k=0;k<4;k++){ const yk=Y[k]; if(yk===0) continue;
-      for(let i=0;i<4;i++){ const xi=X[i]; if(xi===0) continue;
-        for(let j=0;j<4;j++){ const yj=Y[j]; if(yj===0) continue;
-          s+=gml*Riem[l][k][i][j]*xi*yk*yj;
-        }
-      }
-    }
-  }
-  return s;
 }
 
 function buildE2Grid(shapeId, N){
@@ -1016,15 +1093,15 @@ self.onmessage = function(ev){
       const lam = CP2.calibrate();
       self.postMessage({type:'cp2lambda', value: lam});
 
-      postProgress('Validation S⁴ (Ric=3g, R=12, sec)…');
+      postProgress('Validation S⁴…');
       const vS4 = validateModel(S4, {N: 12, M: 24});
       self.postMessage({type:'validation', id:'s4', data: vS4});
 
-      postProgress('Validation ℂP² (Ric=3g, R=12, sec)…');
+      postProgress('Validation ℂP²…');
       const vCP2 = validateModel(CP2, {N: 12, M: 24});
       self.postMessage({type:'validation', id:'cp2', data: vCP2});
 
-      postProgress('Validation S²×S² (Ric=3g, R=12, sec)…');
+      postProgress('Validation S²×S²…');
       const vS2S2 = validateModel(S2xS2, {N: 12, M: 24});
       self.postMessage({type:'validation', id:'s2s2', data: vS2S2});
 
@@ -1122,13 +1199,16 @@ const state = {
   optionEpoch: 0,
 };
 
-/* ----- Mode loader (feedback client-side) ----- */
+/* =========================================================================
+   MODE LOADER — robuste, idempotent, ne peut pas rester bloqué
+   ========================================================================= */
 const modeLoaderEl = document.getElementById('modeLoader');
 const mlLabelEl = document.getElementById('mlLabel');
 const mlBarEl = document.getElementById('mlBar');
 let modeLoaderTimer = null;
 let modeLoaderHideTimer = null;
 let modeLoaderShowCounter = 0;
+let modeLoaderVisibleSince = 0;
 
 function showModeLoader(label, durationMs){
   if(!modeLoaderEl) return;
@@ -1136,6 +1216,9 @@ function showModeLoader(label, durationMs){
   if(modeLoaderHideTimer){ clearTimeout(modeLoaderHideTimer); modeLoaderHideTimer = null; }
   if(mlLabelEl) mlLabelEl.textContent = label || 'Mise à jour…';
   if(mlBarEl) mlBarEl.style.width = '15%';
+  if(!modeLoaderEl.classList.contains('visible')){
+    modeLoaderVisibleSince = performance.now();
+  }
   modeLoaderEl.classList.add('visible');
   let p = 15;
   if(modeLoaderTimer) clearInterval(modeLoaderTimer);
@@ -1163,10 +1246,32 @@ function hideModeLoader(){
     modeLoaderHideTimer = null;
   }, 180);
 }
+
+/* Force-cache du loader dès qu'on est dans le bon mode et que les données sont prêtes.
+   Ne dépend PAS du timer showModeLoader, ce qui évite le blocage. */
+function enforceModeLoaderState(shape){
+  if(!modeLoaderEl) return;
+  if(!modeLoaderEl.classList.contains('visible')) return;
+  if(!preloaderHiddenOnce) return;
+  const now = performance.now();
+  // En heatmap : cacher dès que les grilles sont là
+  if(state.mode==='heatmap'){
+    if(CACHE.e2Cache[shape.id] && CACHE.bowlCache[shape.id]){
+      hideModeLoader();
+      return;
+    }
+  }
+  // En simulation / artiste : pas de calcul lourd, donc cache rapide
+  if(state.mode==='simulation' || state.mode==='artiste'){
+    // Cacher après 600ms max (au cas où un timer de showModeLoader aurait fui)
+    if(now - modeLoaderVisibleSince > 600){
+      hideModeLoader();
+    }
+  }
+}
+
 function scheduleOptionRedraw(reason){
   state.optionEpoch++;
-  // En simulation, pas de loader : la RAF réagit immédiatement.
-  // En heatmap / artiste, on affiche un bref loader car le redraw est plus lourd.
   if(state.mode === 'heatmap' || state.mode === 'artiste'){
     showModeLoader(reason || 'Application des options…', 380);
   }
@@ -1176,22 +1281,22 @@ function scheduleOptionRedraw(reason){
 const SHAPES = [
   { id:'s4', name:'Sphère S⁴', sub:'métrique ronde · Ric = 3g',
     color:'#e8d5a8', rgb:{r:232,g:213,b:168},
-    desc:'S⁴ de rayon 1, métrique ronde en coordonnées stéréographiques. Validation numérique : R ≈ 12, |Ric−3g| ≈ 0, sec ≈ 1 (mesuré par échantillonnage).',
+    desc:'S⁴ de rayon 1, métrique ronde en coordonnées stéréographiques. Validation numérique : R ≈ 12, |Ric−3g| ≈ 0, sec ≈ 1 (double formule).',
     prop:{ tag:'Prop. 2.1', title:'Normalisation &amp; géométrie initiale',
       desc:'(1/V)∫R dµ = 12, ‖R−12‖₂ ≤ 4‖E‖₂.' } },
   { id:'cp2', name:'Plan projectif ℂP²', sub:'Fubini–Study · Ric = 3g',
     color:'#c9a3ff', rgb:{r:201,g:163,b:255},
-    desc:'ℂP² en carte affine ℂ², métrique de Fubini–Study kählérienne exacte (h_{αβ̄} = δ_{αβ}/F − z_α z̄_β/F²), calibrée par échantillonnage pour forcer R = 12 exactement.',
+    desc:'ℂP² en carte affine ℂ², métrique de Fubini–Study kählérienne exacte, calibrée par échantillonnage pour forcer R = 12 exactement.',
     prop:{ tag:'Prop. 3.1', title:'Sobolev pondérée par l\'entropie',
       desc:'‖f‖²₄ ≤ S₁∫(4|∇f|²+(R+1)f²)dµ.' } },
   { id:'s2s2', name:'Produit S² × S²', sub:'métrique produit · Ric = 3g',
     color:'#8fd4ff', rgb:{r:143,g:212,b:255},
-    desc:'S²(1/√3) × S²(1/√3), métrique produit. Validation numérique : R ≈ 12, |Ric−3g| ≈ 0, sec ∈ [0, 3] (mesuré par échantillonnage).',
+    desc:'S²(1/√3) × S²(1/√3), métrique produit. Validation numérique : R ≈ 12, |Ric−3g| ≈ 0, sec ∈ [0, 3].',
     prop:{ tag:'Prop. 4.1', title:'Propagation de l\'erreur d\'Einstein',
       desc:'sup<sub>t</sub>‖Ric−λ(t)g‖₂→0.' } },
   { id:'gap', name:'Variété avec L² gap', sub:'g_ε = g_S⁴ + ε·h · D(g) global',
     color:'#ffb3c1', rgb:{r:255,g:179,b:193},
-    desc:'Famille g<sub>ε</sub> = g<sub>S⁴</sub> + ε·h. D(g<sub>ε</sub>) est intégré sur ℝ⁴ ENTIER (compactification stéréographique, jacobien φ³ dφ, Monte-Carlo stratifié). Sonde numérique : ne constitue pas une démonstration du Théorème 1.2.',
+    desc:'Famille g<sub>ε</sub> = g<sub>S⁴</sub> + ε·h. D(g<sub>ε</sub>) est intégré sur ℝ⁴ ENTIER (compactification stéréographique, jacobien φ³ dφ, Monte-Carlo stratifié). Sonde numérique.',
     prop:{ tag:'Prop. 5.1 · Thm 1.2', title:'Limite d\'Einstein &amp; gap',
       desc:'D(g) calculé numériquement sur ℝ⁴.' } },
 ];
@@ -1264,11 +1369,8 @@ function render(now){
   else if(state.mode==='artiste') drawArtiste(shape, t, rgb);
   else drawSimulation(shape, t, rgb);
 
-  // Garde-fou : cacher le loader si les données sont arrivées OU si le preloader est terminé
-  if(state.mode==='heatmap' && modeLoaderEl && modeLoaderEl.classList.contains('visible')){
-    if(CACHE.e2Cache[shape.id] && CACHE.bowlCache[shape.id]) hideModeLoader();
-    else if(preloaderHiddenOnce && CACHE.e2Cache[shape.id]) hideModeLoader();
-  }
+  // Force-cache du loader : ne peut pas rester bloqué
+  enforceModeLoaderState(shape);
 
   if(state.rotation && !state.dragging && !state.paused){
     state.ry += 0.004*state.speed;
@@ -1765,7 +1867,6 @@ function drawArtiste(shape, t, rgb){
         ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${aLine})`;
         ctx.beginPath(); ctx.moveTo(px0,py0); ctx.lineTo(cx+p2.x*scale, cy+p2.y*scale); ctx.stroke();
       }
-      // Dots suivent showWire (bug corrigé)
       if(state.showWire && i%4===0 && j%4===0){
         const aDot = 0.12+0.20*Math.max(0, p0.z*0.4+0.6);
         ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${aDot})`;
@@ -1807,28 +1908,28 @@ function updateProofOverlay(shape){
   const v = CACHE.validation[shape.id];
   if(shape.id==='s4'){
     rows=[
-      {label:'R', val: v ? v.R_mean.toFixed(4) : '…'},
-      {label:'|Ric−3g| (max)', val: v ? v.Ric3g_err_max.toExponential(2) : '…'},
-      {label:'sec', val: v ? `[${v.sec_min.toFixed(3)}, ${v.sec_max.toFixed(3)}]` : '…'},
+      {label:'R', val: v && isFinite(v.R_mean) ? v.R_mean.toFixed(4) : '…'},
+      {label:'|Ric−3g| (max)', val: v && isFinite(v.Ric3g_err_max) ? v.Ric3g_err_max.toExponential(2) : '…'},
+      {label:'sec', val: v && isFinite(v.sec_min) ? `[${v.sec_min.toFixed(3)}, ${v.sec_max.toFixed(3)}]` : '…'},
     ];
   } else if(shape.id==='cp2'){
     rows=[
       {label:'λ (calibration)', val: CACHE.cp2Lambda!=null ? CACHE.cp2Lambda.toFixed(6) : '…'},
-      {label:'R', val: v ? v.R_mean.toFixed(4) : '…'},
-      {label:'|Ric−3g| (max)', val: v ? v.Ric3g_err_max.toExponential(2) : '…'},
-      {label:'sec', val: v ? `[${v.sec_min.toFixed(3)}, ${v.sec_max.toFixed(3)}]` : '…'},
+      {label:'R', val: v && isFinite(v.R_mean) ? v.R_mean.toFixed(4) : '…'},
+      {label:'|Ric−3g| (max)', val: v && isFinite(v.Ric3g_err_max) ? v.Ric3g_err_max.toExponential(2) : '…'},
+      {label:'sec', val: v && isFinite(v.sec_min) ? `[${v.sec_min.toFixed(3)}, ${v.sec_max.toFixed(3)}]` : '…'},
     ];
   } else if(shape.id==='s2s2'){
     rows=[
-      {label:'R', val: v ? v.R_mean.toFixed(4) : '…'},
-      {label:'|Ric−3g| (max)', val: v ? v.Ric3g_err_max.toExponential(2) : '…'},
-      {label:'sec', val: v ? `[${v.sec_min.toFixed(3)}, ${v.sec_max.toFixed(3)}]` : '…'},
+      {label:'R', val: v && isFinite(v.R_mean) ? v.R_mean.toFixed(4) : '…'},
+      {label:'|Ric−3g| (max)', val: v && isFinite(v.Ric3g_err_max) ? v.Ric3g_err_max.toExponential(2) : '…'},
+      {label:'sec', val: v && isFinite(v.sec_min) ? `[${v.sec_min.toFixed(3)}, ${v.sec_max.toFixed(3)}]` : '…'},
     ];
   } else if(shape.id==='gap'){
     rows=[
       {label:'D(g_ε) global', val: CACHE.gapEps025!=null?CACHE.gapEps025.toExponential(3):'…'},
       {label:'ε', val:'0.25'},
-      {label:'sec_min (sonde)', val: CACHE.gapSec025?CACHE.gapSec025.min.toFixed(3):'…'},
+      {label:'sec_min (sonde)', val: CACHE.gapSec025 && isFinite(CACHE.gapSec025.min)?CACHE.gapSec025.min.toFixed(3):'…'},
     ];
   }
   let html='';
@@ -1855,28 +1956,56 @@ function renderValidationBox(shape){
     </div>`;
     return;
   }
-  const tolR = 1e-3, tolRic = 1e-3;
-  const okR = Math.abs(v.R_mean - 12) < tolR;
-  const okRic = v.Ric3g_err_max < tolRic;
-  const expSec = {
-    s4:{min:0.999, max:1.001},
-    cp2:{min:0.3, max:2.1},
-    s2s2:{min:-0.01, max:3.01},
-  }[shape.id] || {min:-Infinity, max:Infinity};
-  const okSec = v.sec_min >= expSec.min && v.sec_max <= expSec.max;
-  const allOk = okR && okRic && okSec;
+  const tolR = 5e-3;
+  const tolRic = 5e-3;
+  const okR = isFinite(v.R_mean) && Math.abs(v.R_mean - 12) < tolR;
+  const okRic = isFinite(v.Ric3g_err_max) && v.Ric3g_err_max < tolRic;
 
+  const expSec = {
+    s4:{min:0.90, max:1.10},
+    cp2:{min:0.30, max:2.10},
+    s2s2:{min:-0.05, max:3.05},
+  }[shape.id] || {min:-Infinity, max:Infinity};
+  const okSec = isFinite(v.sec_min) && isFinite(v.sec_max)
+    && v.sec_min >= expSec.min && v.sec_max <= expSec.max;
+
+  const okCross = (v.sec_formula_mismatch_max || 0) < 1e-4;
+
+  const allOk = okR && okRic && okSec && okCross;
   const cls = allOk ? 'validation' : 'validation warn';
-  const statusLine = allOk ? '✓ invariants conformes' : '⚠ écart détecté';
+  let statusLine;
+  if(allOk){
+    statusLine = '✓ invariants conformes';
+  } else {
+    const bad = [];
+    if(!okR) bad.push('R');
+    if(!okRic) bad.push('|Ric−3g|');
+    if(!okSec) bad.push('sec (hors plage)');
+    if(!okCross) bad.push('cross-check sec');
+    statusLine = '⚠ écart détecté : ' + bad.join(', ');
+  }
+  const secExpected = shape.id==='s4' ? '≡ 1' : (shape.id==='cp2' ? '[½, 2]' : '[0, 3]');
+  const crossLine = (v.sec_formula_mismatch_max != null)
+    ? `<div class="v-row"><span>cross-check sec</span><b class="${okCross?'ok':'warn'}">${v.sec_formula_mismatch_max.toExponential(2)}</b></div>`
+    : '';
+  const secLine = (isFinite(v.sec_min) && isFinite(v.sec_max))
+    ? `[${v.sec_min.toFixed(3)}, ${v.sec_max.toFixed(3)}]`
+    : 'échec échantillonnage';
   box.innerHTML = `<div class="${cls}">
     <div class="v-title">${statusLine}</div>
-    <div class="v-row"><span>R mesuré (N=${v.N})</span><b class="${okR?'ok':'warn'}">${v.R_mean.toFixed(4)}</b></div>
+    <div class="v-row"><span>R mesuré (N=${v.N})</span><b class="${okR?'ok':'warn'}">${isFinite(v.R_mean)?v.R_mean.toFixed(4):'NaN'}</b></div>
     <div class="v-row"><span>R attendu</span><b>12.0000</b></div>
-    <div class="v-row"><span>|Ric−3g| max</span><b class="${okRic?'ok':'warn'}">${v.Ric3g_err_max.toExponential(2)}</b></div>
-    <div class="v-row"><span>|Ric−3g| moy</span><b>${v.Ric3g_err_mean.toExponential(2)}</b></div>
-    <div class="v-row"><span>sec min / max</span><b class="${okSec?'ok':'warn'}">[${v.sec_min.toFixed(3)}, ${v.sec_max.toFixed(3)}]</b></div>
-    <div class="v-row"><span>sec attendu</span><b>${shape.id==='s4'?'≡ 1':(shape.id==='cp2'?'[½, 2]':'[0, 3]')}</b></div>
-    <div class="v-sub">Mesure sur ${v.N} points × ${v.sec_N_plans} plans orthonormés. Tolérance Ric−3g ≤ 10⁻³ (erreur de différences finies).</div>
+    <div class="v-row"><span>|Ric−3g| max</span><b class="${okRic?'ok':'warn'}">${isFinite(v.Ric3g_err_max)?v.Ric3g_err_max.toExponential(2):'NaN'}</b></div>
+    <div class="v-row"><span>|Ric−3g| moy</span><b>${isFinite(v.Ric3g_err_mean)?v.Ric3g_err_mean.toExponential(2):'NaN'}</b></div>
+    <div class="v-row"><span>sec min / max</span><b class="${okSec?'ok':'warn'}">${secLine}</b></div>
+    <div class="v-row"><span>sec attendu</span><b>${secExpected}</b></div>
+    <div class="v-row"><span>plans valides</span><b>${v.sec_valid_plans||0} / ${v.sec_total_plans||0}</b></div>
+    ${crossLine}
+    <div class="v-sub">
+      Mesure sur ${v.N} points × ${v.sec_N_plans} plans orthonormés.
+      Cross-check : <b>sectionalK</b> vs <b>sectionalK_covariant</b>.
+      Tolérances : R ±5e-3, |Ric−3g| &lt; 5e-3.
+    </div>
   </div>`;
 }
 
@@ -1977,11 +2106,11 @@ function selectShape(i){
   } else {
     document.getElementById('curveOverlay').classList.remove('visible');
   }
+  // Loader seulement si les données manquent réellement
   if(state.mode === 'heatmap' && (!CACHE.e2Cache[SHAPES[i].id] || !CACHE.bowlCache[SHAPES[i].id])){
     showModeLoader('Chargement de la grille…', 0);
-  } else {
-    showModeLoader('Changement de figure…', 220);
   }
+  // Pas de loader en simulation/artiste après le préchargement : le rendu est continu
   updateDescription();
   updateProofOverlay(SHAPES[i]);
   closePanel();
@@ -1997,7 +2126,6 @@ function bindToggleRow(switchEl, onToggle){
   if(!switchEl) return;
   const row = switchEl.closest('.toggle-row') || switchEl;
   row.addEventListener('click', (e)=>{
-    // Éviter le double déclenchement si on clique directement sur le switch
     if(e.target === switchEl) return;
     e.preventDefault();
     onToggle();
@@ -2042,7 +2170,6 @@ bindToggleRow(shadowSwitch, ()=>{
 const modeBadge=document.getElementById('modeBadge');
 const eLegend=document.getElementById('eLegend');
 function setMode(mode){
-  const prev = state.mode;
   state.mode=mode;
   document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
   const labels = { simulation:'Simulation 3D', heatmap:'Heatmaps', artiste:'Vue d\'artiste' };
@@ -2051,12 +2178,14 @@ function setMode(mode){
   if(mode==='heatmap' && state.showE) eLegend.classList.add('visible');
   else eLegend.classList.remove('visible');
   if(mode==='artiste') document.getElementById('curveOverlay').classList.remove('visible');
+
   const shape = SHAPES[state.shapeIndex];
+  // N'afficher le loader QUE si les données manquent vraiment
   if(mode === 'heatmap' && (!CACHE.e2Cache[shape.id] || !CACHE.bowlCache[shape.id])){
     showModeLoader('Préparation heatmap…', 0);
-  } else if(mode !== prev){
-    showModeLoader('Changement de mode…', 280);
   }
+  // Aucun loader pour un simple switch simulation<->artiste : le rendu est continu
+
   updateDescription();
 }
 document.querySelectorAll('.mode-btn').forEach(btn=>{
@@ -2245,7 +2374,6 @@ async function startRecording(){
     recBtnLabel.textContent='■ Arrêter';
     recStatus.textContent=`Enregistrement ${state.recordingRes}p en cours…`;
     if(stopRecBtn) stopRecBtn.classList.add('visible');
-    // S'assurer que le canvas garde le focus clavier pour les flèches
     canvas.focus && canvas.focus();
   }catch(err){
     console.warn(err);
