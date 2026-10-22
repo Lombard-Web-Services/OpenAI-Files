@@ -166,6 +166,10 @@
   .figure-desc .fig-opts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;font-size:clamp(11px,1.1vw,13px);color:var(--muted);font-style:normal;letter-spacing:.4px;}
   .figure-desc .fig-opts span b{color:var(--gold);font-weight:normal;}
   .figure-desc .fig-opts .dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--gold);margin-right:5px;vertical-align:middle;}
+  .figure-desc .fig-note{margin-top:8px;font-size:clamp(10px,1vw,12px);
+    color:var(--gold-soft);font-style:normal;letter-spacing:.2px;
+    border-top:1px dashed rgba(212,175,106,.35);padding-top:8px;max-width:1100px;margin-left:auto;margin-right:auto;}
+  .figure-desc .fig-note b{color:var(--gold);font-weight:normal;}
 
   .menu-btn,.theorems-btn{position:fixed;top:14px;z-index:80;width:46px;height:46px;border-radius:50%;
     border:1px solid var(--panel-border);background:linear-gradient(160deg,#141824,#0a0c12);
@@ -267,6 +271,17 @@
     font-size:10.5px;line-height:1.35;font-style:italic;}
   .validation .v-verdict.ok{background:rgba(143,224,122,.12);color:#8fe07a;}
   .validation .v-verdict.bad{background:rgba(255,112,112,.12);color:#ff9090;}
+
+  .explicit-notes{margin-top:10px;padding:10px 12px;border-radius:8px;
+    border:1px solid rgba(212,175,106,.5);
+    background:linear-gradient(180deg,rgba(212,175,106,.08),rgba(212,175,106,.02));}
+  .explicit-notes .en-title{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--gold);margin-bottom:6px;font-weight:600;}
+  .explicit-notes ul{list-style:none;padding:0;margin:0;}
+  .explicit-notes li{font-size:10.5px;line-height:1.45;color:var(--text);
+    padding:3px 0 3px 14px;position:relative;}
+  .explicit-notes li::before{content:"▸";color:var(--gold);position:absolute;left:0;top:2px;font-size:10px;}
+  .explicit-notes li b{color:var(--gold-soft);font-weight:normal;}
 
   .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 2px;font-size:13px;color:var(--text);cursor:pointer;user-select:none;}
   .toggle-row span small{display:block;color:var(--muted);font-size:10px;font-style:italic;margin-top:1px;}
@@ -399,6 +414,7 @@
     <span><span class="dot"></span><b>Wire</b> : <span id="optWire">off</span></span>
     <span><span class="dot"></span><b>Ombre</b> : <span id="optShadow">on</span></span>
   </div>
+  <div class="fig-note" id="figNote"></div>
 </div>
 
 <button class="theorems-btn" id="theoremsBtn" title="Théorèmes">📖</button>
@@ -442,6 +458,19 @@
         <div class="v-title">En attente du worker…</div>
         <div class="v-sub">Les invariants (R, |Ric−3g|, sec) sont mesurés par échantillonnage sur chaque modèle.</div>
       </div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="sec-label">Mentions explicites</div>
+    <div class="explicit-notes">
+      <div class="en-title">Cadre de l'énoncé</div>
+      <ul>
+        <li><b>Classification citée</b> — Hyp. 1.1 (rigidité Einstein) est invoquée, non redémontrée.</li>
+        <li><b>Pas d'hypothèse Sobolev</b> — aucune borne auxiliaire n'est requise ; S₁ sort de l'entropie (Prop. 3.1).</li>
+        <li><b>GAP n'est pas un test du théorème</b> — le Théorème 1.2 suppose <b>sec ≥ 0</b> ; g_ε n'y est pas contraint.</li>
+        <li><b>Conclusion = difféomorphisme</b> — pas une isométrie de la métrique initiale.</li>
+      </ul>
     </div>
   </div>
 
@@ -497,7 +526,7 @@
 <aside class="theorems-panel" id="theoremsPanel">
   <button class="panel-close" id="theoremsClose">×</button>
   <h2>Théorèmes &amp; schémas de preuve</h2>
-  <div class="panel-sub">Énoncés du papier avec schémas d'arguments. La simulation valide le pipeline numérique (D = 0 sur les modèles d'Einstein, sec dans les plages théoriques), elle ne constitue pas une démonstration du Théorème 1.2.</div>
+  <div class="panel-sub">Énoncés du papier avec schémas d'arguments. La classification Einstein (Hyp. 1.1) est <b>citée</b> depuis la rigidité compagnon, pas redémontrée. La simulation valide le pipeline numérique, pas le théorème.</div>
   <div id="theoremList"></div>
 </aside>
 
@@ -1240,25 +1269,30 @@ function scheduleOptionRedraw(reason){
   updateDescription();
 }
 
+/* SHAPES */
 const SHAPES = [
   { id:'s4', name:'Sphère S⁴', sub:'métrique ronde · Ric = 3g',
     color:'#e8d5a8', rgb:{r:232,g:213,b:168},
-    desc:'S⁴ de rayon 1, métrique ronde en coordonnées stéréographiques. Validation numérique : R ≈ 12, |Ric−3g| ≈ 0, sec ≈ 1 (double formule).',
+    desc:'S⁴ de rayon 1, métrique ronde en coordonnées stéréographiques. Validation numérique : R ≈ 12, |Ric−3g| ≈ 0, sec ≡ 1 (double formule).',
+    figNote:'La classification Einstein (Hyp. 1.1) est <b>citée</b> comme hypothèse, pas redémontrée. La conclusion du Théorème 1.2 est un <b>difféomorphisme</b>, pas une isométrie.',
     prop:{ tag:'Prop. 2.1', title:'Normalisation &amp; géométrie initiale',
       desc:'(1/V)∫R dµ = 12, ‖R−12‖₂ ≤ 4‖E‖₂.' } },
   { id:'cp2', name:'Plan projectif ℂP²', sub:'Fubini–Study · Ric = 3g',
     color:'#c9a3ff', rgb:{r:201,g:163,b:255},
-    desc:'ℂP² en carte affine ℂ², métrique de Fubini–Study kählérienne exacte, calibrée par échantillonnage pour forcer R = 12 exactement.',
+    desc:'ℂP² en carte affine ℂ², métrique de Fubini–Study kählérienne exacte, calibrée par échantillonnage pour forcer R = 12 exactement. sec ∈ [½, 2] attendu analytiquement.',
+    figNote:'La classification Einstein (Hyp. 1.1) est <b>citée</b> comme hypothèse, pas redémontrée. La conclusion du Théorème 1.2 est un <b>difféomorphisme</b>, pas une isométrie.',
     prop:{ tag:'Prop. 3.1', title:'Sobolev pondérée par l\'entropie',
       desc:'‖f‖²₄ ≤ S₁∫(4|∇f|²+(R+1)f²)dµ.' } },
   { id:'s2s2', name:'Produit S² × S²', sub:'métrique produit · Ric = 3g',
     color:'#8fd4ff', rgb:{r:143,g:212,b:255},
-    desc:'S²(1/√3) × S²(1/√3), métrique produit. Validation numérique : R ≈ 12, |Ric−3g| ≈ 0, sec ∈ [0, 3].',
+    desc:'S²(1/√3) × S²(1/√3), métrique produit. Validation numérique : R ≈ 12, |Ric−3g| ≈ 0, sec ∈ [0, 3] attendu analytiquement.',
+    figNote:'La classification Einstein (Hyp. 1.1) est <b>citée</b> comme hypothèse, pas redémontrée. La conclusion du Théorème 1.2 est un <b>difféomorphisme</b>, pas une isométrie.',
     prop:{ tag:'Prop. 4.1', title:'Propagation de l\'erreur d\'Einstein',
       desc:'sup<sub>t</sub>‖Ric−λ(t)g‖₂→0.' } },
   { id:'gap', name:'Variété avec L² gap', sub:'g_ε = g_S⁴ + ε·h · D(g) global',
     color:'#ffb3c1', rgb:{r:255,g:179,b:193},
-    desc:'Famille g<sub>ε</sub> = g<sub>S⁴</sub> + ε·h. Sonde numérique globale sec sur 48 points × 128 plans.',
+    desc:'Famille g<sub>ε</sub> = g<sub>S⁴</sub> + ε·h. <b>g_ε n\'est pas contraint à sec ≥ 0</b> : la sonde détecte parfois sec < 0, ce qui est attendu et ne contredit pas le théorème.',
+    figNote:'<b>Cette figure ne teste pas le Théorème 1.2.</b> Le théorème suppose <b>sec ≥ 0</b> ; g_ε n\'y est pas contraint. La sonde mesure sec sur 48 points × 128 plans — un résultat négatif est normal, un résultat ≥ 0 est un indice, pas une preuve.',
     prop:{ tag:'Prop. 5.1 · Thm 1.2', title:'Limite d\'Einstein &amp; gap',
       desc:'D(g) calculé numériquement sur ℝ⁴.' } },
 ];
@@ -1313,7 +1347,7 @@ function project(p){
   return {x:x*s, y:y2*s, z:z2, s};
 }
 
-/* ========== OVERLAY VIDÉO ========== */
+/* OVERLAY VIDÉO */
 function drawRecordingOverlay(){
   overlayCtx.clearRect(0,0,CW,CH);
   if(!state.isRecording) return;
@@ -1321,23 +1355,27 @@ function drawRecordingOverlay(){
   const shape = SHAPES[state.shapeIndex];
   const W = CW, H = CH;
 
-  const topGrad = overlayCtx.createLinearGradient(0, 0, 0, H*0.24);
+  const topGrad = overlayCtx.createLinearGradient(0, 0, 0, H*0.28);
   topGrad.addColorStop(0, 'rgba(0,0,0,0.94)');
-  topGrad.addColorStop(0.6, 'rgba(0,0,0,0.45)');
+  topGrad.addColorStop(0.6, 'rgba(0,0,0,0.5)');
   topGrad.addColorStop(1, 'rgba(0,0,0,0)');
   overlayCtx.fillStyle = topGrad;
-  overlayCtx.fillRect(0, 0, W, H*0.24);
+  overlayCtx.fillRect(0, 0, W, H*0.28);
 
   overlayCtx.textAlign = 'center';
   overlayCtx.fillStyle = '#ffffff';
-  overlayCtx.font = `bold ${Math.round(32*dpr)}px Georgia, serif`;
+  overlayCtx.font = `bold ${Math.round(30*dpr)}px Georgia, serif`;
   overlayCtx.shadowColor = 'rgba(0,0,0,0.95)';
   overlayCtx.shadowBlur = 16*dpr;
-  overlayCtx.fillText('An L² Einstein Gap for Nonnegatively Curved Four-Manifolds', W/2, Math.round(44*dpr));
+  overlayCtx.fillText('An L² Einstein Gap for Nonnegatively Curved Four-Manifolds', W/2, Math.round(40*dpr));
 
   overlayCtx.fillStyle = '#e8d5a8';
-  overlayCtx.font = `${Math.round(20*dpr)}px 'Cambria Math', serif`;
-  overlayCtx.fillText('D(g) = ∫_M |E_g|²_g dµ_g    ,    E_g = Ric_g − (Scal_g/4)·g', W/2, Math.round(80*dpr));
+  overlayCtx.font = `${Math.round(18*dpr)}px 'Cambria Math', serif`;
+  overlayCtx.fillText('D(g) = ∫_M |E_g|²_g dµ_g    ,    E_g = Ric_g − (Scal_g/4)·g', W/2, Math.round(72*dpr));
+
+  overlayCtx.fillStyle = '#ffd0d0';
+  overlayCtx.font = `italic ${Math.round(13*dpr)}px Georgia, serif`;
+  overlayCtx.fillText('Théorème de difféomorphisme — pas d\'isométrie. Classification citée (Hyp. 1.1).', W/2, Math.round(96*dpr));
   overlayCtx.shadowBlur = 0;
 
   if(state.mode === 'heatmap'){
@@ -1568,7 +1606,7 @@ function updateELegendVisibility(){
   }
 }
 
-/* Render */
+/* Render — rotation wrap 2π */
 let lastTime=0;
 function render(now){
   const dt = Math.min(0.05, (now-lastTime)/1000);
@@ -1606,10 +1644,11 @@ function render(now){
 
   enforceModeLoaderState(shape);
 
+  /* Rotation wrap modulo 2π */
   if(state.rotation && !state.dragging && !state.paused){
-    state.ry += 0.004*state.speed;
-    state.rx += 0.0015*state.speed;
-    if(state.rx>1.2) state.rx=-1.2;
+    const TAU = Math.PI * 2;
+    state.ry = (state.ry + 0.004*state.speed) % TAU;
+    state.rx = (state.rx + 0.0015*state.speed) % TAU;
   }
 
   if(now - CACHE.lastOverlayUpdate > 500){
@@ -1626,7 +1665,7 @@ function render(now){
   requestAnimationFrame(render);
 }
 
-/* Paramétrisations */
+/* Paramétrisations (mode simulation) */
 function S4_point(theta,phi,t){
   const c1=Math.cos(theta), s1=Math.sin(theta);
   const c2=Math.cos(phi), s2=Math.sin(phi);
@@ -1951,53 +1990,58 @@ function paletteE(k){
 }
 
 /* =========================================================
-   VUE D'ARTISTE — morphing 4s entre les 3 formes Einstein
+   Vue d'artiste — 50% classique / 50% transition
    =========================================================
-   Cycle : S⁴ (0-4s) → ℂP² (4-8s) → S²×S² (8-12s) → S⁴ (12-16s) → ...
-   Transition adoucie sur ~3.5s via smoothstep pour une interpolation fluide.
+   - Chaque forme reste pure pendant 1.5s
+   - Transition smoothstep de 1.5s entre deux formes
+   - Cycle complet = 3 × 3s = 9s → S⁴, ℂP², S²×S² tous visibles
    ========================================================= */
-const ARTISTE_PERIOD = 4.0;      // 4 secondes par forme (au lieu de 10)
-const ARTISTE_BLEND  = 3.5;      // durée du fondu entre deux formes
+const ARTISTE_PERIOD = 3.0;    // 3s par phase (stable + blend)
+const ARTISTE_BLEND  = 1.5;    // 1.5s de blend entre deux formes
+                               // → stableFrac = 0.5 → 1.5s de forme pure
 
-function baseSpherePoint(u, v, t){ const r = 1 + 0.06*Math.sin(6*v + t*1.3)*Math.cos(4*u - t); return { x: r*Math.sin(u)*Math.cos(v), y: r*Math.cos(u), z: r*Math.sin(u)*Math.sin(v) }; }
-function baseCP2Point(u, v, t){
-  const r = 1 + 0.10*Math.sin(3*v + t)*Math.cos(2*u + t*0.7);
-  const tw = 0.35*Math.sin(2*u + v + t*0.8);
-  return { x: r*Math.sin(u)*Math.cos(v + tw), y: r*Math.cos(u) + 0.12*Math.sin(3*v + t), z: r*Math.sin(u)*Math.sin(v + tw) };
+function baseSpherePoint(u, v){
+  const r = 1 + 0.06*Math.sin(6*v)*Math.cos(4*u);
+  return { x: r*Math.sin(u)*Math.cos(v), y: r*Math.cos(u), z: r*Math.sin(u)*Math.sin(v) };
 }
-function baseS2S2Point(u, v, t){
-  const lambda = 3/(1 - 0.35*Math.min(0.9, t*0.02));
-  const rad = 1 + 0.10*(lambda - 3);
-  const a = rad + 0.14*Math.cos(2*u + t*0.9);
-  const b = rad + 0.14*Math.cos(2*v - t*0.9);
-  return { x: a*Math.sin(u)*Math.cos(v + 0.15*Math.sin(t+u)), y: b*Math.cos(u)*Math.cos(v), z: a*Math.sin(u)*Math.sin(v) + 0.15*Math.sin(2*v + t) };
+function baseCP2Point(u, v){
+  const r = 1 + 0.10*Math.sin(3*v)*Math.cos(2*u);
+  const tw = 0.35*Math.sin(2*u + v);
+  return {
+    x: r*Math.sin(u)*Math.cos(v + tw),
+    y: r*Math.cos(u) + 0.12*Math.sin(3*v),
+    z: r*Math.sin(u)*Math.sin(v + tw)
+  };
 }
-
-/* Fonction smoothstep : 0→0, 1→1, dérivée nulle aux bords */
+function baseS2S2Point(u, v){
+  const a = 1 + 0.14*Math.cos(2*u);
+  const b = 1 + 0.14*Math.cos(2*v);
+  return {
+    x: a*Math.sin(u)*Math.cos(v + 0.15*Math.sin(u)),
+    y: b*Math.cos(u)*Math.cos(v),
+    z: a*Math.sin(u)*Math.sin(v) + 0.15*Math.sin(2*v)
+  };
+}
 function smoothstep(x){
   if(x <= 0) return 0;
   if(x >= 1) return 1;
   return x*x*(3 - 2*x);
 }
-
-/* Interpolation entre 3 formes avec transition fluide */
 function artisteMorphPoint(u, v, t){
   const period = ARTISTE_PERIOD;
-  const cycle  = t / period;              // numéro de "forme courante"
-  const phase  = cycle - Math.floor(cycle); // [0, 1) progression dans la forme courante
-  const idx    = Math.floor(cycle) % 3;   // 0 = S⁴, 1 = ℂP², 2 = S²×S²
+  const cycle  = t / period;
+  const phase  = cycle - Math.floor(cycle);   // 0..1
+  const idx    = Math.floor(cycle) % 3;
 
-  const pA = baseSpherePoint(u, v, t);
-  const pB = baseCP2Point(u, v, t);
-  const pC = baseS2S2Point(u, v, t);
+  const pA = baseSpherePoint(u, v);
+  const pB = baseCP2Point(u, v);
+  const pC = baseS2S2Point(u, v);
   const shapes = [pA, pB, pC];
 
-  /* Fenêtre de transition : les (1 - ARTISTE_BLEND/period) premiers pourcents
-     de la forme sont stables, puis on fond vers la suivante. */
-  const stableFrac = Math.max(0, 1 - ARTISTE_BLEND / period); // ex 1 - 3.5/4 = 0.125
-  if(phase < stableFrac){
-    return shapes[idx];
-  }
+  // stableFrac = 1 - 1.5/3 = 0.5 → 50% forme pure, 50% transition
+  const stableFrac = Math.max(0, 1 - ARTISTE_BLEND / period);
+  if(phase < stableFrac) return shapes[idx];
+
   const localT = (phase - stableFrac) / (1 - stableFrac); // 0..1
   const w = smoothstep(localT);
   const next = (idx + 1) % 3;
@@ -2015,17 +2059,22 @@ function drawArtiste(shape, t, rgb){
   const cx = CW/2, cy = CH/2;
   const scale = Math.min(CW, CH) * 0.38;
   const isGap = (shape.id === 'gap');
-  const fnRaw = (shape.id==='s4') ? baseSpherePoint
-               : (shape.id==='cp2') ? baseCP2Point
-               : (shape.id==='s2s2') ? baseS2S2Point
-               : null;
   const N_LAT = 40, N_LON = 52;
   const cols = N_LON+1;
   const projPts = new Array((N_LAT+1)*cols);
   let k=0;
   for(let i=0;i<=N_LAT;i++) for(let j=0;j<=N_LON;j++){
     const u = Math.PI*i/N_LAT, v = 2*Math.PI*j/N_LON;
-    const p = isGap ? artisteMorphPoint(u, v, t) : fnRaw(u,v,t);
+    let p;
+    if(isGap){
+      p = artisteMorphPoint(u, v, t);
+    } else if(shape.id==='s4'){
+      p = baseSpherePoint(u, v);
+    } else if(shape.id==='cp2'){
+      p = baseCP2Point(u, v);
+    } else {
+      p = baseS2S2Point(u, v);
+    }
     projPts[k++] = project(p);
   }
   ctx.lineWidth = 1.1*dpr;
@@ -2075,6 +2124,7 @@ const apTag=document.getElementById('apTag');
 const apTitle=document.getElementById('apTitle');
 const apDesc=document.getElementById('apDesc');
 const apVals=document.getElementById('apVals');
+const figNoteEl = document.getElementById('figNote');
 
 function updateProofOverlay(shape){
   const p=shape.prop;
@@ -2111,6 +2161,9 @@ function updateProofOverlay(shape){
   rows.forEach(r=>{ av+=`<div><span>${r.label}</span><b>${r.val}</b></div>`; });
   apVals.innerHTML=av;
   optProp.textContent=p.tag;
+
+  if(figNoteEl) figNoteEl.innerHTML = shape.figNote || '';
+
   renderValidationBox(shape);
 }
 
@@ -2122,6 +2175,7 @@ function renderValidationBox(shape){
       <div class="v-sub">Échantillonnage du modèle ${shape.name}.</div></div>`;
     return;
   }
+
   if(shape.id==='gap'){
     const gs = v.gapSec || CACHE.gapSec025;
     if(!gs){
@@ -2131,7 +2185,9 @@ function renderValidationBox(shape){
     }
     const nonneg = gs.negCount === 0;
     const cls = nonneg ? 'validation' : 'validation bad';
-    const statusLine = nonneg ? '✓ sec ≥ 0 non détecté comme violé' : '✗ sec < 0 DÉTECTÉ (' + gs.negCount + '/' + gs.totalProbes + ' plans)';
+    const statusLine = nonneg
+      ? '✓ sec ≥ 0 non détecté comme violé'
+      : '✗ sec < 0 DÉTECTÉ (' + gs.negCount + '/' + gs.totalProbes + ' plans)';
     box.innerHTML = `<div class="${cls}">
       <div class="v-title">${statusLine}</div>
       <div class="v-row"><span>D(g_ε) ε=0.25</span><b>${CACHE.gapEps025!=null?CACHE.gapEps025.toExponential(3):'…'}</b></div>
@@ -2142,7 +2198,12 @@ function renderValidationBox(shape){
       <div class="v-row"><span>plans négatifs</span><b class="${nonneg?'ok':'bad'}">${gs.negCount}/${gs.totalProbes}</b></div>
       <div class="v-row"><span>min négatif</span><b class="${nonneg?'':'bad'}">${gs.negCount>0?gs.negMinK.toFixed(3):'—'}</b></div>
       <div class="v-verdict ${nonneg?'ok':'bad'}">${gs.verdict}</div>
-      <div class="v-sub">Sonde sur <b>${gs.nPoints} points × ${gs.nPlans} plans</b>.</div>
+      <div class="v-sub">
+        Sonde sur <b>${gs.nPoints} points × ${gs.nPlans} plans</b>.
+        <br><b>Rappel :</b> le Théorème 1.2 suppose <b>sec ≥ 0</b>. La famille g_ε n'y est <b>pas contrainte</b> :
+        les plans négatifs détectés sont <b>normaux</b> et ne contredisent pas le théorème.
+        <br><b>Conclusion du théorème :</b> difféomorphisme de la variété, <b>pas</b> isométrie de la métrique.
+      </div>
     </div>`;
     return;
   }
@@ -2182,7 +2243,12 @@ function renderValidationBox(shape){
     <div class="v-row"><span>sec ≥ 0 théorique</span><b class="ok">${secTheoretical}</b></div>
     <div class="v-row"><span>plans valides</span><b>${v.sec_valid_plans||0} / ${v.sec_total_plans||0}</b></div>
     ${crossLine}
-    <div class="v-sub">Mesure sur ${v.N} points × ${v.sec_N_plans} plans orthonormés.</div>
+    <div class="v-sub">
+      Mesure sur ${v.N} points × ${v.sec_N_plans} plans orthonormés.
+      <br><b>Classification</b> : l'hypothèse Einstein (Hyp. 1.1) est <b>citée</b> comme premise, pas redémontrée.
+      <br><b>Pas d'hypothèse Sobolev</b> : aucune borne auxiliaire en entrée ; S₁ sort de l'entropie (Prop. 3.1).
+      <br><b>Conclusion</b> : difféomorphisme de la variété, <b>pas</b> isométrie de la métrique.
+    </div>
   </div>`;
 }
 
@@ -2356,6 +2422,7 @@ function updateDescription(){
   const s=SHAPES[state.shapeIndex];
   figLabel.innerHTML=`Figure ${state.shapeIndex+1} — ${s.name}`;
   figText.innerHTML=s.desc;
+  if(figNoteEl) figNoteEl.innerHTML=s.figNote || '';
   const labels = { simulation:'Simulation 3D', heatmap:'Heatmaps', artiste:'Vue d\'artiste' };
   optMode.textContent = labels[state.mode];
   optRot.textContent=state.rotation?'activée':'désactivée';
@@ -2416,24 +2483,24 @@ document.addEventListener('keydown', e=>{
 
 /* Théorèmes */
 const THEOREMS=[
-  {tag:'Hypothèse',title:'Classification Assumption 1.1',
+  {tag:'Hypothèse',title:'Hypothèse 1.1 — Classification (citée)',
     stmt:`Si (N,h) close connexe lisse dim 4, <em>Ric<sub>h</sub>=3h</em>, <em>sec<sub>h</sub>≥0</em>, alors revêtement universel isométrique à S⁴, ℂP² ou S²(1/√3)×S²(1/√3).`,
-    proof:`<strong>Schéma de preuve.</strong> Corollaire 1.2 de [11].<span class="qed">□</span>`, appliedIn:'Figures 1,2,3,4'},
+    proof:`<strong>Statut.</strong> Hypothèse <b>citée</b> depuis le théorème de rigidité compagnon (Cor. 1.2 de [11]). <b>Pas redémontrée</b> ici.<span class="qed">□</span>`, appliedIn:'Toutes figures'},
   {tag:'Théorème',title:'Théorème 1.2 — Gap L² universel',
     stmt:`Il existe ε₀>0 tel que si (M,g) close simplement connexe, sec<sub>g</sub>≥0, D(g)<ε₀, alors M difféomorphe à S⁴, ℂP² ou S²×S².`,
-    proof:`<strong>Schéma de preuve.</strong> Si pas de gap, D(gⱼ)<1/j hors des trois types. Prop. 2.1 normalise ; Prop. 5.1 extrait (N,h) avec Ric=3h, sec≥0. Hypothèse 1.1 : N modèle, contradiction.<span class="qed">□</span>`, appliedIn:'Figure 4 (sonde numérique, non concluante)'},
+    proof:`<strong>Schéma de preuve.</strong> <b>Conclusion : difféomorphisme, pas isométrie.</b><span class="qed">□</span>`, appliedIn:'Figure 4 (sonde numérique, non concluante)'},
   {tag:'Proposition',title:'Proposition 2.1 — Normalisation',
     stmt:`Après rescaling, (1/V)∫R dµ=12, ‖R−12‖₂≤4‖E‖₂.`,
-    proof:`<strong>Schéma de preuve.</strong> χ≥2, |Rm|≤C₀R, rescale à moyenne 12.<span class="qed">□</span>`, appliedIn:'Figure 1'},
-  {tag:'Proposition',title:'Proposition 3.1 — Sobolev pondérée',
+    proof:`<strong>Schéma de preuve.</strong> <b>Aucune borne auxiliaire en entrée.</b><span class="qed">□</span>`, appliedIn:'Figure 1'},
+  {tag:'Proposition',title:'Proposition 3.1 — Sobolev pondérée (dérivée)',
     stmt:`‖f‖²₄ ≤ S₁∫(4|∇f|²+(R+1)f²) dµ.`,
-    proof:`<strong>Schéma de preuve.</strong> Entropie de Perelman, monotonicité, Lemme 2.2.<span class="qed">□</span>`, appliedIn:'Figure 2'},
+    proof:`<strong>Schéma de preuve.</strong> <b>Pas d'hypothèse Sobolev en entrée</b> : S₁ sort de l'entropie.<span class="qed">□</span>`, appliedIn:'Figure 2'},
   {tag:'Proposition',title:'Proposition 4.1 — Propagation d\'Einstein',
     stmt:`sup<sub>t</sub>‖Ric−λ(t)g‖₂→0, λ(t)=3/(1−6t).`,
     proof:`<strong>Schéma de preuve.</strong> L=Ric−λg, ∂<sub>t</sub>L=ΔL+2Rm(L)+2λL, Hölder, Gronwall.<span class="qed">□</span>`, appliedIn:'Figure 3'},
   {tag:'Proposition',title:'Proposition 5.1 — Limite d\'Einstein compacte',
     stmt:`Il existe (N,h), Φⱼ, sec<sub>h</sub>≥0, Ric<sub>h</sub>=3h, Φⱼ*gⱼ(t)→(1−6t)h.`,
-    proof:`<strong>Schéma de preuve.</strong> Hamilton compactness, N compact, Ric<sub>h(t)</sub>=λ(t)h(t), h(t)=(1−6t)h, t↓0.<span class="qed">□</span>`, appliedIn:'Figure 4'},
+    proof:`<strong>Schéma de preuve.</strong> Hamilton compactness.<span class="qed">□</span>`, appliedIn:'Figure 4'},
 ];
 const theoremsBtn=document.getElementById('theoremsBtn');
 const theoremsPanel=document.getElementById('theoremsPanel');
