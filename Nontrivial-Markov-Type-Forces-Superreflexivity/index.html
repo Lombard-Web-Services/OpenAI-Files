@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Markov Type Forces Superreflexivity — Highcharts A/B/C</title>
+
+<!-- MathJax -->
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<!-- Highcharts + modules -->
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/export-data.js"></script>
+<script src="https://code.highcharts.com/modules/accessibility.js"></script>
+<script src="https://code.highcharts.com/modules/sankey.js"></script>
+<script src="https://code.highcharts.com/modules/dependency-wheel.js"></script>
+<script src="https://code.highcharts.com/modules/wordcloud.js"></script>
+<script src="https://code.highcharts.com/modules/annotations.js"></script>
+<script src="https://code.highcharts.com/highcharts-more.js"></script>
+
+<style>
+  html,body{margin:0;padding:0;background:#0a0c12;height:100%;
+    font-family:Georgia,'Times New Roman',serif;color:#ddd;user-select:none;overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100%}
+
+  /* topbar */
+  #topbar{height:58px;flex-shrink:0;background:linear-gradient(to bottom,rgba(10,12,18,.98),rgba(10,12,18,.75));
+    display:flex;align-items:center;justify-content:space-between;padding:0 22px;
+    border-bottom:1px solid #1a2230;backdrop-filter:blur(6px);z-index:30}
+  #topbar .tb-title{font-size:15px;color:#f0f0f0;font-style:italic;letter-spacing:1px}
+  #topbar .tb-title span{color:#7fd4ff;font-size:11px;letter-spacing:2px;text-transform:uppercase;
+    display:block;font-style:normal;margin-bottom:2px}
+  #tabs{display:flex;gap:6px}
+  #tabs button{background:#131a24;color:#8c8caa;border:1px solid #2a3a4a;
+    padding:8px 16px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;
+    letter-spacing:1px;text-transform:uppercase;transition:all .2s}
+  #tabs button:hover{background:#1a2230;color:#7fd4ff}
+  #tabs button.active{background:#55ff88;color:#0a0c12;border-color:#55ff88;font-weight:bold}
+  #tbActions{display:flex;gap:8px}
+  #tbActions button{background:#1a2230;color:#7fd4ff;border:1px solid #3a6a8a;
+    padding:8px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11px;
+    letter-spacing:1px;text-transform:uppercase}
+  #tbActions button:hover{background:#173a52;color:#fff}
+
+  /* body */
+  #body{flex:1;display:flex;min-height:0}
+
+  /* panel gauche */
+  #panel{width:300px;flex-shrink:0;background:rgba(18,18,24,.92);border-right:1px solid #2a3a4a;
+    padding:16px 16px;overflow-y:auto;font-size:13px}
+  #panel h3{margin:0 0 12px;font-size:12px;color:#fff;font-weight:normal;letter-spacing:2px;
+    text-transform:uppercase;border-bottom:1px solid #3a3a44;padding-bottom:10px}
+  #panel .row{display:flex;justify-content:space-between;align-items:center;margin:9px 0;gap:8px}
+  #panel label{flex:1;color:#999;font-size:12px}
+  #panel input[type=range]{flex:1.1;accent-color:#55ff88;height:4px}
+  #panel select{flex:1.4;background:#22222a;color:#fff;border:1px solid #444;
+    padding:6px 8px;border-radius:5px;font-family:inherit;font-size:12px;cursor:pointer}
+  #panel .value{width:52px;text-align:right;color:#55ff88;font-variant-numeric:tabular-nums;font-size:12px}
+  #panel button{width:100%;margin-top:8px;background:#22222a;color:#ddd;border:1px solid #444;
+    padding:8px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;
+    letter-spacing:1px;text-transform:uppercase;transition:all .2s}
+  #panel button:hover{background:#2e2e3a;border-color:#666;color:#fff}
+  #panel .section-title{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1.5px;
+    margin:14px 0 6px;border-top:1px solid #2a2a33;padding-top:10px}
+  #panel .checkbox-row{display:flex;align-items:center;gap:8px;margin:7px 0}
+  #panel .checkbox-row input{accent-color:#55ff88;cursor:pointer}
+  #panel .checkbox-row label{cursor:pointer;flex:1;color:#bbb}
+
+  /* main chart area */
+  #main{flex:1;display:flex;flex-direction:column;min-width:0}
+  #titleBox{padding:14px 20px 6px;text-align:center;flex-shrink:0}
+  #titleBox .act{font-size:11px;letter-spacing:3px;color:#7fd4ff;text-transform:uppercase}
+  #titleBox .name{font-size:22px;color:#f0f0f0;font-style:italic;margin-top:4px}
+  #titleBox .eq{margin-top:6px;color:#cfe6ff;font-size:15px}
+  #chartWrap{flex:1;position:relative;min-height:0;padding:0 12px 8px}
+  #chart{position:absolute;inset:0}
+
+  /* iframe3D (seulement acte 1) */
+  #iframe3D{display:none;position:absolute;right:14px;top:14px;width:280px;height:220px;
+    background:#000;border:1px solid #3a6a8a;border-radius:8px;overflow:hidden;z-index:5}
+  #iframe3D canvas{width:100%;height:100%}
+
+  /* legend custom */
+  #legendPanel{background:rgba(18,18,24,.92);border-top:1px solid #2a3a4a;padding:10px 16px;
+    display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:#bbb;flex-shrink:0;max-height:74px;overflow-y:auto}
+  #legendPanel .item{display:flex;align-items:center;gap:6px}
+  #legendPanel .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;position:relative}
+  #legendPanel .dot::after{content:'';position:absolute;inset:-3px;border-radius:50%;background:inherit;opacity:.25}
+  #legendPanel .item.note{font-style:italic;color:#888}
+
+  /* prose */
+  #prose{width:340px;flex-shrink:0;background:rgba(12,14,20,.96);border-left:1px solid #2a3a4a;
+    padding:16px 18px;overflow-y:auto;font-size:13px;line-height:1.55;color:#cfd8e3}
+  #prose h4{margin:0 0 8px;color:#7fd4ff;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+  #prose .proof{border-left:3px solid #ffab00;padding:8px 12px;margin:8px 0;
+    background:rgba(255,171,0,.06);border-radius:0 6px 6px 0;color:#e8e8e8}
+  #prose .k{color:#55ff88;font-style:italic}
+  #prose ol,#prose ul{margin-left:16px}
+  #prose li{margin-bottom:5px}
+
+  /* grid (onglet C) */
+  #gridOverlay{position:absolute;inset:0;display:none;grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(2,1fr);gap:12px;padding:16px;z-index:20;
+    background:rgba(10,12,18,.96);overflow:auto}
+  #gridOverlay.show{display:grid}
+  .card{background:rgba(18,22,32,.95);border:1px solid #2a3a4a;border-radius:12px;
+    padding:16px 18px;cursor:pointer;transition:all .2s;position:relative;
+    display:flex;flex-direction:column;gap:8px;overflow:hidden}
+  .card:hover{border-color:#55ff88;background:rgba(22,30,42,.98);transform:translateY(-2px);
+    box-shadow:0 10px 30px rgba(85,255,136,.12)}
+  .card .badge{position:absolute;top:10px;right:10px;background:#1a2230;
+    border:1px solid #3a6a8a;color:#7fd4ff;padding:3px 8px;border-radius:5px;
+    font-size:10px;letter-spacing:1px;text-transform:uppercase}
+  .card .ca{font-size:10.5px;letter-spacing:2px;color:#7fd4ff;text-transform:uppercase}
+  .card .ct{font-size:16px;color:#f0f0f0;font-style:italic;line-height:1.3}
+  .card .ce{font-size:12px;color:#cfe6ff}
+  .card .cm{font-size:11px;color:#8c8caa;font-style:italic;margin-top:auto}
+
+  /* recording */
+  body.recording #panel,body.recording #prose,body.recording #legendPanel,
+  body.recording #titleBox,body.recording #topbar{opacity:0!important;pointer-events:none!important}
+  #recExit{display:none;position:fixed;top:14px;right:14px;z-index:100;
+    background:rgba(200,40,40,.9);color:#fff;border:1px solid rgba(255,255,255,.3);
+    padding:8px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px;
+    letter-spacing:1px;text-transform:uppercase}
+  body.recording #recExit{display:block}
+  #recInd{display:none;position:fixed;top:14px;left:14px;z-index:100;
+    background:rgba(30,0,0,.85);color:#fff;border:1px solid rgba(255,60,60,.6);
+    padding:8px 14px;border-radius:6px;font-family:'Courier New',monospace;font-size:13px;
+    align-items:center;gap:10px}
+  body.recording #recInd{display:flex}
+  #recInd .d{width:12px;height:12px;border-radius:50%;background:#ff2222;animation:p 1s infinite}
+  @keyframes p{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.85)}}
+
+  @media (max-width:1100px){
+    #panel{width:240px}
+    #prose{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topbar">
+    <div class="tb-title">
+      <span>Markov Type Forces Superreflexivity</span>
+      Highcharts · A / B / C
+    </div>
+    <div id="tabs">
+      <button data-tab="A" class="active">A — Storyboard</button>
+      <button data-tab="B">B — Dashboard</button>
+      <button data-tab="C">C — Modélisation</button>
+    </div>
+    <div id="tbActions">
+      <button id="recBtn">🎥 Enregistrer</button>
+    </div>
+  </div>
+
+  <div id="body">
+    <div id="panel">
+      <h3>Paramètres</h3>
+      <div class="row">
+        <label>Acte / Notion</label>
+        <select id="actSelect">
+          <option value="0">0 — Prologue</option>
+          <option value="1">1 — Norme étalante (Lemme 2.1)</option>
+          <option value="2">2 — Mots réduits (Lemme 4.2)</option>
+          <option value="3">3 — Averaging fini (Lemme 3.1)</option>
+          <option value="4">4 — Transport reversible (Prop. 3.2)</option>
+          <option value="5">5 — Épilogue (Théorème 1.1)</option>
+        </select>
+      </div>
+      <div class="row"><label>Durée anim.</label>
+        <input type="range" id="durSlider" min="300" max="3000" step="100" value="1000">
+        <span class="value" id="durVal">1.0s</span></div>
+      <div class="row"><label>Intensité</label>
+        <input type="range" id="intSlider" min="0.3" max="2" step="0.1" value="1">
+        <span class="value" id="intVal">1.0</span></div>
+      <div class="section-title">Modules Highcharts</div>
+      <div class="row"><label>Type</label>
+        <select id="typeSelect">
+          <option value="auto">Auto (par acte)</option>
+          <option value="sankey">Sankey</option>
+          <option value="dependency">Dependency wheel</option>
+          <option value="wordcloud">Word cloud</option>
+          <option value="line">Line / spline</option>
+          <option value="column">Column / bar</option>
+          <option value="scatter">Scatter</option>
+        </select>
+      </div>
+      <div class="section-title">Affichage</div>
+      <div class="checkbox-row"><input type="checkbox" id="show3D" checked>
+        <label for="show3D">Iframe 3D (acte 1)</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="showProof">
+        <label for="showProof">Encart de démonstration</label></div>
+      <button id="replayBtn">↻ Rejouer l'acte</button>
+      <button id="gridBtn">▦ Grille des notions (onglet C)</button>
+      <div style="font-size:11px;color:#666;margin-top:10px;line-height:1.5;
+        border-top:1px solid #2a2a33;padding-top:9px;font-style:italic">
+        ← → : changer d'acte · Espace : rejouer · Échap : arrêter l'enregistrement.
+      </div>
+    </div>
+
+    <div id="main">
+      <div id="titleBox">
+        <div class="act" id="figAct">Acte 0 — Prologue</div>
+        <div class="name" id="figName">Nontrivial Markov Type Forces Superreflexivity</div>
+        <div class="eq" id="figEq"></div>
+      </div>
+      <div id="chartWrap">
+        <div id="chart"></div>
+        <div id="iframe3D">
+          <canvas id="c3d"></canvas>
+        </div>
+        <div id="gridOverlay"></div>
+      </div>
+      <div id="legendPanel"></div>
+    </div>
+
+    <div id="prose">
+      <h4 id="proseTitle">Prologue</h4>
+      <div id="proseBody"></div>
+    </div>
+  </div>
+</div>
+
+<button id="recExit">■ Arrêter & télécharger</button>
+<div id="recInd"><div class="d"></div><span id="recTime">REC 00:00</span></div>
+
+<script>
+/* =====================================================================
+   1. DONNÉES DES 6 NOTIONS
+   ===================================================================== */
+const NOTIONS = [
+  {
+    id:'markov', act:'0',
+    title:'Nontrivial Markov Type Forces Superreflexivity',
+    short:'Type de Markov p',
+    eq:'$\\mathbb{E}\\|f(Z_t)-f(Z_0)\\|^p\\le K^p\\,t\\,\\mathbb{E}\\|f(Z_1)-f(Z_0)\\|^p$',
+    legend:[{c:'#55ff88',t:'Type de Markov p > 1 (force)'},
+            {c:'#7fd4ff',t:'Superréflexivité (forme)'},
+            {c:'#8c8caa',t:'Marches réversibles finies',n:true}],
+    prose:`<p>Ce récit démontre le théorème :</p>
+      <p class="proof"><b>Théorème 1.1.</b> Tout espace de Banach réel à type de Markov $p>1$ est superréflexif.</p>
+      <p>Un espace est <span class="k">superréflexif</span> s'il admet une norme uniformément convexe équivalente.</p>
+      <p>Métaphore : le type de Markov est une <em>force</em> qui contraint le mouvement ; la superréflexivité est la <em>forme</em> qu'elle impose à l'espace.</p>`,
+    buildChart: buildDependencyChart
+  },
+  {
+    id:'norm', act:'1',
+    title:'Norme étalante (Lemme 2.1)',
+    short:'Spreading invariance',
+    eq:'$N(\\sum a_i b_i)=N(\\sum a_i b_{k_i})\\ ;\\quad N(\\dots,a_i+a_{i+1},\\dots)\\le N(\\dots,a_i,a_{i+1},\\dots)$',
+    legend:[{c:'#ffffff',t:'Points de c₀₀ sous N'},
+            {c:'#ff5555',t:'Spreading (3)'},
+            {c:'#55aaff',t:'Fusion contractante (4)'},
+            {c:'#55ff88',t:'Plongement dans X (iii)'},
+            {c:'#8c8caa',t:'Iframe 3D : parallélépipède',n:true}],
+    prose:`<p class="proof"><b>Lemme 2.1.</b> Si $X$ n'est pas superréflexif, il existe une norme $N$ sur $c_{00}$ étalante, à fusion contractante, dont les tranches s'immergent dans $X$ à distorsion arbitrairement petite.</p>
+      <p class="proof"><b>Preuve.</b> James–Enflo donne $Y$ non réflexif finiment représentable dans $X$. Tableaux triangulaires $f_i(y_j)=0\\ (j<i)$, $|f_i(y_j)-d|\\le M^{-1}\\ (j\\ge i)$, d'où (A.2) :
+      $\\ d\\max_j|\\sum_{h\\le j}a_h|\\le\\|\\sum a_h y_{i_h}\\|\\le\\sum|a_h|.$
+      Ramsey fini sur les sous-suites croissantes donne $N_0$ (A.3), puis la moyennisation $F_J$ donne $N$ (A.6). La fusion vient de la convexité de $t\\mapsto N(\\dots,t,s-t,\\dots)$, constante sur $[0,s]$. $\\square$</p>
+      <p>L'iframe 3D à droite montre le plongement : les trois vecteurs $b_{i_1},b_{i_2},b_{i_3}$ et la diagonale dans $X$.</p>`,
+    buildChart: buildNormChart
+  },
+  {
+    id:'words', act:'2',
+    title:'Mots réduits & deux niveaux (Lemme 4.2)',
+    short:'Word cloud & niveaux',
+    eq:'$c_w(j)=-n_-\\ ;\\quad c_w(h_w(0)+j)=n_+\\ ;\\quad U-V=\\ell$',
+    legend:[{c:'#ffcc55',t:'Mot w = s₁…sₖ (word cloud)'},
+            {c:'#55ff88',t:'Niveau U = n₊'},
+            {c:'#ff5555',t:'Niveau V = −n₋'},
+            {c:'#7fd4ff',t:'Écart U − V = ℓ'},
+            {c:'#8c8caa',t:'Analogie : v = a·t (loi des vitesses)',n:true}],
+    prose:`<p>Les homeomorphismes $h_s$ (Lemme 4.1) envoient $\\mathbb{R}\\setminus A_{s^{-1}}$ sur $A_s$, avec $|h_s(y)-y|<2$. Le mot $w=s_1\\cdots s_k$ définit le cocycle $c_w$ (17).</p>
+      <p class="proof"><b>Lemme 4.2.</b> Si la forme réduite de $w$ a longueur $\\ell>0$, avec $n_+$ lettres positives et $n_-$ négatives, alors pour tout $j\\in\\mathbb{Z}$ :
+      $\\ c_w(j)=-n_-,\\quad c_w(h_w(0)+j)=n_+.$</p>
+      <p class="proof"><b>Preuve.</b> On remplace $w$ par sa forme réduite $t_1\\cdots t_\\ell$. Partant de $j$ (hors de tout arc), l'antécédent sous $h_{t_i}$ tombe dans $A_{t_i^{-1}}$, disjoint de $A_{t_{i+1}}$ par réduction : chaque indicatrice vaut 0. Partant de $h_w(0)+j$, le point avant $t_i$ est $h_{t_i\\cdots t_\\ell}(0)+j\\in\\mathrm{int}(A_{t_i})$ par (14) : chaque indicatrice vaut 1, donc la somme vaut $\\ell-n_-=n_+$. $\\square$</p>
+      <p>Les deux niveaux $V=-n_-$ et $U=n_+$ sont entrelacés ; leur écart vaut $U-V=\\ell$ — l'analogue de la vitesse acquise $v=at$.</p>`,
+    buildChart: buildWordsChart
+  },
+  {
+    id:'avg', act:'3',
+    title:'Averaging sur un ordre fini (Lemme 3.1)',
+    short:'Averaging & charts',
+    eq:'$\\mathrm{TV}\\big(\\mathrm{Law}_\\Omega(C(A)),\\mathrm{Law}_\\Omega(C(A\'))\\big)<\\varepsilon$',
+    legend:[{c:'#ffffff',t:'Λ : ensemble fini ordonné'},
+            {c:'#ffcc55',t:'Charts C : Λ → {1,…,B}'},
+            {c:'#55aaff',t:'Vecteurs v_C dans W_B'},
+            {c:'#55ff88',t:'Combinaison convexe → 0'},
+            {c:'#8c8caa',t:'Analogie : quantité de mouvement MV',n:true}],
+    prose:`<p>Un <span class="k">chart</span> est une injection strictement croissante $C:\\Lambda\\hookrightarrow\\{1,\\dots,B\\}$.</p>
+      <p class="proof"><b>Lemme 3.1.</b> Pour tout $\\Lambda$ fini ordonné et $\\varepsilon>0$, il existe $B$ et $\\Omega$ tels que
+      $\\ \\mathrm{TV}\\big(\\mathrm{Law}_\\Omega(C(A)),\\mathrm{Law}_\\Omega(C(A'))\\big)<\\varepsilon.$</p>
+      <p class="proof"><b>Preuve.</b> Posons $v_C=(\\delta_{C(A_\\rho)}-\\delta_{C(A'_\\rho)})_\\rho\\in W_B=\\bigoplus_\\rho\\ell_1(T_{B,m_\\rho})$. Si $\\mathrm{dist}(0,\\mathrm{conv}\\{v_C\\})\\ge\\varepsilon$, la séparation fini-dimensionnelle donne $\\|f\\|\\le1$ avec $\\langle f,v_C\\rangle\\ge\\varepsilon$. Les composantes $f_\\rho\\in[-1,1]$, le <b>théorème de Ramsey fini</b> fournit $B$ et $H$ homogène, et $|\\langle f,v_C\\rangle|<R\\delta<\\varepsilon$, contradiction. $\\square$</p>`,
+    buildChart: buildAvgChart
+  },
+  {
+    id:'transport', act:'4',
+    title:'Transport reversible & marche finie (Prop. 3.2, 2.2)',
+    short:'Charts good/bad & Sankey',
+    eq:'$C\'(a)=C(T_s(a))\\ ;\\quad \\mathbb{P}\\big(N(\\textstyle\\sum_{i=1}^n g(E_i))\\ge n/24\\big)\\ge 3/20$',
+    legend:[{c:'#55ff88',t:'Transition good : C′(a)=C(T_s(a))'},
+            {c:'#ff5555',t:'Transition bad (prob. ≤ μ)'},
+            {c:'#ffcc55',t:'Lift sur Q_R'},
+            {c:'#7fd4ff',t:'Potentiel Φ(z,a)=Σ aⱼg(eⱼ)'},
+            {c:'#8c8caa',t:'Analogie : mouvement varié accéléré',n:true}],
+    prose:`<p>La Prop. 3.2 transforme l'averageing en <b>chaîne réversible</b> sur les charts : lettres i.i.d. uniformes sur $S$, transition $C\\to C'$ couplée via $\\lambda_s$, masse stationnaire $\\frac1{|S|}\\lambda_s(C,C')$, invariante sous $(C,s,C')^*=(C',s^{-1},C)$. Un pas est <em>good</em> si $C'(a)=C(T_s(a))$ sur $D_s$ (20) — probabilité $\\ge1-\\mu$.</p>
+      <p>Les labels $g$ sont impairs : $g(e^*)=-g(e)$. Un <b>lift sur réseau</b> $Q_R=\\{-R,\\dots,R\\}^r$ rend la chaîne réversible ; les rejets au bord sont des boucles. Le potentiel $\\Phi(z,a)=\\sum_j a_j g(e_j)$ a pour incrément $g(e)$ sur les pas acceptés.</p>
+      <p class="proof"><b>Prop. 2.2 (fin).</b> Sur une trajectoire toute-good de mot réduit $\\ell>0$, les sommes préfixes valent $V=-n_-$ et $U=n_+$. Les blocs se somment en $(V,\\ell,-\\ell,\\dots,\\ell,-\\ell,-V)$, d'où $N(G)\\ge(\\ell/3)D_L$. Or $\\mathbb{P}(\\text{all good})\\ge9/10$ et $\\mathbb{E}\\ell\\ge n/2$ ⟹ $\\mathbb{P}(\\ell\\ge n/4)\\ge1/4$ ; donc l'événement a probabilité $\\ge3/20$. $\\square$</p>`,
+    buildChart: buildTransportChart
+  },
+  {
+    id:'final', act:'5',
+    title:'Théorème 1.1 & caractérisation',
+    short:'Épilogue',
+    eq:'$X\\text{ superréflexif}\\iff X\\text{ a le type de Markov }p>1$',
+    legend:[{c:'#55ff88',t:'Théorème 1.1 : Markov p>1 ⟹ superréflexif'},
+            {c:'#7fd4ff',t:'Réciproque (Pisier, NPSS)'},
+            {c:'#ffab00',t:'Réponse à la question de Naor'},
+            {c:'#8c8caa',t:'DAG des implications',n:true}],
+    prose:`<p>La chaîne logique :</p>
+      <ol>
+      <li>Lemme 2.1 : $N$ étalante à fusion contractante.</li>
+      <li>Prop. 2.2 : marche réversible + labels impairs, $\\mathbb{P}(N(\\sum g(E_i))\\ge n/24)\\ge3/20$.</li>
+      <li>Lemme 2.3 : $\\mathbb{E}N(\\sum g(E_i))^p\\le K^p n$.</li>
+      <li>$\\frac{3}{20}(\\frac{n}{24})^p\\le K^p n$ pour tout $n$, impossible si $p>1$.</li>
+      </ol>
+      <p class="proof"><b>Conclusion.</b> $X$ est superréflexif. Avec la réciproque connue (Pisier, Naor–Peres–Schramm–Sheffield) :
+      $\\ X\\text{ superréflexif}\\iff X\\text{ a le type de Markov }p>1.$</p>
+      <p>Réponse à Naor : tout espace à type de Markov non trivial admet une norme uniformément lisse équivalente.</p>`,
+    buildChart: buildFinalChart
+  }
+];
+
+/* =====================================================================
+   2. PALETTE & THÈME HIGHCHARTS
+   ===================================================================== */
+const COLORS = ['#ff5555','#55aaff','#ffcc55','#55ff88','#7fd4ff','#9b59b6','#e67e22','#1abc9c'];
+Highcharts.setOptions({
+  chart: { backgroundColor:'#0a0c12', style:{ fontFamily:"Georgia, 'Times New Roman', serif" },
+           animation:{ duration:1000 }, spacing:[10,10,10,10] },
+  title: { style:{ color:'#f0f0f0', fontStyle:'italic', fontSize:'15px' } },
+  subtitle: { style:{ color:'#8c8caa', fontSize:'12px' } },
+  xAxis: { gridLineColor:'rgba(80,80,110,.25)', lineColor:'#3a3a44',
+           tickColor:'#3a3a44', labels:{ style:{ color:'#aaa', fontSize:'11px' } },
+           title:{ style:{ color:'#888' } } },
+  yAxis: { gridLineColor:'rgba(80,80,110,.25)', lineColor:'#3a3a44',
+           tickColor:'#3a3a44', labels:{ style:{ color:'#aaa', fontSize:'11px' } },
+           title:{ style:{ color:'#888' } } },
+  legend: { itemStyle:{ color:'#ccc', fontSize:'12px' }, itemHoverStyle:{ color:'#fff' } },
+  tooltip: { backgroundColor:'rgba(18,22,32,.96)', borderColor:'#3a6a8a',
+             style:{ color:'#e0e0e0', fontSize:'12px' } },
+  plotOptions: { series:{ animation:{ duration:1000 }, dataLabels:{ color:'#ddd' } } },
+  credits: { enabled:false }
+});
+
+/* =====================================================================
+   3. ÉTAT
+   ===================================================================== */
+let currentTab = 'A';
+let currentAct = 0;
+let chart = null;
+let animDuration = 1000;
+let intensity = 1;
+
+/* =====================================================================
+   4. BUILDERS DE CHARTS PAR ACTE
+   ===================================================================== */
+
+/* --- Acte 0 : dependency wheel --- */
+function buildDependencyChart(div, opts){
+  return Highcharts.chart(div, {
+    chart:{ type:'dependencywheel', height:null },
+    title:{ text:null },
+    accessibility:{ enabled:false },
+    series:[{
+      keys:['from','to','weight'],
+      data:[
+        ['Markov p>1','Superréflexif', 3],
+        ['Superréflexif','Norme lisse', 3],
+        ['Markov p>1','Norme lisse', 2],
+        ['Norme lisse','Superréflexif', 1],
+        ['Superréflexif','Markov p>1', 1]
+      ],
+      dataLabels:{ color:'#fff', style:{ textOutline:'none', fontSize:'13px' } },
+      colors: COLORS,
+      nodes:[
+        { id:'Markov p>1', color:'#55ff88' },
+        { id:'Superréflexif', color:'#7fd4ff' },
+        { id:'Norme lisse', color:'#ffab00' }
+      ]
+    }]
+  });
+}
+
+/* --- Acte 1 : column + line (norme avant/après fusion) --- */
+function buildNormChart(div, opts){
+  const base = [3,5,2,6,4,7,3,5,4,6];
+  const spread = base.map(v => v + 0.4*Math.sin(v));
+  const fused = base.map((v,i) => i<base.length-1 ? (v+base[i+1])/2 : v);
+  return Highcharts.chart(div, {
+    chart:{ type:'column' },
+    title:{ text:'Spreading invariance & fusion contractante', style:{ fontSize:'14px' } },
+    subtitle:{ text:'N(spread) = N(base) ; fusion ≤ base' },
+    xAxis:{ categories: base.map((_,i)=>'i'+(i+1)), title:{ text:'coefficient index' } },
+    yAxis:{ title:{ text:'N (norme)' }, min:0 },
+    tooltip:{ shared:true },
+    legend:{ align:'right', verticalAlign:'top', layout:'vertical' },
+    series:[
+      { name:'base', data: base, color:'#ffffff', animation:{ duration:animDuration } },
+      { name:'spreading (3)', data: spread, color:'#ff5555',
+        animation:{ duration:animDuration } },
+      { name:'fusion (4)', data: fused, color:'#55aaff', type:'spline',
+        marker:{ enabled:true, radius:5 }, animation:{ duration:animDuration } },
+      { name:'seuil X (iii)', data: base.map(()=>4.5), color:'#55ff88',
+        dashStyle:'ShortDash', type:'line', marker:{ enabled:false },
+        animation:{ duration:animDuration } }
+    ]
+  });
+}
+
+/* --- Acte 2 : word cloud + line niveaux --- */
+function buildWordsChart(div, opts){
+  return Highcharts.chart(div, {
+    chart:{ type:'wordcloud' },
+    title:{ text:'Mots réduits (taille ∝ ℓ)', style:{ fontSize:'14px' } },
+    series:[{
+      type:'wordcloud',
+      data:[
+        ['u v u⁻¹ v⁻¹ u v', 6],['u u⁻¹ u v v⁻¹', 3],['u v v⁻¹ u⁻¹ u', 2],
+        ['u v u v⁻¹ u⁻¹', 4],['u⁻¹ v⁻¹ u v', 3],['u v u⁻¹', 1],
+        ['v v v⁻¹ u', 2],['u v', 2],['v u⁻¹ v⁻¹', 3],
+        ['u⁻¹ v u v⁻¹', 4],['v⁻¹ u⁻¹ v u', 4],['u v u⁻¹ v', 3],
+        ['u', 1],['v', 1],['u⁻¹', 1],['v⁻¹', 1]
+      ],
+      colorByPoint:true,
+      colors:['#ffcc55','#55ff88','#ff5555','#7fd4ff','#55aaff','#9b59b6'],
+      rotation:{ from:0, to:0 },
+      style:{ fontFamily:"Georgia, serif" },
+      animation:{ duration:animDuration }
+    }]
+  });
+}
+
+/* --- Acte 3 : scatter + moyenne --- */
+function buildAvgChart(div, opts){
+  const pts = [];
+  for (let k=0;k<20;k++){
+    pts.push({ x: Math.sin(k*2.1)*3, y: Math.cos(k*1.3)*3 });
+  }
+  const mean = pts.reduce((a,p)=>({x:a.x+p.x,y:a.y+p.y}),{x:0,y:0});
+  mean.x/=pts.length; mean.y/=pts.length;
+  return Highcharts.chart(div, {
+    chart:{ type:'scatter', zoomType:'xy' },
+    title:{ text:'Vecteurs v_C et combinaison convexe', style:{ fontSize:'14px' } },
+    subtitle:{ text:'conv(v_C) → 0 (Lemme 3.1)' },
+    xAxis:{ title:{ text:'composante 1' }, gridLineWidth:1,
+      plotLines:[{ value:0, color:'#3a3a44', width:1 }] },
+    yAxis:{ title:{ text:'composante 2' }, gridLineWidth:1,
+      plotLines:[{ value:0, color:'#3a3a44', width:1 }] },
+    tooltip:{ pointFormat:'v_C = ({point.x:.2f}, {point.y:.2f})' },
+    legend:{ align:'right', verticalAlign:'top' },
+    series:[
+      { name:'v_C (charts)', data: pts, color:'#55aaff',
+        marker:{ radius:6, symbol:'circle' }, animation:{ duration:animDuration } },
+      { name:'conv(v_C) → 0', data:[mean], color:'#55ff88',
+        marker:{ radius:11, symbol:'diamond' }, animation:{ duration:animDuration } },
+      { name:'sphère ε', data:[{x:0,y:0}], color:'#7fd4ff',
+        marker:{ radius:20, symbol:'circle', lineWidth:1, lineColor:'#7fd4ff' },
+        dataLabels:{ enabled:true, format:'0', style:{ color:'#7fd4ff' } },
+        animation:{ duration:animDuration } }
+    ]
+  });
+}
+
+/* --- Acte 4 : sankey + column --- */
+function buildTransportChart(div, opts){
+  return Highcharts.chart(div, {
+    chart:{ type:'sankey' },
+    title:{ text:'Charts C → C′ : good (vert) / bad (rouge)', style:{ fontSize:'14px' } },
+    series:[{
+      keys:['from','to','weight'],
+      data:[
+        ['C₁','C′₁', 5],['C₂','C′₂', 1],['C₃','C′₃', 5],
+        ['C₄','C′₄', 5],['C′₁','C₁', 2],['C′₃','C₃', 2]
+      ],
+      nodes:[
+        { id:'C₁', color:'#7fd4ff' },{ id:'C₂', color:'#7fd4ff' },
+        { id:'C₃', color:'#7fd4ff' },{ id:'C₄', color:'#7fd4ff' },
+        { id:'C′₁', color:'#55ff88' },{ id:'C′₂', color:'#ff5555' },
+        { id:'C′₃', color:'#55ff88' },{ id:'C′₄', color:'#55ff88' }
+      ],
+      dataLabels:{ color:'#fff', style:{ textOutline:'none' } },
+      animation:{ duration:animDuration }
+    }]
+  });
+}
+
+/* --- Acte 5 : dependency wheel final --- */
+function buildFinalChart(div, opts){
+  return Highcharts.chart(div, {
+    chart:{ type:'dependencywheel' },
+    title:{ text:'X superréflexif ⟺ type de Markov p > 1', style:{ fontSize:'14px' } },
+    series:[{
+      keys:['from','to','weight'],
+      data:[
+        ['Markov p>1','Superréflexif', 3],
+        ['Superréflexif','Markov p>1', 3],
+        ['Superréflexif','Norme lisse', 2],
+        ['Norme lisse','Superréflexif', 2],
+        ['Markov p>1','Norme lisse', 1]
+      ],
+      nodes:[
+        { id:'Markov p>1', color:'#55ff88' },
+        { id:'Superréflexif', color:'#7fd4ff' },
+        { id:'Norme lisse', color:'#ffab00' }
+      ],
+      dataLabels:{ color:'#fff', style:{ textOutline:'none', fontSize:'13px' } },
+      animation:{ duration:animDuration }
+    }]
+  });
+}
+
+/* =====================================================================
+   5. RENDU PRINCIPAL
+   ===================================================================== */
+const figAct = document.getElementById('figAct');
+const figName = document.getElementById('figName');
+const figEq = document.getElementById('figEq');
+const legendPanel = document.getElementById('legendPanel');
+const proseTitle = document.getElementById('proseTitle');
+const proseBody = document.getElementById('proseBody');
+const actSelect = document.getElementById('actSelect');
+const iframe3D = document.getElementById('iframe3D');
+
+function renderAct(n){
+  currentAct = Math.max(0, Math.min(5, n));
+  actSelect.value = String(currentAct);
+  const notion = NOTIONS[currentAct];
+
+  figAct.textContent = `Acte ${notion.act} — Notion ${currentAct+1}/6`;
+  figName.textContent = notion.title;
+  figEq.innerHTML = notion.eq;
+  proseTitle.textContent = notion.title;
+  proseBody.innerHTML = notion.prose;
+
+  // légende
+  legendPanel.innerHTML = notion.legend.map(it =>
+    `<div class="item${it.n?' note':''}"><span class="dot" style="background:${it.c}"></span>${it.t}</div>`
+  ).join('');
+
+  // iframe 3D visible seulement pour acte 1
+  const show3D = document.getElementById('show3D').checked && currentAct === 1;
+  iframe3D.style.display = show3D ? 'block' : 'none';
+  if (show3D) draw3DParallelepiped();
+
+  // détruire l'ancien chart
+  if (chart) { chart.destroy(); chart = null; }
+
+  // recréer le chart dans #chart
+  const div = document.getElementById('chart');
+  div.innerHTML = '';
+  chart = notion.buildChart(div, { duration: animDuration, intensity });
+
+  // MathJax
+  if (window.MathJax && MathJax.typesetPromise){
+    MathJax.typesetPromise([figEq, proseBody]);
+  }
+}
+
+/* =====================================================================
+   6. IFRAME 3D — parallélépipède (acte 1 uniquement)
+   ===================================================================== */
+function draw3DParallelepiped(){
+  const c = document.getElementById('c3d');
+  const ctx = c.getContext('2d');
+  const W = c.width = c.clientWidth || 280;
+  const H = c.height = c.clientHeight || 220;
+  const cx = W/2, cy = H/2;
+  // projection simple
+  function proj(x,y,z){
+    const f = 300 / (z + 400);
+    return { x: cx + x*f, y: cy - y*f, s: f };
+  }
+  let t = 0;
+  const anim = () => {
+    t += 0.02;
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+    // grille de sol
+    ctx.strokeStyle = 'rgba(80,80,110,.25)'; ctx.lineWidth = 1;
+    for (let i=-3;i<=3;i++){
+      const a = proj(i*40,-60,-120), b = proj(i*40,-60,120);
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      const a2 = proj(-120,-60,i*40), b2 = proj(120,-60,i*40);
+      ctx.beginPath(); ctx.moveTo(a2.x,a2.y); ctx.lineTo(b2.x,b2.y); ctx.stroke();
+    }
+    // origine
+    const O = proj(0,0,0);
+    // 3 vecteurs P, Q, S
+    const P = proj(90*Math.min(1,t),0,0);
+    const Q = proj(0,-70*Math.min(1,t),0);
+    const S = proj(0,0,80*Math.min(1,t));
+    const arrow = (from,to,color,label) => {
+      ctx.strokeStyle = color; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(from.x,from.y); ctx.lineTo(to.x,to.y); ctx.stroke();
+      const ang = Math.atan2(to.y-from.y, to.x-from.x);
+      const h = 8;
+      ctx.fillStyle = color; ctx.beginPath();
+      ctx.moveTo(to.x,to.y);
+      ctx.lineTo(to.x-h*Math.cos(ang-0.4), to.y-h*Math.sin(ang-0.4));
+      ctx.lineTo(to.x-h*Math.cos(ang+0.4), to.y-h*Math.sin(ang+0.4));
+      ctx.closePath(); ctx.fill();
+      if (label){
+        ctx.fillStyle = color; ctx.font = 'italic 11px Georgia, serif';
+        ctx.fillText(label, to.x+6, to.y-4);
+      }
+    };
+    arrow(O,P,'#ff5555','b_i1');
+    arrow(O,Q,'#55aaff','b_i2');
+    arrow(O,S,'#ffcc55','b_i3');
+    // diagonale
+    const D = proj(90, -70, 80);
+    arrow(O, D, '#55ff88', 'somme');
+    // points
+    [[P,'#ff5555'],[Q,'#55aaff'],[S,'#ffcc55'],[D,'#55ff88']].forEach(([pt,col])=>{
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(pt.x,pt.y,4,0,Math.PI*2); ctx.fill();
+    });
+    requestAnimationFrame(anim);
+  };
+  anim();
+}
+
+/* =====================================================================
+   7. GRILLE ONGLET C
+   ===================================================================== */
+const gridOverlay = document.getElementById('gridOverlay');
+function buildGrid(){
+  gridOverlay.innerHTML = '';
+  NOTIONS.forEach((n,i)=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="badge">Acte ${n.act}</div>
+      <div class="ca">Notion ${i+1}/6</div>
+      <div class="ct">${n.title}</div>
+      <div class="ce">${n.eq}</div>
+      <div class="cm">${n.short} — ${n.legend.find(l=>!l.n)?.t || ''}</div>`;
+    card.addEventListener('click', ()=>{
+      gridOverlay.classList.remove('show');
+      renderAct(i);
+    });
+    gridOverlay.appendChild(card);
+  });
+}
+
+/* =====================================================================
+   8. ONGLETS A / B / C
+   ===================================================================== */
+const tabs = document.querySelectorAll('#tabs button');
+tabs.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    tabs.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+    if (currentTab === 'C'){
+      gridOverlay.classList.add('show');
+      buildGrid();
+    } else {
+      gridOverlay.classList.remove('show');
+    }
+    if (currentTab === 'B'){
+      // dashboard = acte 4 (transport) par défaut
+      renderAct(4);
+    } else {
+      renderAct(0);
+    }
+  });
+});
+
+/* =====================================================================
+   9. CONTRÔLES
+   ===================================================================== */
+document.getElementById('actSelect').addEventListener('change', e => {
+  renderAct(parseInt(e.target.value));
+});
+document.getElementById('durSlider').addEventListener('input', e=>{
+  animDuration = parseInt(e.target.value);
+  document.getElementById('durVal').textContent = (animDuration/1000).toFixed(1)+'s';
+});
+document.getElementById('intSlider').addEventListener('input', e=>{
+  intensity = parseFloat(e.target.value);
+  document.getElementById('intVal').textContent = intensity.toFixed(1);
+});
+document.getElementById('replayBtn').addEventListener('click', ()=> renderAct(currentAct));
+document.getElementById('gridBtn').addEventListener('click', ()=>{
+  currentTab = 'C';
+  tabs.forEach(b=>b.classList.toggle('active', b.dataset.tab==='C'));
+  gridOverlay.classList.add('show');
+  buildGrid();
+});
+document.getElementById('show3D').addEventListener('change', ()=> renderAct(currentAct));
+
+/* =====================================================================
+   10. CLAVIER
+   ===================================================================== */
+window.addEventListener('keydown', e=>{
+  if (e.target && (e.target.tagName==='INPUT'||e.target.tagName==='SELECT')) return;
+  if (e.key==='ArrowLeft'){ e.preventDefault(); renderAct(currentAct-1); }
+  if (e.key==='ArrowRight'){ e.preventDefault(); renderAct(currentAct+1); }
+  if (e.key===' '){ e.preventDefault(); renderAct(currentAct); }
+  if (e.key==='Escape' && isRecording) stopRecording();
+});
+
+/* =====================================================================
+   11. ENREGISTREMENT (MediaRecorder sur le chart SVG → via canvas)
+   ===================================================================== */
+const recBtn = document.getElementById('recBtn');
+const recExit = document.getElementById('recExit');
+const recTimeEl = document.getElementById('recTime');
+let mediaRecorder = null, recordedChunks = [], recStart = 0, recTimer = null;
+let isRecording = false;
+
+function startRecording(){
+  if (isRecording) return;
+  // On capture l'onglet entier via un canvas 2D qui redessine le SVG du chart
+  // Pour rester simple : on enregistre le canvas du chart via html2canvas-like manuel
+  // Fallback : on utilise chart.exportChart pour PNG, ou on capture le SVG.
+  // Ici : on utilise le MediaRecorder sur un <canvas> miroir qui redessine le chart.
+  const mirror = document.createElement('canvas');
+  mirror.width = 1920; mirror.height = 1080;
+  const mctx = mirror.getContext('2d');
+  mirror.style.display = 'none';
+  document.body.appendChild(mirror);
+  const drawMirror = () => {
+    mctx.fillStyle = '#0a0c12'; mctx.fillRect(0,0,1920,1080);
+    // dessiner le SVG du chart
+    const svg = document.querySelector('#chart svg');
+    if (svg){
+      const xml = new XMLSerializer().serializeToString(svg);
+      const blob = new Blob([xml], { type:'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        mctx.drawImage(img, 0, 0, 1920, 1080);
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    }
+    requestAnimationFrame(drawMirror);
+  };
+  drawMirror();
+
+  const stream = mirror.captureStream(30);
+  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+    ? 'video/webm;codecs=vp9' : 'video/webm';
+  try { mediaRecorder = new MediaRecorder(stream, { mimeType:mime, videoBitsPerSecond:15_000_000 }); }
+  catch(err){ alert('Enregistrement non supporté : '+err.message); return; }
+
+  recordedChunks = [];
+  mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type:mime.split(';')[0] });
+    const url = URL.createObjectURL(blob);
+    const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+    const a = document.createElement('a');
+    a.href = url; a.download = `markov_highcharts_${currentTab}_act${currentAct}_${stamp}.webm`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 15000);
+    mirror.remove();
+  };
+  mediaRecorder.start(100);
+  isRecording = true;
+  document.body.classList.add('recording');
+  recStart = performance.now();
+  recTimer = setInterval(()=>{
+    const el = performance.now() - recStart;
+    const s = Math.floor(el/1000), m = Math.floor(s/60);
+    recTimeEl.textContent = `REC ${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  }, 200);
+}
+function stopRecording(){
+  if (!isRecording) return;
+  isRecording = false;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  if (recTimer){ clearInterval(recTimer); recTimer = null; }
+  document.body.classList.remove('recording');
+}
+recBtn.addEventListener('click', startRecording);
+recExit.addEventListener('click', stopRecording);
+
+/* =====================================================================
+   12. INIT
+   ===================================================================== */
+renderAct(0);
+</script>
+</body>
+</html>
