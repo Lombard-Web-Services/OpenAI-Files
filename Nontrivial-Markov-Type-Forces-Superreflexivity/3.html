@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Partie C — Modélisation interactive : Markov Type ⟹ Superreflexivity</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  html,body{margin:0;padding:0;background:#0a0c12;height:100%;
+    font-family:Georgia,'Times New Roman',serif;color:#ddd;user-select:none;overflow:hidden}
+  canvas{display:block;cursor:grab}
+  canvas.dragging{cursor:none}
+
+  #grid{position:fixed;inset:0;display:grid;
+    grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);
+    gap:14px;padding:80px 24px 24px;z-index:5;transition:opacity .4s;overflow:auto}
+  body.detail #grid{opacity:0;pointer-events:none}
+  .card{background:rgba(18,22,32,.92);border:1px solid #2a3a4a;border-radius:14px;
+    padding:20px 22px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;gap:10px}
+  .card:hover{border-color:#55ff88;background:rgba(22,30,42,.96);transform:translateY(-3px);
+    box-shadow:0 12px 40px rgba(85,255,136,.12)}
+  .card .card-act{font-size:11px;letter-spacing:2px;color:#7fd4ff;text-transform:uppercase}
+  .card .card-title{font-size:18px;color:#f0f0f0;font-style:italic;line-height:1.3}
+  .card .card-eq{font-size:13px;color:#cfe6ff;margin-top:2px}
+  .card .card-meta{font-size:11.5px;color:#8c8caa;font-style:italic;margin-top:auto}
+  .card .card-badge{position:absolute;top:14px;right:14px;background:#1a2230;
+    border:1px solid #3a6a8a;color:#7fd4ff;padding:3px 8px;border-radius:5px;
+    font-size:10px;letter-spacing:1px;text-transform:uppercase}
+
+  #topbar{position:fixed;top:0;left:0;right:0;height:60px;z-index:20;
+    background:linear-gradient(to bottom,rgba(10,12,18,.98),rgba(10,12,18,.7));
+    display:flex;align-items:center;justify-content:space-between;padding:0 24px;
+    backdrop-filter:blur(6px);border-bottom:1px solid #1a2230}
+  #topbar .tb-title{font-size:16px;color:#f0f0f0;font-style:italic;letter-spacing:1px}
+  #topbar .tb-title span{color:#7fd4ff;font-size:11px;letter-spacing:2px;text-transform:uppercase;
+    display:block;font-style:normal;margin-bottom:2px}
+  #topbar .tb-actions{display:flex;gap:10px}
+  #topbar button{background:#1a2230;color:#7fd4ff;border:1px solid #3a6a8a;
+    padding:8px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;
+    letter-spacing:1px;text-transform:uppercase;transition:all .2s}
+  #topbar button:hover{background:#173a52;color:#fff}
+  #topbar button.active{background:#55ff88;color:#0a0c12;border-color:#55ff88}
+
+  #detail{position:fixed;inset:60px 0 0 0;z-index:6;display:none;flex-direction:row}
+  body.detail #detail{display:flex}
+  #detail3d{flex:1;position:relative;background:#000}
+  #detail3d canvas{width:100%!important;height:100%!important}
+  #detailPanel{width:440px;background:rgba(12,14,20,.98);border-left:1px solid #2a3a4a;
+    padding:24px 26px;overflow-y:auto;font-size:13.5px;line-height:1.6;color:#cfd8e3}
+  #detailPanel h2{margin:0 0 6px;color:#7fd4ff;font-size:12px;letter-spacing:2px;text-transform:uppercase}
+  #detailPanel h3{margin:0 0 14px;color:#f0f0f0;font-size:20px;font-style:italic;line-height:1.3}
+  #detailPanel .eq-box{background:#131a24;border:1px solid #2a3a4a;border-radius:8px;
+    padding:12px 14px;margin:10px 0 16px;color:#cfe6ff;font-size:14px;overflow-x:auto}
+  #detailPanel .meta-row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  #detailPanel .meta-tag{background:#1a2230;border:1px solid #3a6a8a;color:#7fd4ff;
+    padding:4px 10px;border-radius:5px;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+  #detailPanel .proof{border-left:3px solid #ffab00;padding:10px 14px;margin:10px 0;
+    background:rgba(255,171,0,.06);border-radius:0 6px 6px 0;color:#e8e8e8}
+  #detailPanel .k{color:#55ff88;font-style:italic}
+  #detailPanel ol,#detailPanel ul{margin-left:18px}
+  #detailPanel li{margin-bottom:6px}
+  #detailPanel .back-btn{background:#1a2230;color:#7fd4ff;border:1px solid #3a6a8a;
+    padding:8px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;
+    letter-spacing:1px;text-transform:uppercase;margin-bottom:16px}
+  #detailPanel .back-btn:hover{background:#173a52;color:#fff}
+
+  #recordingExit{display:none;position:fixed;top:16px;right:16px;z-index:100;
+    background:rgba(200,40,40,.85);color:#fff;border:1px solid rgba(255,255,255,.3);
+    padding:8px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px;
+    letter-spacing:1px;text-transform:uppercase}
+  body.recording #recordingExit{display:block}
+  #recIndicator{display:none;position:fixed;top:16px;left:16px;z-index:100;
+    background:rgba(30,0,0,.85);color:#fff;border:1px solid rgba(255,60,60,.6);
+    padding:8px 14px;border-radius:6px;font-family:'Courier New',monospace;font-size:13px;
+    align-items:center;gap:10px}
+  body.recording #recIndicator{display:flex}
+  #recIndicator .rec-dot{width:12px;height:12px;border-radius:50%;background:#ff2222;
+    animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.85)}}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="tb-title">
+    <span>Partie C — Modélisation interactive</span>
+    Markov Type Forces Superreflexivity — 6 notions
+  </div>
+  <div class="tb-actions">
+    <button id="gridBtn" class="active">Grille des notions</button>
+    <button id="recBtn">🎥 Enregistrer</button>
+  </div>
+</div>
+
+<div id="grid"></div>
+
+<div id="detail">
+  <div id="detail3d">
+    <canvas id="c3d"></canvas>
+  </div>
+  <div id="detailPanel">
+    <button class="back-btn" id="backBtn">← Retour à la grille</button>
+    <h2 id="dAct">Notion</h2>
+    <h3 id="dTitle">—</h3>
+    <div class="eq-box" id="dEq"></div>
+    <div class="meta-row" id="dMeta"></div>
+    <div id="dBody"></div>
+  </div>
+</div>
+
+<button id="recordingExit">■ Arrêter &amp; télécharger</button>
+<div id="recIndicator"><div class="rec-dot"></div><span id="recTime">REC 00:00</span></div>
+
+<script>
+// =====================================================================
+//  DONNÉES DES 6 NOTIONS (tableau de la Partie C)
+// =====================================================================
+const NOTIONS = [
+  {
+    id:'markov', act:'0', title:'Type de Markov p',
+    eq:'$\\mathbb{E}\\|f(Z_t)-f(Z_0)\\|^p\\le K^p\\,t\\,\\mathbb{E}\\|f(Z_1)-f(Z_0)\\|^p$',
+    tags:['Équation (1)','Force contraignante','Prologue'],
+    meta:'Force constante qui courbe le mouvement — la « force » du récit',
+    body:`<p>Le <span class="k">type de Markov</span> $p$ mesure la déformation des marches réversibles finies sous une application $f:S\\to X$. C'est une propriété <em>métrique</em>, indépendante de la norme choisie.</p>
+    <p>Métaphore : c'est une <em>force</em> qui contraint le mouvement (les marches) ; la superréflexivité est la <em>forme</em> qu'elle impose à l'espace.</p>
+    <p class="proof"><b>Théorème 1.1.</b> Tout espace de Banach réel à type de Markov $p>1$ est superréflexif.</p>`
+  },
+  {
+    id:'norm', act:'1', title:'Norme étalante (Lemme 2.1)',
+    eq:'$N(\\sum a_i b_i)=N(\\sum a_i b_{k_i})\\ ;\\quad N(\\dots,a_i+a_{i+1},\\dots)\\le N(\\dots,a_i,a_{i+1},\\dots)$',
+    tags:['Équations (3),(4)','Mouvement uniformément varié','Spreading'],
+    meta:'Insertion de zéros = temps égaux ; fusion = accélération',
+    body:`<p class="proof"><b>Lemme 2.1.</b> Si $X$ n'est pas superréflexif, il existe une norme $N$ sur $c_{00}$ :</p>
+    <ol><li><b>étalante</b> : $N(\\sum a_i b_i)=N(\\sum a_i b_{k_i})$ pour $k_1<\\dots<k_m$ ;</li>
+    <li><b>fusion contractante</b> : $N(\\dots,a_i+a_{i+1},\\dots)\\le N(\\dots,a_i,a_{i+1},\\dots)$ ;</li>
+    <li>les tranches initiales s'immergent dans $X$ à distorsion $\\to0$.</li></ol>
+    <p class="proof"><b>Preuve.</b> James–Enflo donne $Y$ non réflexif finiment représentable dans $X$. Tableaux triangulaires $f_i(y_j)=0\\ (j<i)$, $|f_i(y_j)-d|\\le M^{-1}\\ (j\\ge i)$, d'où (A.2) :
+    $\\ d\\max_j|\\sum_{h\\le j}a_h|\\le\\|\\sum a_h y_{i_h}\\|\\le\\sum|a_h|.$
+    Ramsey fini sur les sous-suites croissantes donne $N_0$ (A.3), puis la moyennisation $F_J$ donne $N$ (A.6). La fusion vient de la convexité de $t\\mapsto N(\\dots,t,s-t,\\dots)$, constante sur $[0,s]$. $\\square$</p>
+    <p>Analogie : <em>mouvement uniformément varié</em> — la norme est le mobile, les trois propriétés sont les lois du mouvement.</p>`
+  },
+  {
+    id:'words', act:'2', title:'Mots réduits & deux niveaux (Lemme 4.2)',
+    eq:'$c_w(j)=-n_-\\ ;\\quad c_w(h_w(0)+j)=n_+\\ ;\\quad U-V=\\ell$',
+    tags:['Équations (16),(17)','Loi des vitesses','Word cloud'],
+    meta:'Le mot est le temps, ℓ la vitesse acquise (v = a·t)',
+    body:`<p>Les homeomorphismes $h_s$ (Lemme 4.1) envoient $\\mathbb{R}\\setminus A_{s^{-1}}$ sur $A_s$, avec $|h_s(y)-y|<2$. Le mot $w=s_1\\cdots s_k$ définit le cocycle $c_w$ (17) ; les indicatrices changent de signe sous l'inverse : $\\varphi_{s^{-1}}(h_s^{-1}(y))=-\\varphi_s(y)$ (16).</p>
+    <p class="proof"><b>Lemme 4.2.</b> Si la forme réduite de $w$ a longueur $\\ell>0$, avec $n_+$ lettres positives et $n_-$ négatives, alors pour tout $j\\in\\mathbb{Z}$ :
+    $\\ c_w(j)=-n_-,\\quad c_w(h_w(0)+j)=n_+.$</p>
+    <p class="proof"><b>Preuve.</b> On remplace $w$ par sa forme réduite $t_1\\cdots t_\\ell$. Partant de $j$ (hors de tout arc), l'antécédent sous $h_{t_i}$ tombe dans $A_{t_i^{-1}}$, disjoint de $A_{t_{i+1}}$ par réduction : chaque indicatrice vaut 0. Partant de $h_w(0)+j$, le point avant $t_i$ est $h_{t_i\\cdots t_\\ell}(0)+j\\in\\mathrm{int}(A_{t_i})$ par (14) : chaque indicatrice vaut 1, donc la somme vaut $\\ell-n_-=n_+$. $\\square$</p>
+    <p>Les deux niveaux $V=-n_-$ et $U=n_+$ sont entrelacés ; leur écart vaut $U-V=\\ell$, la <em>longueur réduite</em> — l'analogue de la vitesse acquise $v=at$ d'un mouvement uniformément accéléré.</p>`
+  },
+  {
+    id:'avg', act:'3', title:'Averaging sur un ordre fini (Lemme 3.1)',
+    eq:'$\\mathrm{TV}\\big(\\mathrm{Law}_\\Omega(C(A)),\\mathrm{Law}_\\Omega(C(A\'))\\big)<\\varepsilon$',
+    tags:['Lemme 3.1','Quantité de mouvement','Charts'],
+    meta:'Ω est le centre de masse des vecteurs v_C (comme MV)',
+    body:`<p>Un <span class="k">chart</span> est une injection strictement croissante $C:\\Lambda\\hookrightarrow\\{1,\\dots,B\\}$. On cherche une loi $\\Omega$ rendant indiscernables les images de deux sous-tuples croissants de même longueur.</p>
+    <p class="proof"><b>Lemme 3.1.</b> Pour tout $\\Lambda$ fini ordonné et $\\varepsilon>0$, il existe $B$ et $\\Omega$ tels que
+    $\\ \\mathrm{TV}\\big(\\mathrm{Law}_\\Omega(C(A)),\\mathrm{Law}_\\Omega(C(A'))\\big)<\\varepsilon.$</p>
+    <p class="proof"><b>Preuve.</b> Posons $v_C=(\\delta_{C(A_\\rho)}-\\delta_{C(A'_\\rho)})_\\rho\\in W_B=\\bigoplus_\\rho\\ell_1(T_{B,m_\\rho})$. Si $\\mathrm{dist}(0,\\mathrm{conv}\\{v_C\\})\\ge\\varepsilon$, la séparation fini-dimensionnelle donne $\\|f\\|\\le1$ avec $\\langle f,v_C\\rangle\\ge\\varepsilon$. Les composantes $f_\\rho\\in[-1,1]$, le <b>théorème de Ramsey fini</b> fournit $B$ et $H$ homogène pour les coloriages par classes de valeurs à $\\delta$ près, et $|\\langle f,v_C\\rangle|<R\\delta<\\varepsilon$, contradiction. $\\square$</p>
+    <p>Interprétation : la loi $\\Omega$ est le <em>centre de masse</em> d'une famille de vecteurs-différences — comme la quantité de mouvement $MV$ résume l'effet d'une force sur une masse.</p>`
+  },
+  {
+    id:'transport', act:'4', title:'Transport reversible & marche finie (Prop. 3.2, Prop. 2.2)',
+    eq:'$C\'(a)=C(T_s(a))\\ ;\\quad \\mathbb{P}\\big(N(\\textstyle\\sum_{i=1}^n g(E_i))\\ge n/24\\big)\\ge 3/20$',
+    tags:['Éq. (20)','Prop. 3.2','Prop. 2.2','Mouvement varié accéléré'],
+    meta:'La marche est le mobile, les pas good les instants conformes',
+    body:`<p>La Prop. 3.2 transforme l'averageing en <b>chaîne réversible</b> sur les charts : lettres i.i.d. uniformes sur $S$, transition $C\\to C'$ couplée via $\\lambda_s$, masse stationnaire $\\frac1{|S|}\\lambda_s(C,C')$, invariante sous $(C,s,C')^*=(C',s^{-1},C)$. Un pas est <em>good</em> si $C'(a)=C(T_s(a))$ sur $D_s$ (20) — probabilité $\\ge1-\\mu$.</p>
+    <p>Les labels $g$ sont impairs : $g(e^*)=-g(e)$. Un <b>lift sur réseau</b> $Q_R=\\{-R,\\dots,R\\}^r$ rend la chaîne à nouveau réversible ; les rejets au bord sont des boucles qui préservent la balance détaillée. Le potentiel $\\Phi(z,a)=\\sum_j a_j g(e_j)$ a pour incrément $g(e)$ sur les pas acceptés.</p>
+    <p class="proof"><b>Prop. 2.2 (fin).</b> Sur une trajectoire toute-good de mot réduit $\\ell>0$, les sommes préfixes valent $V=-n_-$ et $U=n_+$ aux rangs transportés. Les blocs consécutifs se somment en $(V,\\ell,-\\ell,\\dots,\\ell,-\\ell,-V)$, d'où $N(G)\\ge(\\ell/3)D_L$. Or $\\mathbb{P}(\\text{all good})\\ge9/10$ et $\\mathbb{E}\\ell\\ge n/2$ ⟹ $\\mathbb{P}(\\ell\\ge n/4)\\ge1/4$ ; donc l'événement voulu a probabilité $\\ge3/20$. $\\square$</p>`
+  },
+  {
+    id:'final', act:'5', title:'Théorème 1.1 & caractérisation',
+    eq:'$X\\text{ superréflexif}\\iff X\\text{ a le type de Markov }p>1$',
+    tags:['Théorème 1.1','Épilogue','Équilibre de forces'],
+    meta:'Diagramme d\'implications avec flèche-résultante et cercle d\'équivalence',
+    body:`<p>La chaîne logique du théorème :</p>
+    <ol>
+    <li>Si $X$ n'est pas superréflexif, le Lemme 2.1 fournit $N$ étalante à fusion contractante.</li>
+    <li>La Prop. 2.2 construit, pour tout $n$, une marche réversible finie et des labels impairs de norme $1$ avec $\\mathbb{P}(N(\\sum g(E_i))\\ge n/24)\\ge3/20$.</li>
+    <li>Le Lemme 2.3 transfère l'inégalité de type de Markov aux labels impairs : $\\mathbb{E}N(\\sum g(E_i))^p\\le K^p n$.</li>
+    <li>En combinant : $\\frac{3}{20}(\\frac{n}{24})^p\\le K^p n$ pour tout $n$, impossible si $p>1$.</li>
+    </ol>
+    <p class="proof"><b>Conclusion.</b> $X$ est superréflexif. Avec la réciproque connue (Pisier, Naor–Peres–Schramm–Sheffield), on obtient la caractérisation :
+    $\\ X\\text{ superréflexif}\\iff X\\text{ a le type de Markov }p>1.$</p>
+    <p>Cela répond à la question de Naor : tout espace à type de Markov non trivial admet une norme uniformément lisse équivalente.</p>`
+  }
+];
+
+// =====================================================================
+//  GRILLE DE CARTES
+// =====================================================================
+const grid = document.getElementById('grid');
+NOTIONS.forEach(n => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="card-badge">Acte ${n.act}</div>
+    <div class="card-act">Notion ${NOTIONS.indexOf(n)+1} / 6</div>
+    <div class="card-title">${n.title}</div>
+    <div class="card-eq">${n.eq}</div>
+    <div class="card-meta">${n.meta}</div>`;
+  card.addEventListener('click', () => openDetail(n.id));
+  grid.appendChild(card);
+});
+if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([grid]);
+
+// =====================================================================
+//  PANNEAU DÉTAIL
+// =====================================================================
+let currentNotion = null;
+const detailPanel = document.getElementById('detailPanel');
+const dAct = document.getElementById('dAct');
+const dTitle = document.getElementById('dTitle');
+const dEq = document.getElementById('dEq');
+const dMeta = document.getElementById('dMeta');
+const dBody = document.getElementById('dBody');
+const backBtn = document.getElementById('backBtn');
+
+function openDetail(id){
+  const n = NOTIONS.find(x => x.id === id);
+  if (!n) return;
+  currentNotion = n;
+  document.body.classList.add('detail');
+  dAct.textContent = `Acte ${n.act} — Notion`;
+  dTitle.textContent = n.title;
+  dEq.innerHTML = n.eq;
+  dMeta.innerHTML = n.tags.map(t => `<span class="meta-tag">${t}</span>`).join('');
+  dBody.innerHTML = n.body;
+  if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise([dEq, dBody]);
+  resetAnim();
+}
+backBtn.addEventListener('click', () => {
+  document.body.classList.remove('detail');
+  currentNotion = null;
+});
+
+// =====================================================================
+//  CANVAS 3D DU DÉTAIL
+// =====================================================================
+const c3d = document.getElementById('c3d');
+const ctx = c3d.getContext('2d');
+let W, H;
+function resize(){
+  const r = c3d.parentElement.getBoundingClientRect();
+  W = c3d.width = Math.max(200, r.width);
+  H = c3d.height = Math.max(200, r.height);
+}
+window.addEventListener('resize', resize);
+setTimeout(resize, 60);
+
+let camTheta = 0.5, camPhi = 0.22;
+let isDragging = false, lastX = 0, lastY = 0;
+let rotationSpeed = 0.6, zoomFactor = 1.0;
+const PHI_MIN = -Math.PI/2 + .05, PHI_MAX = Math.PI/2 - .05;
+let CENTER = [0,0,0];
+const FOCAL = 900;
+
+function project(x,y,z){
+  const tx = x - CENTER[0], ty = y - CENTER[1], tz = z - CENTER[2];
+  const cT = Math.cos(camTheta), sT = Math.sin(camTheta);
+  const x1 =  tx*cT + tz*sT;
+  const z1 = -tx*sT + tz*cT;
+  const y1 =  ty;
+  const cP = Math.cos(camPhi), sP = Math.sin(camPhi);
+  const y2 = y1*cP - z1*sP;
+  const z2 = y1*sP + z1*cP;
+  const x2 = x1;
+  const camDist = 700;
+  const zCam = z2 + camDist;
+  const scale = (FOCAL / zCam) * zoomFactor;
+  return { x: W/2 + x2*scale, y: H/2 - y2*scale, z: zCam, scale };
+}
+
+function drawArrow3D(x1,y1,z1,x2,y2,z2,color,label,t,opts={}){
+  const ex = x1+(x2-x1)*t, ey = y1+(y2-y1)*t, ez = z1+(z2-z1)*t;
+  const p1 = project(x1,y1,z1), p2 = project(ex,ey,ez);
+  const dx = p2.x-p1.x, dy = p2.y-p1.y, len = Math.hypot(dx,dy);
+  if (len < 1) return;
+  const ang = Math.atan2(dy,dx);
+  const head = (opts.headLen||16)*p2.scale;
+  ctx.strokeStyle = color; ctx.lineWidth = (opts.lineWidth||2.8)*p2.scale;
+  ctx.lineCap = 'round';
+  if (opts.dashed){ ctx.save(); ctx.setLineDash([8,6]); }
+  ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+  if (opts.dashed) ctx.restore();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(p2.x,p2.y);
+  ctx.lineTo(p2.x-head*Math.cos(ang-Math.PI/7), p2.y-head*Math.sin(ang-Math.PI/7));
+  ctx.lineTo(p2.x-head*Math.cos(ang+Math.PI/7), p2.y-head*Math.sin(ang+Math.PI/7));
+  ctx.closePath(); ctx.fill();
+  if (label && t>0.5){
+    const a = Math.min(1,(t-0.5)*2);
+    ctx.globalAlpha = a; ctx.fillStyle = color;
+    const fs = Math.max(14, Math.round(22*p2.scale));
+    ctx.font = `italic ${fs}px Georgia, serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    const off = 20*p2.scale;
+    ctx.fillText(label, p2.x+Math.cos(ang)*off, p2.y+Math.sin(ang)*off);
+    ctx.globalAlpha = 1;
+  }
+}
+function drawSeg3D(p1,p2,color,t,opts={}){
+  if (t<=0) return;
+  const ex = p1[0]+(p2[0]-p1[0])*t, ey = p1[1]+(p2[1]-p1[1])*t, ez = p1[2]+(p2[2]-p1[2])*t;
+  const a = project(...p1), b = project(ex,ey,ez);
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = (opts.lineWidth||1.6)*b.scale;
+  ctx.lineCap='round';
+  if (opts.dashed) ctx.setLineDash([7,7]);
+  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  ctx.restore();
+}
+function drawPoint3D(x,y,z,color,label,off=[12,-10]){
+  const p = project(x,y,z);
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(p.x,p.y,5*p.scale,0,Math.PI*2); ctx.fill();
+  if (label){
+    ctx.fillStyle = color;
+    const fs = Math.max(14, Math.round(20*p.scale));
+    ctx.font = `italic ${fs}px Georgia, serif`;
+    ctx.textAlign='left'; ctx.textBaseline='bottom';
+    ctx.fillText(label, p.x+off[0]*p.scale, p.y+off[1]*p.scale);
+  }
+}
+function drawWireSphere(r, color, alpha=0.5){
+  const circ = []; for (let i=0;i<=64;i++){ const a = i/64*Math.PI*2; circ.push([Math.cos(a)*r, Math.sin(a)*r, 0]); }
+  [[0,1],[1,2],[0,2]].forEach(([u,v]) => {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath();
+    circ.forEach((pt,i) => {
+      const v3 = [0,0,0]; v3[u]=pt[0]; v3[v]=pt[1];
+      const p = project(...v3);
+      i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y);
+    });
+    ctx.stroke(); ctx.restore();
+  });
+}
+function drawFloorGrid(size=400, step=80, yFloor=-240){
+  ctx.strokeStyle = 'rgba(80,80,100,0.16)'; ctx.lineWidth = 1;
+  for (let i=-size;i<=size;i+=step){
+    let p1 = project(i,yFloor,-size), p2 = project(i,yFloor,size);
+    ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+    p1 = project(-size,yFloor,i); p2 = project(size,yFloor,i);
+    ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+  }
+}
+
+// =====================================================================
+//  ANIMATION
+// =====================================================================
+let animStart = null, animProgress = 0, animDone = false;
+function resetAnim(){ animStart = null; animProgress = 0; animDone = false; }
+function clamp01(x){ return x<=0?0:x>=1?1:1-Math.pow(1-x,3); }
+function tr(p,a,b){ return clamp01((p-a)/(b-a)); }
+
+function reduceWord(w){
+  const st = [];
+  for (const ch of w){
+    const last = st[st.length-1];
+    const inv = ch==='u'?'u⁻¹':ch==='u⁻¹'?'u':ch==='v'?'v⁻¹':ch==='v⁻¹'?'v':null;
+    if (inv && last===inv) st.pop(); else st.push(ch);
+  }
+  return st;
+}
+const wordExamples = ['u v u⁻¹ v⁻¹ u v','u u⁻¹ u v v⁻¹','u v v⁻¹ u⁻¹ u','u v u v⁻¹ u⁻¹','u⁻¹ v⁻¹ u v','u v u⁻¹'];
+
+const cloudPts = [];
+for (let i=0;i<28;i++){
+  cloudPts.push([Math.sin(i*1.7)*180, Math.cos(i*2.3)*150, Math.sin(i*0.9)*120]);
+}
+
+const lambdaPts = [];
+for (let i=0;i<8;i++) lambdaPts.push([-240+i*68, 0, 0]);
+const vCVecs = [];
+for (let k=0;k<10;k++){
+  vCVecs.push([Math.sin(k*2.1)*80, Math.cos(k*1.3)*60, Math.sin(k*0.7)*50]);
+}
+const vCOrigin = [0,-60,0];
+
+const chartAPts = [[-180,-40,0],[-60,-40,0],[40,-40,0],[140,-40,0]];
+const chartBPts = [[-200, 60,0],[-80, 60,0],[30, 60,0],[150, 60,0]];
+
+const latticePts = [];
+for (let i=-1;i<=1;i++) for (let j=-1;j<=1;j++) for (let k=-1;k<=1;k++)
+  latticePts.push([i*80, j*80, k*80]);
+
+// ---- dessin par notion
+function drawMarkov(p){
+  drawWireSphere(160,'#7fd4ff',0.35);
+  drawWireSphere(90,'#55ff88',0.35);
+  drawArrow3D(0,-200,0, 0,240,0, '#55ff88','force Markov', tr(p,0.1,0.7), {lineWidth:4,headLen:20});
+  drawArrow3D(0,0,0, 200,0,0, '#7fd4ff','forme', tr(p,0.4,1.0), {lineWidth:4,headLen:20});
+  drawPoint3D(0,0,0,'#fff','X');
+}
+
+function drawNorm(p){
+  const tCloud = tr(p,0.0,0.35);
+  cloudPts.forEach((pt,i) => {
+    const t = clamp01((tCloud*1.4) - i*0.012);
+    if (t<=0) return;
+    drawPoint3D(pt[0]*t, pt[1]*t, pt[2]*t, '#ffffff', null);
+  });
+  // spreading
+  const tSp = tr(p,0.3,0.55);
+  for (let i=0;i<5;i++){
+    const x0 = -200 + i*80, x1 = -120 + i*100;
+    const x = x0 + (x1-x0)*tSp;
+    drawPoint3D(x, 120, 0, '#ff5555', i===2?'spreading':null);
+  }
+  // fusion
+  const a1 = [-80,-120,0], a2 = [80,-120,0], merged = [0,-120,0];
+  drawArrow3D(...a1, ...a2, '#55aaff','aᵢ', tr(p,0.45,0.6), {headLen:10});
+  drawArrow3D(...a1, ...merged, '#55aaff',null, 1, {headLen:10});
+  drawArrow3D(...a2, ...merged, '#55aaff',null, 1, {headLen:10});
+  const tF = tr(p,0.5,0.75);
+  if (tF>0){ ctx.save(); ctx.globalAlpha = tF*0.6; drawWireSphere(120,'#55ff88',0.6); ctx.restore(); }
+  // parallélépipède
+  const tP = tr(p,0.7,1.0);
+  const P=[220,0,0], Q=[0,-160,0], S=[0,0,140];
+  drawArrow3D(0,0,0, P[0]*tP,P[1]*tP,P[2]*tP, '#ff5555','bᵢ₁', tP);
+  drawArrow3D(0,0,0, Q[0]*tP,Q[1]*tP,Q[2]*tP, '#55aaff','bᵢ₂', tP);
+  drawArrow3D(0,0,0, S[0]*tP,S[1]*tP,S[2]*tP, '#ffcc55','bᵢ₃', tP);
+  drawArrow3D(0,0,0, (P[0]+Q[0]+S[0])*tP,(P[1]+Q[1]+S[1])*tP,(P[2]+Q[2]+S[2])*tP,
+    '#55ff88','X', tr(p,0.85,1.0));
+}
+
+function drawWords(p){
+  const tW = tr(p,0.0,0.35);
+  wordExamples.forEach((w,i) => {
+    const red = reduceWord(w);
+    const ell = red.length;
+    const pos = [ -300 + (i%3)*200, 200 - Math.floor(i/3)*150, Math.sin(i)*80 ];
+    const t = clamp01(tW*1.3 - i*0.04);
+    if (t<=0) return;
+    const r = 14 + ell*4;
+    const p3 = project(pos[0]*t,pos[1]*t,pos[2]*t);
+    ctx.save();
+    ctx.globalAlpha = 0.75*t;
+    const grad = ctx.createRadialGradient(p3.x,p3.y,0,p3.x,p3.y,r*3*p3.scale);
+    grad.addColorStop(0, ell>0?'#ffcc55':'#555');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(p3.x,p3.y,r*3*p3.scale,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.fillStyle = ell>0?'#ffcc55':'#777';
+    ctx.font = `italic ${Math.round((13+ell*1.5)*p3.scale)}px Georgia, serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(w, p3.x, p3.y);
+    ctx.restore();
+  });
+  const tL = tr(p,0.35,0.7);
+  if (tL>0){
+    const x0=-320, x1=320, yV=-120, yU=120;
+    drawSeg3D([x0,yV,0],[x0+(x1-x0)*tL,yV,0],'#ff5555',1,{lineWidth:2.5});
+    drawSeg3D([x0,yU,0],[x0+(x1-x0)*tL,yU,0],'#55ff88',1,{lineWidth:2.5});
+    for (let j=0;j<8;j++){
+      const x = x0 + (x1-x0)*(j+0.5)/8*tL;
+      drawSeg3D([x,yV,0],[x,yU,0],'rgba(255,255,255,0.15)',1,{lineWidth:1});
+      drawPoint3D(x,yV,0,'#ff5555',null,[0,0]);
+      drawPoint3D(x,yU,0,'#55ff88',null,[0,0]);
+    }
+    const xA = x0+(x1-x0)*0.8*tL;
+    drawArrow3D(xA,yV,0, xA,yU,0, '#7fd4ff','ℓ', 1, {lineWidth:3,headLen:12});
+  }
+  const tR = tr(p,0.7,1.0);
+  if (tR>0){
+    const w = 'u v u⁻¹ v⁻¹ u v';
+    const red = reduceWord(w).join(' ');
+    ctx.save();
+    ctx.fillStyle = '#ffcc55'; ctx.font = 'italic 20px Georgia, serif';
+    ctx.textAlign='center';
+    const pw = project(0,-260,0);
+    ctx.globalAlpha = tR;
+    ctx.fillText('mot : '+w, pw.x, pw.y);
+    ctx.fillStyle = '#55ff88';
+    ctx.fillText('réduit : '+red+'   (ℓ='+reduceWord(w).length+')', pw.x, pw.y+26);
+    ctx.restore();
+  }
+}
+
+function drawAvg(p){
+  const tL = tr(p,0.0,0.3);
+  lambdaPts.forEach((pt,i) => {
+    const t = clamp01(tL*1.4 - i*0.03);
+    if (t<=0) return;
+    drawPoint3D(pt[0]*t,pt[1]*t,pt[2]*t,'#ffffff', i===0?'Λ':null);
+    if (i<lambdaPts.length-1) drawSeg3D(pt, lambdaPts[i+1], 'rgba(255,255,255,0.2)', t, {lineWidth:1});
+  });
+  const tC = tr(p,0.25,0.55);
+  if (tC>0){
+    for (let k=0;k<5;k++){
+      const shift = (k-2)*10;
+      const y = 90 + k*22;
+      lambdaPts.forEach((pt,i) => {
+        const x = -240 + i*68 + shift;
+        drawPoint3D(x*tC, y*tC, 0, k%2?'#ffcc55':'#55aaff', i===0&&k===0?'charts':null, [6,-6]);
+      });
+      drawSeg3D([-240,y,0],[240,y,0],'rgba(255,204,85,0.15)',tC,{lineWidth:1});
+    }
+  }
+  const tV = tr(p,0.5,0.8);
+  vCVecs.forEach((v,i) => {
+    const t = clamp01(tV*1.3 - i*0.03);
+    if (t<=0) return;
+    const col = ['#ff5555','#55aaff','#ffcc55','#55ff88','#7fd4ff'][i%5];
+    drawArrow3D(vCOrigin[0],vCOrigin[1],vCOrigin[2],
+      vCOrigin[0]+v[0]*t, vCOrigin[1]+v[1]*t, vCOrigin[2]+v[2]*t,
+      col, null, t, {lineWidth:1.8,headLen:8});
+  });
+  const tConv = tr(p,0.75,1.0);
+  if (tConv>0){
+    let mx=0,my=0,mz=0;
+    vCVecs.forEach(v=>{mx+=v[0];my+=v[1];mz+=v[2];});
+    mx/=vCVecs.length; my/=vCVecs.length; mz/=vCVecs.length;
+    const target = [vCOrigin[0]+mx*tConv, vCOrigin[1]+my*tConv, vCOrigin[2]+mz*tConv];
+    drawPoint3D(target[0],target[1],target[2],'#55ff88','conv → 0', [12,-8]);
+    ctx.save(); ctx.globalAlpha = 0.4*tConv; drawWireSphere(35,'#55ff88',0.6); ctx.restore();
+  }
+}
+
+function drawTransport(p){
+  const tC = tr(p,0.0,0.3);
+  chartAPts.forEach((pt,i) => drawPoint3D(pt[0]*tC,pt[1]*tC,pt[2]*tC,'#7fd4ff', i===0?'C':null));
+  chartBPts.forEach((pt,i) => drawPoint3D(pt[0]*tC,pt[1]*tC,pt[2]*tC,'#55ff88', i===0?"C′":null));
+  const tT = tr(p,0.25,0.65);
+  chartAPts.forEach((a,i) => {
+    const b = chartBPts[i];
+    const good = i!==1;
+    const col = good ? '#55ff88' : '#ff5555';
+    drawArrow3D(a[0],a[1],a[2], b[0],b[1],b[2], col, good?null:'bad', tT, {lineWidth:2, dashed:!good});
+  });
+  const tQ = tr(p,0.5,0.8);
+  if (tQ>0){
+    latticePts.forEach((pt,i) => {
+      const t = clamp01(tQ*1.3 - (i%9)*0.03);
+      if (t<=0) return;
+      drawPoint3D(pt[0]*t, pt[1]*t, pt[2]*t, 'rgba(255,204,85,0.6)', null);
+    });
+    const cubeEdges = [
+      [[-1,-1,-1],[1,-1,-1]],[[-1,-1,-1],[-1,1,-1]],[[-1,-1,-1],[-1,-1,1]],
+      [[1,1,1],[-1,1,1]],[[1,1,1],[1,-1,1]],[[1,1,1],[1,1,-1]],
+      [[1,-1,-1],[1,1,-1]],[[1,-1,-1],[1,-1,1]],
+      [[-1,1,-1],[-1,1,1]],[[-1,1,-1],[1,1,-1]],
+      [[-1,-1,1],[-1,1,1]],[[-1,-1,1],[1,-1,1]]
+    ];
+    cubeEdges.forEach(e => {
+      const a = [e[0][0]*80*tQ,e[0][1]*80*tQ,e[0][2]*80*tQ];
+      const b = [e[1][0]*80*tQ,e[1][1]*80*tQ,e[1][2]*80*tQ];
+      drawSeg3D(a,b,'rgba(255,204,85,0.35)',1,{lineWidth:1.2});
+    });
+    const tM = tr(p,0.65,0.95);
+    if (tM>0){
+      const path = [[-1,-1,-1],[0,-1,-1],[0,0,-1],[0,0,0],[1,0,0],[1,1,0],[1,1,1]];
+      for (let i=0;i<path.length-1;i++){
+        const a = [path[i][0]*80,path[i][1]*80,path[i][2]*80];
+        const b = [path[i+1][0]*80,path[i+1][1]*80,path[i+1][2]*80];
+        const t = clamp01(tM*1.6 - i*0.12);
+        drawArrow3D(...a,...b,'#7fd4ff',null,t,{lineWidth:2.5,headLen:10});
+        drawPoint3D(...b,'#7fd4ff',null);
+      }
+    }
+  }
+}
+
+function drawFinal(p){
+  const tA = tr(p,0.0,0.35);
+  const A = [0,0,0], B = [200,120,0], C = [-200,120,0], D = [0,-180,0];
+  drawPoint3D(...A,'#ffffff','X');
+  drawArrow3D(...A, ...B, '#55ff88','Markov p>1', tA, {lineWidth:3});
+  drawArrow3D(...A, ...C, '#7fd4ff','superréflexif', tA, {lineWidth:3});
+  drawArrow3D(...A, ...D, '#ffab00','uniformément lisse', tr(p,0.3,0.6), {lineWidth:3});
+  const tR = tr(p,0.5,0.8);
+  drawArrow3D(...A, (B[0]+C[0])*tR,(B[1]+C[1])*tR,(B[2]+C[2])*tR,
+    '#ffffff','équilibre', tR, {lineWidth:2.5,dashed:true});
+  const tE = tr(p,0.7,1.0);
+  if (tE>0){
+    ctx.save(); ctx.globalAlpha = tE; drawWireSphere(230,'#55ff88',0.5); ctx.restore();
+    const pp = project(0,-300,0);
+    ctx.save(); ctx.fillStyle='#55ff88'; ctx.font='italic 18px Georgia, serif';
+    ctx.textAlign='center'; ctx.globalAlpha=tE;
+    ctx.fillText('X superréflexif  ⟺  type de Markov p > 1', pp.x, pp.y);
+    ctx.restore();
+  }
+}
+
+function drawScene(now){
+  if (animStart===null) animStart = now;
+  if (!animDone){
+    const el = now - animStart;
+    animProgress = Math.min(el/5000, 1);
+    if (animProgress>=1) animDone = true;
+  }
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+  drawFloorGrid();
+  CENTER = [0,0,0];
+  if (currentNotion){
+    switch(currentNotion.id){
+      case 'markov': drawMarkov(animProgress); break;
+      case 'norm': drawNorm(animProgress); break;
+      case 'words': drawWords(animProgress); break;
+      case 'avg': drawAvg(animProgress); break;
+      case 'transport': drawTransport(animProgress); break;
+      case 'final': drawFinal(animProgress); break;
+    }
+  }
+  requestAnimationFrame(drawScene);
+}
+requestAnimationFrame(drawScene);
+
+// caméra
+c3d.addEventListener('mousedown', e => { isDragging=true; lastX=e.clientX; lastY=e.clientY; c3d.classList.add('dragging'); });
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = e.clientX-lastX, dy = e.clientY-lastY;
+  lastX=e.clientX; lastY=e.clientY;
+  camTheta += dx*0.008*rotationSpeed;
+  camPhi   -= dy*0.008*rotationSpeed;
+  camPhi = Math.max(PHI_MIN, Math.min(PHI_MAX, camPhi));
+});
+window.addEventListener('mouseup', () => { isDragging=false; c3d.classList.remove('dragging'); });
+c3d.addEventListener('touchstart', e => { if (e.touches.length===1){ isDragging=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; c3d.classList.add('dragging'); } }, {passive:true});
+c3d.addEventListener('touchmove', e => {
+  if (!isDragging || e.touches.length!==1) return;
+  const dx=e.touches[0].clientX-lastX, dy=e.touches[0].clientY-lastY;
+  lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
+  camTheta += dx*0.008*rotationSpeed; camPhi -= dy*0.008*rotationSpeed;
+  camPhi = Math.max(PHI_MIN, Math.min(PHI_MAX, camPhi));
+}, {passive:true});
+c3d.addEventListener('touchend', () => { isDragging=false; c3d.classList.remove('dragging'); });
+
+// =====================================================================
+//  ENREGISTREMENT
+// =====================================================================
+const recBtn=document.getElementById('recBtn');
+const recordingExit=document.getElementById('recordingExit');
+const recTimeEl=document.getElementById('recTime');
+let mediaRecorder=null, recordedChunks=[], recStart=0, recTimer=null;
+let isRecording=false, savedW=0, savedH=0;
+
+function pickMime(){
+  const c=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4;codecs=h264','video/mp4'];
+  for (const t of c) if (window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t;
+  return '';
+}
+function startRecording(){
+  if (isRecording) return;
+  resetAnim();
+  savedW = c3d.width; savedH = c3d.height;
+  isRecording=true; document.body.classList.add('recording');
+  const stream=c3d.captureStream(60);
+  const mime=pickMime();
+  if (!mime){ alert("Enregistrement non supporté."); isRecording=false; document.body.classList.remove('recording'); return; }
+  try { mediaRecorder=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:20_000_000}); }
+  catch(err){ alert('Erreur MediaRecorder : '+err.message); isRecording=false; document.body.classList.remove('recording'); return; }
+  recordedChunks=[];
+  mediaRecorder.ondataavailable=e=>{ if (e.data && e.data.size>0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop=()=>{
+    const blob=new Blob(recordedChunks,{type:mime.split(';')[0]});
+    const url=URL.createObjectURL(blob);
+    const now=new Date();
+    const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0')+String(now.getSeconds()).padStart(2,'0');
+    const ext=mime.includes('mp4')?'mp4':'webm';
+    const a=document.createElement('a');
+    a.href=url; a.download=`partieC_${currentNotion?currentNotion.id:'grid'}_${stamp}.${ext}`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),15000);
+    recordedChunks=[]; mediaRecorder=null;
+  };
+  mediaRecorder.start(100);
+  recStart=performance.now(); recTimeEl.textContent='REC 00:00';
+  recTimer=setInterval(()=>{
+    const el=performance.now()-recStart;
+    const s=Math.floor(el/1000), m=Math.floor(s/60);
+    recTimeEl.textContent=`REC ${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  },200);
+}
+function stopRecording(){
+  if (!isRecording) return;
+  isRecording=false;
+  if (mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop();
+  if (recTimer){ clearInterval(recTimer); recTimer=null; }
+  document.body.classList.remove('recording');
+}
+recBtn.addEventListener('click', startRecording);
+recordingExit.addEventListener('click', stopRecording);
+
+// grille / détail
+document.getElementById('gridBtn').addEventListener('click', () => {
+  document.body.classList.remove('detail');
+  currentNotion = null;
+});
+
+// =====================================================================
+//  INIT
+// =====================================================================
+setTimeout(resize, 80);
+</script>
+</body>
+</html>
