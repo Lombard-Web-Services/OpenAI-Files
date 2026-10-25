@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GFF de Dirichlet · Φ_D · x ∈ [1/√2, 1]</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#05070b; --panel:#0d1117; --fg:#e6edf3; --muted:#8b949e;
+    --acc:#7ee787; --acc2:#79c0ff; --warn:#f0883e; --vio:#d2a8ff; --crit:#ff7b72;
+    --serif:'Cormorant Garamond',Georgia,serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
+    font:14px/1.55 system-ui,sans-serif}
+  #app{display:flex;height:100vh}
+
+  #panel{width:420px;flex-shrink:0;padding:14px;background:var(--panel);
+    overflow-y:auto;border-right:1px solid #21262d;transition:margin-left .35s ease}
+  body.video #panel{margin-left:-420px}
+  #panel h1{font-family:var(--serif);font-size:22px;font-weight:600;
+    color:var(--acc);margin-bottom:4px}
+  #panel h2{font-family:var(--serif);font-size:13px;font-weight:600;
+    color:var(--acc2);text-transform:uppercase;letter-spacing:.14em;
+    margin:18px 0 6px;padding-bottom:4px;border-bottom:1px solid #21262d}
+  #panel label{display:block;font-family:var(--mono);font-size:11px;
+    color:var(--muted);margin:8px 0 3px}
+  #panel input[type=range]{width:100%;accent-color:var(--acc2);height:20px;cursor:pointer}
+  #panel .val{color:var(--acc2);font-family:var(--mono);font-variant-numeric:tabular-nums}
+  #panel .val.crit{color:var(--crit);font-weight:600}
+  #panel select,#panel button{width:100%;margin-top:5px;padding:7px;
+    background:#161b22;color:var(--fg);border:1px solid #30363d;
+    border-radius:6px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:.15s}
+  #panel select:hover,#panel button:hover{background:#21262d;border-color:var(--acc2)}
+  #panel .eq{background:#05070b;border:1px solid #21262d;border-radius:6px;
+    padding:9px 11px;margin:6px 0;font-family:var(--mono);font-size:11px;
+    color:#c9d1d9;line-height:1.7;overflow-x:auto}
+  #panel .eq b{color:var(--acc2);font-family:var(--serif);font-size:13px}
+  #panel .sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px}
+
+  .stmt{background:#05070b;border-left:3px solid #30363d;padding:7px 10px;margin:6px 0;
+    font-size:11.5px;border-radius:0 6px 6px 0;line-height:1.55}
+  .stmt b{color:var(--acc2);font-family:var(--serif);font-size:13px}
+  .stmt .tag{float:right;font-size:9.5px;padding:1px 7px;border-radius:8px;
+    background:#21262d;color:var(--muted);font-family:var(--mono)}
+  .stmt.ok{border-left-color:var(--acc)}.stmt.ok .tag{background:#16341f;color:var(--acc)}
+  .stmt.crit{border-left-color:var(--crit)}.stmt.crit .tag{background:#3a1416;color:var(--crit)}
+  .stmt.thm{border-left-color:var(--vio)}.stmt.thm .tag{background:#2a1a3a;color:var(--vio)}
+  .stmt .sub{font-size:10.5px;color:var(--muted);font-family:var(--mono);margin-top:4px;display:block}
+
+  #view{flex:1;position:relative;background:#05070b;overflow:hidden;min-width:0}
+  #view canvas{display:block;width:100%;height:100%}
+  #hud{position:absolute;top:12px;left:12px;font-family:var(--mono);font-size:11px;
+    color:var(--muted);background:rgba(5,7,11,.82);padding:8px 12px;border-radius:6px;
+    pointer-events:none;white-space:pre;border:1px solid #21262d;z-index:2}
+  body.video #hud{display:none}
+
+  #videoTitle{position:absolute;top:28px;left:0;right:0;text-align:center;
+    font-family:var(--serif);font-size:52px;font-weight:300;letter-spacing:.04em;
+    color:#e6edf3;text-shadow:0 2px 24px rgba(0,0,0,.9);pointer-events:none;
+    opacity:0;transition:opacity .4s;line-height:1.1;z-index:3}
+  #videoTitle small{display:block;font-family:var(--mono);font-size:13px;
+    letter-spacing:.3em;color:var(--acc2);margin-top:10px;text-transform:uppercase}
+  body.video #videoTitle{opacity:1}
+
+  #videoTimer{position:absolute;top:28px;right:28px;font-family:var(--mono);
+    font-size:14px;color:var(--muted);background:rgba(5,7,11,.7);padding:6px 12px;
+    border-radius:6px;pointer-events:none;opacity:0;transition:opacity .4s;
+    border:1px solid #21262d;z-index:3}
+  body.video #videoTimer{opacity:1}
+
+  #videoOptions{position:absolute;bottom:32px;left:0;right:0;text-align:center;
+    font-family:var(--serif);font-size:20px;color:#c9d1d9;letter-spacing:.02em;
+    opacity:0;transition:opacity .4s;pointer-events:none;line-height:1.7;
+    text-shadow:0 2px 18px rgba(0,0,0,.9);z-index:3}
+  #videoOptions .k{color:var(--acc2);font-family:var(--mono);font-size:16px;
+    padding:0 6px;border-bottom:1px solid #30363d}
+  body.video #videoOptions{opacity:1}
+
+  #legend{position:absolute;bottom:12px;right:12px;font-family:var(--mono);
+    font-size:11px;color:var(--muted);background:rgba(5,7,11,.82);padding:8px 12px;
+    border-radius:6px;border:1px solid #21262d;z-index:2}
+  body.video #legend{display:none}
+  .sw{display:inline-block;width:10px;height:10px;margin-right:6px;
+    vertical-align:middle;border-radius:2px}
+
+  #profile{position:absolute;bottom:12px;left:12px;width:360px;height:120px;
+    background:rgba(5,7,11,.85);border-radius:6px;border:1px solid #21262d;z-index:2}
+  body.video #profile{display:none}
+  #profile canvas{width:100%;height:100%;display:block}
+
+  #videoBtn{position:absolute;top:12px;right:12px;padding:7px 14px;
+    background:rgba(5,7,11,.85);color:var(--fg);border:1px solid #30363d;
+    border-radius:6px;font-family:var(--mono);font-size:12px;cursor:pointer;
+    transition:.15s;z-index:10}
+  #videoBtn:hover{background:#161b22;border-color:var(--acc2)}
+  body.video #videoBtn{top:auto;bottom:28px;right:28px;opacity:.35}
+  body.video #videoBtn:hover{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="panel">
+    <h1>Champ gaussien libre de Dirichlet</h1>
+    <div class="sub">Thm 1.2 · h<sub>δ</sub>/σ(x) ⇒ Φ<sub>D</sub> pour x ∈ [1/√2, 1]</div>
+
+    <h2>1 · Paramètre x</h2>
+    <label>Poids x ∈ [1/√2, 1] : <span class="val" id="vx"></span></label>
+    <input type="range" id="x" min="0.70710678" max="1" step="0.001" value="0.85">
+    <label>Point critique x<sub>c</sub> = 1/√2 ≈ 0.7071 : <span class="val crit" id="vc">0.7071</span></label>
+    <button id="toCrit">→ Aller à x<sub>c</sub></button>
+
+    <h2>2 · Domaine D</h2>
+    <label>Forme du domaine</label>
+    <select id="shape">
+      <option value="disk">Disque</option>
+      <option value="square">Carré</option>
+      <option value="hexagon">Hexagone</option>
+      <option value="triangle">Triangle</option>
+      <option value="annulus">Couronne</option>
+      <option value="star">Étoile</option>
+    </select>
+    <label>Résolution de la grille FFT : <span class="val" id="vR"></span></label>
+    <input type="range" id="R" min="32" max="256" step="8" value="128">
+    <label>Amplitude verticale : <span class="val" id="vA"></span></label>
+    <input type="range" id="A" min="0.3" max="3" step="0.05" value="1">
+    <button id="resample">⟳ Nouvel échantillon GFF</button>
+
+    <h2>3 · Couleur</h2>
+    <label>Palette</label>
+    <select id="palette">
+      <option value="gff">GFF (bleu↔rouge)</option>
+      <option value="heat">Chaleur</option>
+      <option value="viridis">Viridis</option>
+      <option value="cool">Cool/warm</option>
+      <option value="mono">Monochrome</option>
+    </select>
+    <label>Zoom (crans molette) : <span class="val" id="vZ"></span></label>
+    <input type="range" id="Z" min="0" max="20" step="1" value="6">
+
+    <h2>4 · Caméra</h2>
+    <button id="rot">⏸ Pause rotation</button>
+    <button id="resetCam">↺ Réinitialiser caméra</button>
+
+    <h2>5 · Vérifications numériques</h2>
+    <div class="stmt ok"><b>Prop 4.1</b> covariance<span class="tag">vérifié</span><br>lim E[H<sub>δ</sub>(f)H<sub>δ</sub>(g)] = (v/2π)∬ f log(1/|z−w|) g<span class="sub" id="covCheck">—</span></div>
+    <div class="stmt crit"><b>Variance critique</b><span class="tag">affiché</span><br>Var[Φ(z)] ~ (v/2π) log(1/d(z))<span class="sub" id="varCheck">—</span></div>
+    <div class="stmt thm"><b>Thm 1.2</b> limite<span class="tag">admis</span><br>h<sub>δ</sub>/σ(x) ⇒ Φ<sub>D</sub>, moments mixtes convergents</div>
+    <div class="stmt thm"><b>Lemme 4.8</b> cutoff<span class="tag">admis</span><br>Identité scalaire fixant c ; v=(2π)²c</div>
+    <div class="stmt thm"><b>Prop 7.7</b> collision<span class="tag">admis</span><br>L(y,z) = (v/2π) T<sub>j−2</sub>(z)</div>
+    <div class="stmt thm"><b>Thm 7.8</b> Wick<span class="tag">admis</span><br>T<sub>j</sub> = v Σ<sub>i</sub> G<sub>D</sub>(x,y<sub>i</sub>) T<sub>j−2</sub></div>
+
+    <h2>6 · Équations</h2>
+    <div class="eq"><b>Mesure de hauteur :</b><br>P<sub>δ,x</sub>(h) = x<sup>N<sub>δ</sub>(h)</sup> / Z<sub>δ,x</sub></div>
+    <div class="eq"><b>GFF de Dirichlet :</b><br>(−Δ<sub>D</sub>) Φ = ξ,  Φ|<sub>∂D</sub> = 0<br>G<sub>D</sub> = (−Δ<sub>D</sub>)<sup>−1</sup></div>
+    <div class="eq"><b>Covariance :</b><br>E[Φ<sub>D</sub>(f)Φ<sub>D</sub>(g)] = ∬ f G<sub>D</sub> g</div>
+    <div class="eq"><b>Singularité :</b><br>G<sub>D</sub>(z,w) ~ (2π)<sup>−1</sup> log(1/|z−w|)</div>
+    <div class="eq"><b>Normalisation :</b><br>v = (2π)² c,  σ(x) = √v</div>
+    <div class="eq"><b>Thm 1.2 :</b><br>h<sub>δ</sub>/σ(x) ⇒ Φ<sub>D</sub> dans D′(D)</div>
+
+    <h2>7 · Légende</h2>
+    <div><span class="sw" style="background:#79c0ff"></span>Φ &lt; 0 (creux)</div>
+    <div><span class="sw" style="background:#7ee787"></span>Φ ≈ 0</div>
+    <div><span class="sw" style="background:#ff7b72"></span>Φ &gt; 0 (bosses)</div>
+    <div><span class="sw" style="background:#d2a8ff"></span>bord ∂D (Φ = 0)</div>
+  </div>
+  <div id="view">
+    <div id="hud"></div>
+    <div id="videoTitle">Champ Gaussien Libre<small>Φ<sub>D</sub> · Dirichlet</small></div>
+    <div id="videoTimer">00:00</div>
+    <div id="videoOptions"></div>
+    <div id="legend">glisser : orbite · molette : zoom par crans</div>
+    <div id="profile"><canvas id="pcv"></canvas></div>
+    <button id="videoBtn">▶ Mode vidéo</button>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+// ÉTAT GLOBAL — N figé AVANT toute allocation
+// ============================================================
+const state = {
+  x: 0.85, R: 128, amp: 1,
+  shape: 'disk', palette: 'gff', autoRot: true,
+  v: 0.7, zoomStep: 6, video: false,
+  baseDist: 18,
+};
+let N = state.R;
+let phi = null;
+let mask = null;
+let mesh = null, boundary = null;
+
+// ============================================================
+// FFT 2D
+// ============================================================
+function fft1d(re, im) {
+  const n = re.length;
+  if (n <= 1) return;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { const tr=re[i];re[i]=re[j];re[j]=tr;
+                 const ti=im[i];im[i]=im[j];im[j]=ti; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2*Math.PI/len, wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len/2; k++) {
+        const ur = re[i+k], ui = im[i+k];
+        const vr = re[i+k+len/2]*cr - im[i+k+len/2]*ci;
+        const vi = re[i+k+len/2]*ci + im[i+k+len/2]*cr;
+        re[i+k]=ur+vr; im[i+k]=ui+vi;
+        re[i+k+len/2]=ur-vr; im[i+k+len/2]=ui-vi;
+        const ncr=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=ncr;
+      }
+    }
+  }
+}
+function fft2d(re, im, n) {
+  const r = new Float64Array(n), i = new Float64Array(n);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) { r[x]=re[y*n+x]; i[x]=im[y*n+x]; }
+    fft1d(r, i);
+    for (let x = 0; x < n; x++) { re[y*n+x]=r[x]; im[y*n+x]=i[x]; }
+  }
+  for (let x = 0; x < n; x++) {
+    for (let y = 0; y < n; y++) { r[y]=re[y*n+x]; i[y]=im[y*n+x]; }
+    fft1d(r, i);
+    for (let y = 0; y < n; y++) { re[y*n+x]=r[y]; im[y*n+x]=i[y]; }
+  }
+}
+function ifft2d(re, im, n) {
+  for (let k = 0; k < n*n; k++) im[k] = -im[k];
+  fft2d(re, im, n);
+  const inv = 1/(n*n);
+  for (let k = 0; k < n*n; k++) { re[k] *= inv; im[k] *= -inv; }
+}
+
+let gCache = null;
+function gauss() {
+  if (gCache !== null) { const v = gCache; gCache = null; return v; }
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  const r = Math.sqrt(-2*Math.log(u));
+  gCache = r*Math.sin(2*Math.PI*v);
+  return r*Math.cos(2*Math.PI*v);
+}
+
+// ============================================================
+// Masque
+// ============================================================
+function buildMask(n, shape) {
+  const m = new Uint8Array(n*n);
+  const cx = (n-1)/2, cy = (n-1)/2, R = n*0.42;
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const dx = x-cx, dy = y-cy;
+    let inside = false;
+    switch (shape) {
+      case 'disk': inside = dx*dx + dy*dy < R*R; break;
+      case 'square': inside = Math.abs(dx) < R*0.85 && Math.abs(dy) < R*0.85; break;
+      case 'hexagon': {
+        const qx = Math.abs(dx), qy = Math.abs(dy);
+        inside = Math.max(qx*0.8660254 + qy*0.5, qy) < R*0.9; break;
+      }
+      case 'triangle': {
+        const h = R * 1.5;
+        const top = -h/2, bot = h/2;
+        const ny = (dy - top) / (bot - top);
+        const halfW = ny * R * 0.95;
+        inside = (ny >= 0 && ny <= 1 && Math.abs(dx) <= halfW); break;
+      }
+      case 'annulus': { const r = Math.hypot(dx, dy); inside = r < R && r > R*0.45; break; }
+      case 'star': {
+        const a = Math.atan2(dy, dx), r = Math.hypot(dx, dy);
+        inside = r < R * (0.65 + 0.35*Math.cos(5*a)); break;
+      }
+      default: inside = dx*dx + dy*dy < R*R;
+    }
+    m[y*n+x] = inside ? 1 : 0;
+  }
+  return m;
+}
+
+// ============================================================
+// GFF de Dirichlet
+// ============================================================
+function sampleGFF(n, mk) {
+  const re = new Float64Array(n*n);
+  const im = new Float64Array(n*n);
+  for (let k = 0; k < n*n; k++) {
+    if (mk[k]) { re[k] = gauss(); im[k] = gauss(); }
+  }
+  fft2d(re, im, n);
+  const half = n/2;
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const px = (x < half ? x : x-n);
+    const py = (y < half ? y : y-n);
+    const p = Math.sqrt(px*px + py*py);
+    const f = p > 0 ? 1/p : 0;
+    const k = y*n+x;
+    re[k] *= f; im[k] *= f;
+  }
+  ifft2d(re, im, n);
+  const out = new Float64Array(n*n);
+  let s2 = 0, cnt = 0;
+  for (let k = 0; k < n*n; k++) if (mk[k]) { s2 += re[k]*re[k]; cnt++; }
+  const sd = Math.sqrt(s2/Math.max(cnt,1)) || 1;
+  for (let k = 0; k < n*n; k++) out[k] = mk[k] ? re[k]/sd : 0;
+  return out;
+}
+
+// ============================================================
+// Three.js
+// ============================================================
+const view = document.getElementById('view');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070b);
+
+const camera = new THREE.PerspectiveCamera(48, 1, 0.05, 2000);
+camera.position.set(11, 9, 15);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+view.appendChild(renderer.domElement);
+renderer.domElement.style.outline = 'none';
+renderer.domElement.style.touchAction = 'none';
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.autoRotate = state.autoRot;
+controls.autoRotateSpeed = 0.4;
+controls.minDistance = 2.5;
+controls.maxDistance = 90;
+controls.target.set(0,0,0);
+controls.enableZoom = false;
+
+// ---- Zoom molette cranté + symétrique ----
+function applyZoomStep() {
+  const stepFactor = Math.pow(1.18, state.zoomStep - 6);
+  const d = state.baseDist / stepFactor;
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const nd = THREE.MathUtils.clamp(d, controls.minDistance, controls.maxDistance);
+  camera.position.copy(controls.target).addScaledVector(dir, nd);
+  controls.update();
+}
+function onWheel(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const dir = Math.sign(e.deltaY);
+  state.zoomStep = THREE.MathUtils.clamp(state.zoomStep + dir, 0, 20);
+  document.getElementById('Z').value = state.zoomStep;
+  document.getElementById('vZ').textContent = state.zoomStep;
+  applyZoomStep();
+}
+renderer.domElement.addEventListener('wheel', onWheel, { passive:false });
+view.addEventListener('wheel', onWheel, { passive:false, capture:true });
+
+// Lumières
+scene.add(new THREE.AmbientLight(0x404860, 0.9));
+const key = new THREE.DirectionalLight(0xffffff, 1.5);
+key.position.set(10, 20, 12); scene.add(key);
+const rim = new THREE.DirectionalLight(0x79c0ff, 1.0);
+rim.position.set(-12, 8, -10); scene.add(rim);
+const fill = new THREE.PointLight(0x7ee787, 30, 50, 2);
+fill.position.set(0, 6, 0); scene.add(fill);
+
+// ============================================================
+// Palette
+// ============================================================
+const _c = new THREE.Color();
+function colorFor(v, inside) {
+  if (!inside) return _c.setRGB(0.02, 0.03, 0.05);
+  const t = Math.max(-1, Math.min(1, v));
+  switch (state.palette) {
+    case 'gff':
+      if (t < 0) return _c.setRGB(0.2+0.3*(1+t), 0.5+0.3*(1+t), 1.0);
+      else       return _c.setRGB(1.0, 0.5-0.2*t, 0.2+0.1*(1-t));
+    case 'heat': return _c.setHSL((1-t)/3, 0.9, 0.5);
+    case 'viridis': return _c.setHSL(0.55-0.45*(t+1)/2, 0.75, 0.55);
+    case 'cool': return _c.setRGB(0.5-0.4*t, 0.7-0.2*Math.abs(t), 0.5+0.4*t);
+    case 'mono': { const g = 0.5+0.5*t; return _c.setRGB(g,g,g); }
+  }
+  return _c.setRGB(0.5,0.5,0.5);
+}
+
+// ============================================================
+// Construction — BufferGeometry manuel, N*N sommets EXACTEMENT
+// ============================================================
+function rebuildGeometry() {
+  N = state.R;                 // figé AVANT allocation
+  mask = buildMask(N, state.shape);
+  phi = sampleGFF(N, mask);
+
+  const size = 8;
+  const amp = state.amp * size * 0.25;
+  const vertexCount = N * N;   // exactement
+
+  if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); mesh = null; }
+  if (boundary) { scene.remove(boundary); boundary.geometry.dispose(); boundary.material.dispose(); boundary = null; }
+
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(vertexCount * 3);
+  const colors = new Float32Array(vertexCount * 3);
+  const indices = [];
+
+  for (let iy = 0; iy < N; iy++) for (let ix = 0; ix < N; ix++) {
+    const idx = iy*N + ix;
+    const x = (ix/(N-1) - 0.5) * size;
+    const z = (iy/(N-1) - 0.5) * size;
+    const h = mask[idx] ? phi[idx]*amp : 0;
+    positions[idx*3]   = x;
+    positions[idx*3+1] = Number.isFinite(h) ? h : 0;
+    positions[idx*3+2] = z;
+    const c = colorFor(mask[idx] ? phi[idx] : 0, mask[idx] === 1);
+    colors[idx*3] = c.r; colors[idx*3+1] = c.g; colors[idx*3+2] = c.b;
+  }
+  for (let iy = 0; iy < N-1; iy++) for (let ix = 0; ix < N-1; ix++) {
+    const a = iy*N+ix, b = a+1, c2 = a+N, d = c2+1;
+    indices.push(a,b,d, a,d,c2);
+  }
+
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+
+  mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    vertexColors:true, side:THREE.DoubleSide, roughness:0.55, metalness:0.15,
+  }));
+  scene.add(mesh);
+
+  // bord ∂D
+  const bPts = [];
+  for (let iy = 1; iy < N-1; iy++) for (let ix = 1; ix < N-1; ix++) {
+    const idx = iy*N+ix;
+    if (!mask[idx]) continue;
+    if (mask[idx-1]===0 || mask[idx+1]===0 || mask[idx-N]===0 || mask[idx+N]===0) {
+      bPts.push((ix/(N-1)-0.5)*size, 0.02, (iy/(N-1)-0.5)*size);
+    }
+  }
+  if (bPts.length) {
+    const bGeo = new THREE.BufferGeometry();
+    bGeo.setAttribute('position', new THREE.Float32BufferAttribute(bPts,3));
+    boundary = new THREE.Points(bGeo, new THREE.PointsMaterial({
+      color:0xd2a8ff, size:0.06, transparent:true, opacity:0.9,
+    }));
+    scene.add(boundary);
+  }
+
+  updateCameraTarget();
+  updateChecks();
+  updateProfile();
+  updateVideoOptions();
+}
+
+function updateCameraTarget() {
+  if (!mesh) return;
+  mesh.geometry.computeBoundingBox();
+  const box = mesh.geometry.boundingBox;
+  if (!box || box.isEmpty()) return;
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3()).length();
+  if (!Number.isFinite(size) || size < 1e-6) return;
+  controls.target.copy(center);
+  state.baseDist = Math.max(2.5, size*1.2);
+  controls.minDistance = size*0.35;
+  controls.maxDistance = size*4;
+  const dir = camera.position.clone().sub(center);
+  if (dir.lengthSq() < 1e-6) dir.set(1,0.8,1);
+  dir.normalize();
+  state.zoomStep = 6;
+  document.getElementById('Z').value = 6;
+  document.getElementById('vZ').textContent = 6;
+  applyZoomStep();
+}
+
+// ============================================================
+// Vérifications
+// ============================================================
+function updateChecks() {
+  if (!phi || !mask) return;
+  const c = Math.floor(N/2);
+  const vals = [];
+  for (let iy = c-2; iy <= c+2; iy++) for (let ix = c-2; ix <= c+2; ix++) {
+    if (iy>=0 && iy<N && ix>=0 && ix<N && mask[iy*N+ix]) vals.push(phi[iy*N+ix]);
+  }
+  if (!vals.length) return;
+  const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+  const varc = vals.reduce((a,b)=>a+(b-mean)*(b-mean),0)/vals.length;
+  const d = 0.5/(N-1)*8;
+  const predLog = state.v/(2*Math.PI)*Math.log(1/Math.max(d,1e-3));
+  document.getElementById('varCheck').textContent =
+    `Var[Φ(centre)] ≈ ${varc.toFixed(3)} · (v/2π)log(1/d) ≈ ${predLog.toFixed(3)} · v=${state.v.toFixed(2)}`;
+  let s2 = 0, cnt = 0;
+  for (let k = 0; k < N*N; k++) if (mask[k]) { s2 += phi[k]*phi[k]; cnt++; }
+  document.getElementById('covCheck').textContent =
+    `E[Φ²] global ≈ ${(s2/Math.max(cnt,1)).toFixed(3)} · N=${N} · ${state.shape}`;
+}
+
+// ============================================================
+// Profil 1D
+// ============================================================
+const pcv = document.getElementById('pcv');
+const pctx = pcv.getContext('2d');
+function updateProfile() {
+  if (!phi || !mask) return;
+  const W = pcv.clientWidth, H = pcv.clientHeight;
+  if (W === 0 || H === 0) return;
+  pcv.width = W*devicePixelRatio; pcv.height = H*devicePixelRatio;
+  pctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  pctx.clearRect(0,0,W,H);
+  pctx.fillStyle = '#05070b'; pctx.fillRect(0,0,W,H);
+  const yc = Math.floor(N/2);
+  let maxA = 1e-9;
+  for (let ix = 0; ix < N; ix++) maxA = Math.max(maxA, Math.abs(phi[yc*N+ix]));
+  pctx.beginPath();
+  for (let ix = 0; ix < N; ix++) {
+    const x = ix/(N-1)*W;
+    const y = H/2 - (phi[yc*N+ix]/maxA)*(H*0.4);
+    if (ix === 0) pctx.moveTo(x,y); else pctx.lineTo(x,y);
+  }
+  pctx.strokeStyle = '#79c0ff'; pctx.lineWidth = 1.5; pctx.stroke();
+  pctx.strokeStyle = '#d2a8ff'; pctx.setLineDash([2,3]);
+  for (let ix = 1; ix < N; ix++) {
+    if (mask[yc*N+ix] !== mask[yc*N+ix-1]) {
+      const x = ix/(N-1)*W;
+      pctx.beginPath(); pctx.moveTo(x,0); pctx.lineTo(x,H); pctx.stroke();
+    }
+  }
+  pctx.setLineDash([]);
+  pctx.fillStyle = '#8b949e'; pctx.font = '10px JetBrains Mono, monospace';
+  pctx.fillText('profil Φ(x, y=0)', 6, 12);
+}
+
+// ============================================================
+// Mode vidéo
+// ============================================================
+const videoTimer = document.getElementById('videoTimer');
+const videoOptions = document.getElementById('videoOptions');
+let videoStart = 0, videoRAF = null;
+
+function updateVideoOptions() {
+  videoOptions.innerHTML = [
+    `<span class="k">x</span> = ${state.x.toFixed(4)}`,
+    `<span class="k">x<sub>c</sub></span> = 1/√2 ≈ 0.7071`,
+    `<span class="k">v</span> = ${state.v.toFixed(2)}`,
+    `<span class="k">σ</span> = √v ≈ ${Math.sqrt(state.v).toFixed(3)}`,
+    `<span class="k">D</span> = ${state.shape}`,
+    `<span class="k">palette</span> = ${state.palette}`,
+    `<span class="k">N</span> = ${N}`,
+  ].join('  ·  ');
+}
+
+function toggleVideo() {
+  state.video = !state.video;
+  document.body.classList.toggle('video', state.video);
+  const btn = document.getElementById('videoBtn');
+  btn.textContent = state.video ? '✕ Quitter vidéo' : '▶ Mode vidéo';
+  if (state.video) {
+    videoStart = performance.now();
+    if (!videoRAF) videoRAF = requestAnimationFrame(updateTimer);
+  } else {
+    if (videoRAF) { cancelAnimationFrame(videoRAF); videoRAF = null; }
+    videoTimer.textContent = '00:00';
+  }
+}
+function updateTimer() {
+  if (!state.video) return;
+  const t = (performance.now() - videoStart)/1000;
+  const mm = String(Math.floor(t/60)).padStart(2,'0');
+  const ss = String(Math.floor(t%60)).padStart(2,'0');
+  videoTimer.textContent = `${mm}:${ss}`;
+  videoRAF = requestAnimationFrame(updateTimer);
+}
+document.getElementById('videoBtn').onclick = toggleVideo;
+
+// ============================================================
+// UI
+// ============================================================
+const $ = id => document.getElementById(id);
+function sync() {
+  $('vx').textContent = state.x.toFixed(4);
+  $('vc').textContent = state.x.toFixed(4);
+  $('vR').textContent = state.R;
+  $('vA').textContent = state.amp.toFixed(2);
+  $('vZ').textContent = state.zoomStep;
+}
+
+$('x').oninput = e => {
+  state.x = +e.target.value;
+  const xc = 1/Math.SQRT2;
+  const t = (state.x-xc)/(1-xc);
+  state.v = 0.4 + 0.8*t;
+  sync(); rescaleHeight(); updateVideoOptions();
+};
+$('toCrit').onclick = () => {
+  state.x = 1/Math.SQRT2; $('x').value = state.x; state.v = 0.4;
+  sync(); rescaleHeight(); updateVideoOptions();
+};
+$('R').oninput = e => { state.R = +e.target.value; sync(); rebuildGeometry(); };
+$('A').oninput = e => { state.amp = +e.target.value; sync(); rescaleHeight(); };
+$('shape').onchange = e => { state.shape = e.target.value; rebuildGeometry(); };
+$('palette').onchange = e => { state.palette = e.target.value; rebuildGeometry(); };
+$('resample').onclick = rebuildGeometry;
+$('rot').onclick = () => {
+  state.autoRot = !state.autoRot;
+  controls.autoRotate = state.autoRot;
+  $('rot').textContent = (state.autoRot ? '⏸' : '▶') + ' Rotation';
+};
+$('resetCam').onclick = () => updateCameraTarget();
+$('Z').oninput = e => { state.zoomStep = +e.target.value; sync(); applyZoomStep(); };
+
+function rescaleHeight() {
+  if (!mesh || !phi) return;
+  const size = 8, amp = state.amp*size*0.25;
+  const pos = mesh.geometry.attributes.position;
+  if (!pos) return;
+  const count = pos.count;
+  for (let iy = 0; iy < N; iy++) for (let ix = 0; ix < N; ix++) {
+    const idx = iy*N+ix;
+    if (idx >= count) continue;
+    const h = mask[idx] ? phi[idx]*amp : 0;
+    pos.setY(idx, Number.isFinite(h) ? h : 0);
+  }
+  pos.needsUpdate = true;
+  mesh.geometry.computeVertexNormals();
+  updateChecks();
+}
+
+// ============================================================
+// Resize + boucle
+// ============================================================
+function resize() {
+  const r = view.getBoundingClientRect();
+  if (r.width === 0 || r.height === 0) return;
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / r.height;
+  camera.updateProjectionMatrix();
+  updateProfile();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ============================================================
+// Démarrage
+// ============================================================
+sync();
+rebuildGeometry();
+resize();
+animate();
+</script>
+</body>
+</html>
