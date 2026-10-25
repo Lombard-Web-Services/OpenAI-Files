@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Théorème 1.2 — Démonstration structurée</title>
+<style>
+  :root {
+    --gold: #d4af6a;
+    --gold-soft: #e8d5a8;
+    --text: #e9ecf5;
+    --muted: #9aa2b8;
+    --bg: #07080d;
+    --panel: #0c0f18;
+    --ok: #8fe07a;
+    --warn: #ffb36b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 16px 60px;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 36px; }
+  h1 {
+    font-size: clamp(22px, 3.5vw, 34px);
+    font-weight: 400;
+    letter-spacing: .4px;
+    background: linear-gradient(180deg, #fff 0%, var(--gold-soft) 55%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 12px;
+  }
+  .paper {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 18px;
+  }
+  .statement {
+    background: linear-gradient(180deg, rgba(212,175,106,.12), rgba(212,175,106,.04));
+    border: 1px solid rgba(212,175,106,.35);
+    border-radius: 14px;
+    padding: 20px 24px;
+    font-size: 15px;
+    color: var(--gold-soft);
+  }
+  .statement em { color: var(--gold); font-style: normal; }
+
+  .disclaimer {
+    margin: 22px 0 28px;
+    padding: 12px 16px;
+    border-left: 3px solid var(--warn);
+    background: rgba(255,179,107,.07);
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .step {
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    background: rgba(255,255,255,.02);
+    margin-bottom: 14px;
+    overflow: hidden;
+    transition: border-color .25s;
+  }
+  .step.open { border-color: rgba(212,175,106,.4); }
+  .step-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .step-head:hover { background: rgba(212,175,106,.06); }
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #000;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-title { flex: 1; font-size: 15px; color: var(--gold-soft); }
+  .step-arrow {
+    color: var(--muted);
+    font-size: 12px;
+    transition: transform .3s;
+  }
+  .step.open .step-arrow { transform: rotate(90deg); }
+
+  .step-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .4s ease;
+  }
+  .step.open .step-body { max-height: 1200px; }
+  .step-content {
+    padding: 0 18px 18px 58px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .step-content strong { color: var(--gold-soft); font-weight: normal; }
+  .step-content .math {
+    font-family: 'Cambria Math', 'Times New Roman', serif;
+    color: var(--gold-soft);
+  }
+  .step-content ul { margin: 10px 0 10px 18px; }
+  .step-content li { margin-bottom: 6px; }
+
+  .qed {
+    text-align: right;
+    margin-top: 28px;
+    font-size: 22px;
+    color: var(--gold);
+  }
+
+  .nav {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+  .nav button {
+    background: rgba(212,175,106,.12);
+    border: 1px solid rgba(212,175,106,.4);
+    color: var(--gold-soft);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .nav button:hover {
+    background: rgba(212,175,106,.22);
+  }
+
+  footer {
+    margin-top: 40px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Théorème 1.2 — Gap L² universel</h1>
+  <div class="paper">An L² Einstein Gap for Nonnegatively Curved Four-Manifolds · OpenAI · 5 octobre 2026</div>
+  <div class="statement">
+    Il existe <em>ε₀ &gt; 0</em> tel que si (M, g) est une variété riemannienne close, lisse, simplement connexe, de dimension 4, avec
+    <em>sec<sub>g</sub> ≥ 0</em> et <em>D(g) &lt; ε₀</em>, alors M est difféomorphe à S⁴, ℂP² ou S² × S².
+  </div>
+</header>
+
+<div class="disclaimer">
+  <strong style="color:var(--warn)">Note.</strong>
+  Ce qui suit est la structure logique de la démonstration (schéma argumentatif).
+  Les estimations quantitatives (Gronwall, Hölder, Kato, non-effondrement, passage à la limite de la courbure sectionnelle…) constituent le cœur technique du paper et ne sont pas reproduites ici en détail.
+</div>
+
+<!-- Étapes -->
+<div id="steps"></div>
+
+<div class="qed">□</div>
+
+<div class="nav">
+  <button id="btnAll">Tout ouvrir</button>
+  <button id="btnNone">Tout fermer</button>
+  <button id="btnNext">Étape suivante →</button>
+</div>
+
+<footer>
+  Présentation pédagogique de la structure de preuve · non formellement vérifiée
+</footer>
+
+</div>
+
+<script>
+const STEPS = [
+  {
+    title: "Hypothèse de non-gap (par contradiction)",
+    content: `
+      <p>Supposons qu’il n’existe <strong>pas</strong> de tel <span class="math">ε₀</span>.</p>
+      <p>Alors il existe une suite de métriques <span class="math">(M<sub>j</sub>, g<sub>j</sub>)</span> closes, simplement connexes, de dimension 4, satisfaisant :</p>
+      <ul>
+        <li><span class="math">sec<sub>g<sub>j</sub></sub> ≥ 0</span></li>
+        <li><span class="math">D(g<sub>j</sub>) &lt; 1/j</span></li>
+        <li>M<sub>j</sub> n’est difféomorphe à aucun des trois modèles (S⁴, ℂP², S²×S²).</li>
+      </ul>
+    `
+  },
+  {
+    title: "Normalisation (Proposition 2.1)",
+    content: `
+      <p>Après un rescaling constant approprié, on obtient :</p>
+      <ul>
+        <li><span class="math">(1/V<sub>j</sub>) ∫ R<sub>g<sub>j</sub></sub> dμ = 12</span></li>
+        <li><span class="math">‖R<sub>g<sub>j</sub></sub> − 12‖<sub>L²</sub> ≤ 4 ‖E<sub>g<sub>j</sub></sub>‖<sub>L²</sub></span></li>
+        <li>Bornes uniformes : <span class="math">v₀ ≤ Vol(M<sub>j</sub>,g<sub>j</sub>) ≤ V₀</span> et <span class="math">diam ≤ D₀</span>.</li>
+      </ul>
+      <p>Ces contrôles viennent de Gauss–Bonnet (χ ≥ 2), de l’inégalité |Rm| ≤ C₀ R, et d’un argument de type presque-Schur.</p>
+    `
+  },
+  {
+    title: "Flot de Ricci + Sobolev pondérée (Props. 3.1 – 3.4)",
+    content: `
+      <p>On fait évoluer chaque métrique par le flot de Ricci.</p>
+      <ul>
+        <li>L’inégalité de Sobolev pondérée (Prop. 3.1), obtenue via l’entropie de Perelman, contrôle les normes L⁴.</li>
+        <li>La queue de courbure est contrôlée (Prop. 3.2).</li>
+        <li>Non-effondrement de volume : Vol B(x,r) ≥ v* r⁴ (Lemme 3.3).</li>
+        <li>Le flot existe sur un intervalle de temps uniforme [0, T] (Prop. 3.4).</li>
+      </ul>
+    `
+  },
+  {
+    title: "Propagation de l’erreur d’Einstein (Proposition 4.1)",
+    content: `
+      <p>On pose <span class="math">L = Ric − λ(t) g</span> avec <span class="math">λ(t) = 3/(1−6t)</span>.</p>
+      <p>L’équation d’évolution</p>
+      <p style="text-align:center" class="math">∂<sub>t</sub> L = ΔL + 2 Rm(L) + 2λ L</p>
+      <p>combinée à Hölder, à l’inégalité de Kato et à Gronwall, donne :</p>
+      <p style="text-align:center" class="math">sup<sub>t ∈ [0,T]</sub> ‖Ric<sub>g<sub>j</sub>(t)</sub> − λ(t) g<sub>j</sub>(t)‖<sub>L²</sub> → 0 &nbsp; quand j → ∞.</p>
+    `
+  },
+  {
+    title: "Extraction d’une limite compacte (Proposition 5.1)",
+    content: `
+      <p>Grâce aux bornes de courbure, au non-effondrement et au diamètre contrôlé, le théorème de compacité de Hamilton fournit :</p>
+      <ul>
+        <li>une sous-suite et des difféomorphismes Φ<sub>j</sub>,</li>
+        <li>une variété limite N close et simplement connexe,</li>
+        <li>une métrique limite h telle que</li>
+      </ul>
+      <p style="text-align:center" class="math">Φ<sub>j</sub>* g<sub>j</sub>(t) → (1−6t) h</p>
+      <p>avec <span class="math">Ric<sub>h</sub> = 3h</span> et <span class="math">sec<sub>h</sub> ≥ 0</span> (la positivité de la courbure sectionnelle passe à la limite grâce à Prop. 4.2).</p>
+    `
+  },
+  {
+    title: "Classification (Assumption 1.1 / Corollaire 1.2 du companion)",
+    content: `
+      <p>Toute variété Einstein 4-dimensionnelle close avec <span class="math">sec ≥ 0</span> a un revêtement universel isométrique à :</p>
+      <ul>
+        <li>S⁴ &nbsp;(métrique ronde),</li>
+        <li>ℂP² &nbsp;(Fubini–Study),</li>
+        <li>S²(1/√3) × S²(1/√3) &nbsp;(produit).</li>
+      </ul>
+      <p>Par conséquent N est difféomorphe à l’un de ces trois modèles.</p>
+    `
+  },
+  {
+    title: "Contradiction et conclusion",
+    content: `
+      <p>Pour j assez grand, M<sub>j</sub> est difféomorphe à N, donc à l’un des trois modèles.</p>
+      <p>Ceci contredit l’hypothèse de l’étape 1 (les M<sub>j</sub> étaient choisies hors des trois types).</p>
+      <p style="margin-top:14px"><strong>Par conséquent</strong>, l’hypothèse de non-gap est fausse : il existe bien un ε₀ &gt; 0 tel que l’énoncé du Théorème 1.2 soit vrai.</p>
+    `
+  }
+];
+
+const container = document.getElementById('steps');
+STEPS.forEach((s, i) => {
+  const div = document.createElement('div');
+  div.className = 'step' + (i === 0 ? ' open' : '');
+  div.innerHTML = `
+    <div class="step-head">
+      <div class="step-num">${i + 1}</div>
+      <div class="step-title">${s.title}</div>
+      <div class="step-arrow">▶</div>
+    </div>
+    <div class="step-body">
+      <div class="step-content">${s.content}</div>
+    </div>
+  `;
+  div.querySelector('.step-head').addEventListener('click', () => {
+    div.classList.toggle('open');
+  });
+  container.appendChild(div);
+});
+
+document.getElementById('btnAll').addEventListener('click', () => {
+  document.querySelectorAll('.step').forEach(el => el.classList.add('open'));
+});
+document.getElementById('btnNone').addEventListener('click', () => {
+  document.querySelectorAll('.step').forEach(el => el.classList.remove('open'));
+});
+
+let current = 0;
+document.getElementById('btnNext').addEventListener('click', () => {
+  const steps = document.querySelectorAll('.step');
+  if (current < steps.length) {
+    steps[current].classList.add('open');
+    steps[current].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    current++;
+  } else {
+    current = 0;
+    steps.forEach(el => el.classList.remove('open'));
+  }
+});
+</script>
+</body>
+</html>
