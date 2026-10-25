@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Théorème 1.2 — Démonstration 3D</title>
+<style>
+  :root {
+    --gold:#d4af6a; --gold-soft:#e8d5a8; --text:#e9ecf5; --muted:#9aa2b8;
+    --bg:#07080d; --panel:#0c0f18; --ok:#8fe07a; --warn:#ffb36b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:Georgia,'Times New Roman',serif;
+    background:var(--bg);color:var(--text);
+    display:flex;flex-direction:column;min-height:100vh;
+    overflow:hidden;
+  }
+
+  /* Header */
+  header{
+    flex-shrink:0;padding:14px 20px 10px;
+    border-bottom:1px solid rgba(212,175,106,.15);
+    text-align:center;background:#000;
+  }
+  h1{
+    font-size:clamp(18px,2.8vw,28px);font-weight:400;letter-spacing:.4px;
+    background:linear-gradient(180deg,#fff 0%,var(--gold-soft) 55%,var(--gold) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    margin-bottom:6px;
+  }
+  .sub{font-size:12px;color:var(--muted);font-style:italic;}
+
+  /* Layout */
+  .main{
+    flex:1;display:flex;min-height:0;
+  }
+  .canvas-wrap{
+    flex:1;position:relative;
+    background:radial-gradient(circle at 50% 40%,#0b0d13 0%,#000 70%);
+  }
+  canvas{width:100%;height:100%;display:block;cursor:grab;}
+  canvas:active{cursor:grabbing;}
+
+  .badge{
+    position:absolute;top:14px;left:50%;transform:translateX(-50%);
+    font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);
+    background:rgba(0,0,0,.6);padding:5px 14px;border-radius:16px;
+    border:1px solid rgba(212,175,106,.3);pointer-events:none;z-index:5;
+  }
+  .step-label{
+    position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    font-size:13px;color:var(--gold-soft);
+    background:rgba(0,0,0,.7);padding:8px 18px;border-radius:10px;
+    border:1px solid rgba(212,175,106,.35);pointer-events:none;z-index:5;
+    max-width:90%;text-align:center;
+  }
+
+  /* Side panel */
+  .side{
+    width:min(380px,38vw);background:var(--panel);
+    border-left:1px solid rgba(212,175,106,.25);
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  .side-head{
+    padding:14px 16px 10px;border-bottom:1px solid rgba(212,175,106,.15);
+    flex-shrink:0;
+  }
+  .side-head h2{font-size:15px;color:var(--gold-soft);font-weight:400;margin-bottom:4px;}
+  .side-head .note{font-size:11px;color:var(--muted);font-style:italic;}
+
+  .steps{flex:1;overflow-y:auto;padding:10px 12px 20px;}
+  .step{
+    border:1px solid rgba(255,255,255,.07);border-radius:10px;
+    background:rgba(255,255,255,.02);margin-bottom:8px;overflow:hidden;
+    transition:border-color .25s;
+  }
+  .step.active{border-color:rgba(212,175,106,.55);background:rgba(212,175,106,.08);}
+  .step-head{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;
+    cursor:pointer;user-select:none;
+  }
+  .step-head:hover{background:rgba(212,175,106,.06);}
+  .step-num{
+    width:24px;height:24px;border-radius:50%;background:rgba(212,175,106,.25);
+    color:var(--gold-soft);font-size:12px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .step.active .step-num{background:var(--gold);color:#000;}
+  .step-title{flex:1;font-size:13px;color:var(--gold-soft);line-height:1.3;}
+  .step-body{max-height:0;overflow:hidden;transition:max-height .35s ease;}
+  .step.open .step-body{max-height:600px;}
+  .step-content{
+    padding:0 12px 12px 46px;font-size:12px;color:var(--muted);line-height:1.5;
+  }
+  .step-content .math{font-family:'Cambria Math','Times New Roman',serif;color:var(--gold-soft);}
+
+  .controls{
+    flex-shrink:0;padding:12px 14px;border-top:1px solid rgba(212,175,106,.15);
+    display:flex;gap:8px;
+  }
+  .controls button{
+    flex:1;padding:9px 8px;border-radius:8px;
+    border:1px solid rgba(212,175,106,.4);
+    background:rgba(212,175,106,.12);color:var(--gold-soft);
+    font-family:inherit;font-size:12px;cursor:pointer;transition:all .2s;
+  }
+  .controls button:hover{background:rgba(212,175,106,.25);}
+
+  .disclaimer{
+    font-size:10px;color:var(--muted);font-style:italic;
+    padding:8px 14px 12px;border-top:1px solid rgba(212,175,106,.1);
+    text-align:center;line-height:1.4;
+  }
+
+  @media(max-width:720px){
+    .main{flex-direction:column;}
+    .side{width:100%;height:42vh;border-left:none;border-top:1px solid rgba(212,175,106,.25);}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Théorème 1.2 — Gap L² · Démonstration 3D</h1>
+  <div class="sub">Structure de preuve appliquée aux modèles · OpenAI Math 2026</div>
+</header>
+
+<div class="main">
+  <div class="canvas-wrap">
+    <canvas id="c"></canvas>
+    <div class="badge" id="badge">Étape 1 · Non-gap</div>
+    <div class="step-label" id="label">Suite de métriques hors des trois modèles</div>
+  </div>
+
+  <aside class="side">
+    <div class="side-head">
+      <h2>Démonstration structurée</h2>
+      <div class="note">Clique une étape → la figure 3D suit</div>
+    </div>
+    <div class="steps" id="steps"></div>
+    <div class="controls">
+      <button id="btnPrev">← Préc.</button>
+      <button id="btnPlay">▶ Auto</button>
+      <button id="btnNext">Suiv. →</button>
+    </div>
+    <div class="disclaimer">
+      Schéma argumentatif + illustration 3D.<br>
+      Les estimations techniques du paper ne sont pas reproduites.
+    </div>
+  </aside>
+</div>
+
+<script>
+const STEPS = [
+  {
+    title: "1. Hypothèse de non-gap",
+    short: "Suite hors des trois modèles",
+    visual: "gap",
+    content: `Supposons qu’il n’existe pas de <span class="math">ε₀</span>. Alors une suite <span class="math">(M<sub>j</sub>,g<sub>j</sub>)</span> avec <span class="math">sec≥0</span>, <span class="math">D(g<sub>j</sub>)&lt;1/j</span>, hors de S⁴, ℂP², S²×S².`
+  },
+  {
+    title: "2. Normalisation (Prop. 2.1)",
+    short: "Rescaling → R moyen = 12",
+    visual: "s4",
+    content: `Après rescaling : <span class="math">(1/V)∫R = 12</span>, <span class="math">‖R−12‖₂ ≤ 4‖E‖₂</span>, volume et diamètre uniformément bornés.`
+  },
+  {
+    title: "3. Flot de Ricci + Sobolev",
+    short: "Évolution contrôlée",
+    visual: "cp2",
+    content: `Flot de Ricci sur [0,T] uniforme. Sobolev pondérée (Perelman) + non-effondrement + contrôle de la queue de courbure.`
+  },
+  {
+    title: "4. Propagation d’Einstein (Prop. 4.1)",
+    short: "‖Ric − λ(t)g‖₂ → 0",
+    visual: "s2s2",
+    content: `<span class="math">L = Ric − λ(t)g</span>, <span class="math">λ(t)=3/(1−6t)</span>. Évolution + Gronwall ⇒ la norme L² de l’erreur tend vers 0.`
+  },
+  {
+    title: "5. Limite compacte (Prop. 5.1)",
+    short: "Convergence vers (N,h)",
+    visual: "limit",
+    content: `Hamilton compactness → sous-suite + difféomorphismes Φ<sub>j</sub> : <span class="math">Φ<sub>j</sub>*g<sub>j</sub>(t) → (1−6t)h</span> avec <span class="math">Ric<sub>h</sub>=3h</span>, <span class="math">sec<sub>h</sub>≥0</span>.`
+  },
+  {
+    title: "6. Classification (Ass. 1.1)",
+    short: "N est un des trois modèles",
+    visual: "models",
+    content: `Toute Einstein 4D close à sec ≥ 0 a revêtement isométrique à S⁴, ℂP² ou S²(1/√3)×S²(1/√3). Donc N est l’un des trois.`
+  },
+  {
+    title: "7. Contradiction",
+    short: "M<sub>j</sub> devient un modèle",
+    visual: "contradiction",
+    content: `Pour j grand, M<sub>j</sub> ≅ N ≅ un des trois modèles → contradiction avec l’étape 1. Donc le gap existe.`
+  }
+];
+
+/* ========== State ========== */
+const state = {
+  step: 0,
+  rx: -0.55, ry: 0.35,
+  zoom: 2.1,
+  dragging: false, lx: 0, ly: 0,
+  t: 0, auto: false
+};
+
+/* ========== Canvas ========== */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const dpr = Math.min(devicePixelRatio || 1, 2);
+let W=0, H=0;
+
+function resize(){
+  const r = canvas.parentElement.getBoundingClientRect();
+  W = Math.round(r.width * dpr);
+  H = Math.round(r.height * dpr);
+  canvas.width = W; canvas.height = H;
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ========== Geometry helpers ========== */
+function project(p){
+  const cosY=Math.cos(state.ry), sinY=Math.sin(state.ry);
+  let x = p.x*cosY - p.z*sinY;
+  let z = p.x*sinY + p.z*cosY;
+  let y = p.y;
+  const cosX=Math.cos(state.rx), sinX=Math.sin(state.rx);
+  const y2 = y*cosX - z*sinX;
+  const z2 = y*sinX + z*cosX;
+  const s = state.zoom / (3.4 + z2);
+  return {x:x*s, y:y2*s, z:z2};
+}
+
+function sphere(u,v,t,amp=0.06){
+  const r = 1 + amp*Math.sin(5*v + t*1.2)*Math.cos(3*u - t*0.7);
+  return {x:r*Math.sin(u)*Math.cos(v), y:r*Math.cos(u), z:r*Math.sin(u)*Math.sin(v)};
+}
+function cp2(u,v,t){
+  const r = 1 + 0.09*Math.sin(3*v+t)*Math.cos(2*u+t*0.6);
+  const tw = 0.3*Math.sin(2*u+v+t*0.7);
+  return {
+    x:r*Math.sin(u)*Math.cos(v+tw),
+    y:r*Math.cos(u)+0.1*Math.sin(3*v+t),
+    z:r*Math.sin(u)*Math.sin(v+tw)
+  };
+}
+function s2s2(u,v,t){
+  const lam = 3/(1-0.3*Math.min(0.85,t*0.015));
+  const rad = 1+0.08*(lam-3);
+  const a = rad+0.12*Math.cos(2*u+t*0.8);
+  const b = rad+0.12*Math.cos(2*v-t*0.8);
+  return {
+    x:a*Math.sin(u)*Math.cos(v),
+    y:b*Math.cos(u)*Math.cos(v*0.9),
+    z:a*Math.sin(u)*Math.sin(v)+0.12*Math.sin(2*v+t)
+  };
+}
+function gap(u,v,t){
+  const decay = Math.exp(-t*0.25);
+  const r = 1 + 0.28*decay*Math.cos(3*u+v)*Math.sin(4*v+t*0.5);
+  return {x:r*Math.sin(u)*Math.cos(v), y:r*Math.cos(u), z:r*Math.sin(u)*Math.sin(v)};
+}
+function morph(u,v,t,fromFn,toFn,s){
+  const a = fromFn(u,v,t), b = toFn(u,v,t);
+  return {x:(1-s)*a.x+s*b.x, y:(1-s)*a.y+s*b.y, z:(1-s)*a.z+s*b.z};
+}
+
+/* ========== Draw ========== */
+const COLORS = {
+  gap:  {r:255,g:140,b:160},
+  s4:   {r:232,g:213,b:168},
+  cp2:  {r:200,g:160,b:255},
+  s2s2: {r:140,g:210,b:255},
+  limit:{r:180,g:220,b:180},
+  models:{r:232,g:213,b:168},
+  contradiction:{r:255,g:100,b:100}
+};
+
+function drawMesh(fn, rgb, t, Nlat=28, Nlon=40, alpha=0.55){
+  const pts = [], proj = [];
+  for(let i=0;i<=Nlat;i++){
+    const row=[], prow=[];
+    const u = Math.PI*i/Nlat;
+    for(let j=0;j<=Nlon;j++){
+      const v = 2*Math.PI*j/Nlon;
+      const p = fn(u,v,t);
+      row.push(p); prow.push(project(p));
+    }
+    pts.push(row); proj.push(prow);
+  }
+  const cx=W/2, cy=H/2, sc=Math.min(W,H)*0.38;
+  ctx.lineWidth = 1.0*dpr;
+
+  // faces (simple depth sort approx)
+  for(let i=0;i<Nlat;i++){
+    for(let j=0;j<Nlon;j++){
+      const q00=proj[i][j], q01=proj[i][j+1], q10=proj[i+1][j], q11=proj[i+1][j+1];
+      const depth = (q00.z+q01.z+q10.z+q11.z)/4;
+      if(depth < -1.2) continue;
+      const a = alpha * Math.max(0.08, Math.min(1, 0.25+depth*0.55));
+      ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${a*0.35})`;
+      ctx.beginPath();
+      ctx.moveTo(cx+q00.x*sc, cy+q00.y*sc);
+      ctx.lineTo(cx+q01.x*sc, cy+q01.y*sc);
+      ctx.lineTo(cx+q11.x*sc, cy+q11.y*sc);
+      ctx.lineTo(cx+q10.x*sc, cy+q10.y*sc);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  // wire
+  for(let i=0;i<=Nlat;i++){
+    for(let j=0;j<=Nlon;j++){
+      const q = proj[i][j];
+      const px=cx+q.x*sc, py=cy+q.y*sc;
+      const depth = (q.z+1.5)/3;
+      const a = alpha * Math.max(0.06, Math.min(1, 0.3+depth*0.7));
+      ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
+      if(j<Nlon){
+        const q1=proj[i][j+1];
+        ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(cx+q1.x*sc,cy+q1.y*sc); ctx.stroke();
+      }
+      if(i<Nlat){
+        const q2=proj[i+1][j];
+        ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(cx+q2.x*sc,cy+q2.y*sc); ctx.stroke();
+      }
+    }
+  }
+}
+
+function drawModels(t){
+  // three small models side by side
+  const positions = [-1.6, 0, 1.6];
+  const fns = [sphere, cp2, s2s2];
+  const cols = [COLORS.s4, COLORS.cp2, COLORS.s2s2];
+  const cx=W/2, cy=H/2, sc=Math.min(W,H)*0.22;
+
+  fns.forEach((fn,k)=>{
+    const ox = positions[k];
+    const rgb = cols[k];
+    const N=18;
+    for(let i=0;i<=N;i++){
+      const u=Math.PI*i/N;
+      for(let j=0;j<=N;j++){
+        const v=2*Math.PI*j/N;
+        const p=fn(u,v,t*0.6);
+        const q=project({x:p.x+ox, y:p.y, z:p.z});
+        // just points for lightness
+        if(i%2===0 && j%2===0){
+          const a = 0.4 + 0.4*Math.max(0,q.z*0.3+0.5);
+          ctx.fillStyle=`rgba(${rgb.r},${rgb.g},${rgb.b},${a})`;
+          ctx.beginPath();
+          ctx.arc(cx+q.x*sc, cy+q.y*sc, 1.6*dpr, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+    }
+  });
+}
+
+function render(now){
+  state.t = (now*0.001);
+  ctx.clearRect(0,0,W,H);
+
+  // soft glow
+  const g = ctx.createRadialGradient(W/2,H*0.42,H*0.02, W/2,H*0.42,H*0.5);
+  const rgb = COLORS[STEPS[state.step].visual] || COLORS.s4;
+  g.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},0.09)`);
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  const t = state.t;
+  const vis = STEPS[state.step].visual;
+
+  if(vis==='gap'){
+    drawMesh((u,v)=>gap(u,v,t), COLORS.gap, t, 26, 36, 0.6);
+  } else if(vis==='s4'){
+    drawMesh((u,v)=>sphere(u,v,t,0.04), COLORS.s4, t);
+  } else if(vis==='cp2'){
+    drawMesh((u,v)=>cp2(u,v,t), COLORS.cp2, t);
+  } else if(vis==='s2s2'){
+    drawMesh((u,v)=>s2s2(u,v,t), COLORS.s2s2, t);
+  } else if(vis==='limit'){
+    // morph from gap toward sphere
+    const s = Math.min(1, (t%8)/8);
+    drawMesh((u,v)=>morph(u,v,t, gap, sphere, s), COLORS.limit, t);
+  } else if(vis==='models'){
+    drawModels(t);
+  } else if(vis==='contradiction'){
+    // pulse red on sphere
+    const pulse = 0.5+0.5*Math.sin(t*3);
+    drawMesh((u,v)=>sphere(u,v,t,0.03+0.04*pulse), COLORS.contradiction, t, 24, 32, 0.5+0.3*pulse);
+  }
+
+  if(!state.dragging){
+    state.ry += 0.0035;
+    state.rx += 0.0009;
+    if(state.rx>1.1) state.rx=-1.1;
+  }
+
+  requestAnimationFrame(render);
+}
+
+/* ========== Interaction ========== */
+canvas.addEventListener('pointerdown', e=>{
+  state.dragging=true; state.lx=e.clientX; state.ly=e.clientY;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e=>{
+  if(!state.dragging) return;
+  state.ry += (e.clientX-state.lx)*0.008;
+  state.rx += (e.clientY-state.ly)*0.008;
+  state.rx = Math.max(-1.4, Math.min(1.4, state.rx));
+  state.lx=e.clientX; state.ly=e.clientY;
+});
+canvas.addEventListener('pointerup', ()=>state.dragging=false);
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  state.zoom = Math.max(1.2, Math.min(3.8, state.zoom - e.deltaY*0.0012));
+},{passive:false});
+
+/* ========== UI Steps ========== */
+const stepsEl = document.getElementById('steps');
+const badge = document.getElementById('badge');
+const label = document.getElementById('label');
+
+function setStep(i){
+  state.step = Math.max(0, Math.min(STEPS.length-1, i));
+  document.querySelectorAll('.step').forEach((el,idx)=>{
+    el.classList.toggle('active', idx===state.step);
+    el.classList.toggle('open', idx===state.step);
+  });
+  badge.textContent = `Étape ${state.step+1} · ${STEPS[state.step].title.split('·')[0].trim()}`;
+  label.textContent = STEPS[state.step].short;
+}
+
+STEPS.forEach((s,i)=>{
+  const div = document.createElement('div');
+  div.className = 'step' + (i===0?' active open':'');
+  div.innerHTML = `
+    <div class="step-head">
+      <div class="step-num">${i+1}</div>
+      <div class="step-title">${s.title}</div>
+    </div>
+    <div class="step-body"><div class="step-content">${s.content}</div></div>
+  `;
+  div.querySelector('.step-head').addEventListener('click', ()=>{
+    setStep(i);
+  });
+  stepsEl.appendChild(div);
+});
+
+document.getElementById('btnPrev').addEventListener('click', ()=>setStep(state.step-1));
+document.getElementById('btnNext').addEventListener('click', ()=>setStep(state.step+1));
+
+let autoTimer = null;
+document.getElementById('btnPlay').addEventListener('click', function(){
+  state.auto = !state.auto;
+  this.textContent = state.auto ? '⏸ Pause' : '▶ Auto';
+  if(state.auto){
+    autoTimer = setInterval(()=>{
+      if(state.step >= STEPS.length-1){ setStep(0); }
+      else setStep(state.step+1);
+    }, 4200);
+  } else {
+    clearInterval(autoTimer);
+  }
+});
+
+setStep(0);
+requestAnimationFrame(render);
+</script>
+</body>
+</html>
