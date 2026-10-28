@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -18,9 +18,9 @@
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
     font:14px/1.55 system-ui,sans-serif}
   #wrap{display:flex;height:100vh}
-  #panel{width:320px;flex-shrink:0;padding:14px;background:var(--panel);
+  #panel{width:340px;flex-shrink:0;padding:14px;background:var(--panel);
     overflow-y:auto;border-right:1px solid #21262d;transition:margin-left .35s ease}
-  body.record #panel{margin-left:-320px}
+  body.record #panel{margin-left:-340px}
   #panel h1{font-family:var(--serif);font-size:20px;font-weight:600;
     color:var(--acc);margin-bottom:4px}
   #panel h2{font-family:var(--serif);font-size:12px;font-weight:600;
@@ -39,12 +39,32 @@
     color:#c9d1d9;line-height:1.65;overflow-x:auto}
   #panel .eq b{color:var(--acc2);font-family:var(--serif);font-size:12px}
   #panel .sub{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-bottom:6px}
+  
+  /* LANGUAGE SELECTOR */
+  .lang-bar{display:flex;gap:6px;margin-top:12px;justify-content:center;flex-wrap:wrap}
+  .lang-btn{padding:6px 10px;background:#21262d;border:1px solid #30363d;
+    border-radius:6px;font-family:var(--mono);font-size:18px;cursor:pointer;
+    transition:.15s;line-height:1}
+  .lang-btn:hover{background:#30363d;border-color:var(--acc2)}
+  .lang-btn.active{background:var(--acc2);border-color:var(--acc2)}
+
+  /* SCRIPT CONTROLS IN PANEL */
+  #scriptPanelControls{display:none;flex-direction:column;gap:8px;margin-top:10px;
+    background:#0d1117;padding:10px;border-radius:6px;border:1px solid var(--acc2)}
+  body.video #scriptPanelControls{display:flex}
+  #scriptTextDisplay{font-family:var(--mono);font-size:12px;color:var(--fg);
+    line-height:1.5;margin-bottom:6px;min-height:80px;border-bottom:1px solid #30363d;padding-bottom:8px}
+  #scriptTextDisplay .step {color:var(--acc);font-weight:600;margin-right:4px}
+  .script-buttons{display:flex;gap:4px;justify-content:space-between}
+  .script-buttons button{flex:1;margin:0;padding:8px 0;font-size:14px;
+    display:flex;align-items:center;justify-content:center}
+  .script-buttons button.close-btn{background:#3a1416;color:var(--crit);border-color:var(--crit)}
+  .script-buttons button.close-btn:hover{background:var(--crit);color:#fff}
 
   #stage{flex:1;position:relative;background:radial-gradient(ellipse at 30% 20%, #1a2233 0%, #0a0e14 40%, #05070b 100%);overflow:hidden;min-width:0}
   #stage canvas{display:block;width:100%;height:100%;cursor:grab}
   #stage canvas:active{cursor:grabbing}
 
-  /* HUD client */
   #hud{position:absolute;top:12px;left:12px;font-family:var(--mono);font-size:11px;
     color:var(--muted);background:rgba(5,7,11,.82);padding:8px 12px;border-radius:6px;
     pointer-events:none;white-space:pre;border:1px solid #21262d;z-index:2}
@@ -71,6 +91,7 @@
     display:none;flex-direction:column;justify-content:space-between;
     padding:24px 0 28px 0}
   body.video #cinemaOverlay{display:flex}
+  
   #cinemaOverlay .top{text-align:center}
   #cinemaOverlay .title{font-family:var(--serif);font-size:54px;font-weight:300;
     color:#e6edf3;letter-spacing:.04em;line-height:1.05;
@@ -82,14 +103,22 @@
     padding:10px 24px;border-radius:6px;
     font-family:var(--mono);font-size:13px;color:#c9d1d9;line-height:1.9}
   #cinemaOverlay .params .k{color:var(--acc2);margin-right:6px}
+  
   #cinemaOverlay .bottom{text-align:center;font-family:var(--serif);color:#e6edf3}
-  #cinemaOverlay .bottom .fig{font-size:28px;font-weight:300;margin-bottom:8px}
+  #cinemaOverlay .bottom .fig{font-size:26px;font-weight:300;margin-bottom:8px}
   #cinemaOverlay .bottom .eq{font-family:var(--mono);font-size:14px;color:#c9d1d9;
     background:rgba(5,7,11,.7);border:1px solid #30363d;display:inline-block;
     padding:8px 20px;border-radius:6px;margin-bottom:14px}
-  #cinemaOverlay .bottom .legend{font-family:var(--mono);font-size:11.5px;color:var(--muted);
-    line-height:1.7}
-  #cinemaOverlay .bottom .legend .sw{margin-right:6px}
+
+  /* SCRIPT VOICEOVER DISPLAY (sans boutons) */
+  #scriptDisplayBox{position:absolute;bottom:140px;left:50%;transform:translateX(-50%);
+    width:85%;max-width:950px;background:rgba(5,7,11,.92);border:1px solid var(--acc2);
+    padding:20px 24px;border-radius:8px;font-family:var(--mono);font-size:16px;
+    color:#e6edf3;text-align:center;line-height:1.6;pointer-events:none;
+    backdrop-filter:blur(6px);transition:opacity 0.3s;box-shadow:0 4px 20px rgba(0,0,0,0.5);
+    display:none;z-index:5}
+  body.video #scriptDisplayBox.active {display:block}
+  #scriptDisplayBox .step {color:var(--acc);font-weight:600;margin-right:8px;font-size:18px}
 
   #cinemaTimer{position:absolute;top:28px;right:28px;font-family:var(--mono);
     font-size:14px;color:var(--muted);background:rgba(5,7,11,.7);padding:6px 12px;
@@ -130,100 +159,118 @@
 <body>
 <div id="wrap">
   <div id="panel">
-    <h1>Modèle de hauteur Lipschitz</h1>
-    <div class="sub">GFF · boucles O(2) · mode cinéma</div>
+    <h1 data-i18n="titleMain">Height Model & GFF</h1>
+    <div class="sub" data-i18n="titleSub">Lipschitz heights · O(2) loops</div>
 
-    <h2>1 · Modèle</h2>
-    <label>Poids <i>x</i> ∈ [1/√2, 1] : <span class="val" id="vx"></span></label>
+    <h2 data-i18n="hSec1">1 · Model</h2>
+    <label><span data-i18n="lblX">Weight x ∈ [1/√2, 1] :</span> <span class="val" id="vx"></span></label>
     <input type="range" id="x" min="0.7071" max="1" step="0.001" value="0.85">
-    <label>Taille du réseau <i>N</i> : <span class="val" id="vN"></span></label>
+    <label><span data-i18n="lblN">Grid size N :</span> <span class="val" id="vN"></span></label>
     <input type="range" id="N" min="3" max="14" step="1" value="9">
-    <label>Balayages Metropolis : <span class="val" id="vS"></span></label>
+    <label><span data-i18n="lblS">Metropolis sweeps :</span> <span class="val" id="vS"></span></label>
     <input type="range" id="S" min="10" max="120" step="5" value="50">
-    <button id="regen">⟳ Régénérer la hauteur</button>
+    <button id="regen" data-i18n="regen">⟳ Regenerate heights</button>
 
-    <h2>2 · Caméra</h2>
-    <label>Distance (zoom) : <span class="val" id="vd"></span></label>
-    <input type="range" id="d" min="6" max="20" step="1" value="12">
-    <label>Élévation : <span class="val" id="vel"></span></label>
+    <h2 data-i18n="hSec2">2 · Camera</h2>
+    <label><span data-i18n="lblD">Distance :</span> <span class="val" id="vd"></span></label>
+    <input type="range" id="d" min="6" max="80" step="1" value="12">
+    <label><span data-i18n="lblEl">Elevation :</span> <span class="val" id="vel"></span></label>
     <input type="range" id="el" min="10" max="80" step="1" value="35">
-    <label>Azimut : <span class="val" id="vaz"></span></label>
+    <label><span data-i18n="lblAz">Azimuth :</span> <span class="val" id="vaz"></span></label>
     <input type="range" id="az" min="0" max="360" step="1" value="30">
-    <label>Vitesse de rotation : <span class="val" id="vrot"></span></label>
+    <label><span data-i18n="lblRot">Rotation speed :</span> <span class="val" id="vrot"></span></label>
     <input type="range" id="rotSpeed" min="0" max="2" step="0.05" value="0.4">
-    <button id="toggleRot">⏸ Pause rotation</button>
-    <button id="resetCam">↺ Réinitialiser caméra</button>
+    <button id="toggleRot" data-i18n="toggleRot">⏸ Pause rotation</button>
+    <button id="resetCam" data-i18n="resetCam">↺ Reset camera</button>
 
-    <h2>3 · Affichage</h2>
-    <button id="toggleLoops">Boucles : ON</button>
+    <h2 data-i18n="hSec3">3 · Display</h2>
+    <button id="toggleLoops" data-i18n="toggleLoops">Loops : ON</button>
 
-    <h2>4 · Équations</h2>
-    <div class="eq"><b>Mesure :</b><br>P_{δ,x}(h) = x^{N_δ(h)}/Z_{δ,x}<br>N_δ(h) = Σ 1{h(u)≠h(v)}</div>
-    <div class="eq"><b>Boucles :</b><br>poids = 2^{#loops} · x^{#edges}</div>
-    <div class="eq"><b>GFF :</b><br>G_D = (−Δ_D)^{−1}<br>G(z,w) ~ (2π)^{−1} log(1/|z−w|)</div>
-    <div class="eq"><b>Thm 1.2 :</b><br>h_δ/σ(x) ⇒ Φ_D</div>
+    <h2>4 · Language / Langue / اللغة / ⵜⴰⵎⴰⵣⵉⵖⵜ / 中文</h2>
+    <div class="lang-bar">
+      <button class="lang-btn active" data-lang="en" title="English">🇺🇸</button>
+      <button class="lang-btn" data-lang="fr" title="Français">🇫🇷</button>
+      <button class="lang-btn" data-lang="ar" title="العربية">🇸🇦</button>
+      <button class="lang-btn" data-lang="zgh" title="Tamazight">🇲🇦</button>
+      <button class="lang-btn" data-lang="zh" title="中文">🇨🇳</button>
+    </div>
 
-    <h2>5 · Légende</h2>
+    <!-- SCRIPT CONTROLS IN PANEL (Appears in Cinema mode) -->
+    <div id="scriptPanelControls">
+      <div id="scriptTextDisplay"></div>
+      <div class="script-buttons">
+        <button id="prevScript" title="Previous">⏮</button>
+        <button id="playPauseScript" title="Play/Pause">⏸</button>
+        <button id="nextScript" title="Next">⏭</button>
+        <button id="closeScript" class="close-btn" title="Close">✕</button>
+      </div>
+    </div>
+
+    <h2 data-i18n="hSec5">5 · Equations</h2>
+    <div class="eq"><b data-i18n="eqLbl1">Measure :</b><br>P_{δ,x}(h) = x^{N_δ(h)}/Z_{δ,x}<br>N_δ(h) = Σ 1{h(u)≠h(v)}</div>
+    <div class="eq"><b data-i18n="eqLbl2">Loops :</b><br>weight = 2^{#loops} · x^{#edges}</div>
+    <div class="eq"><b data-i18n="eqLbl3">GFF :</b><br>G_D = (−Δ_D)^{−1}<br>G(z,w) ~ (2π)^{−1} log(1/|z−w|)</div>
+    <div class="eq"><b data-i18n="eqLbl4">Thm 1.2 :</b><br>h_δ/σ(x) ⇒ Φ_D</div>
+
+    <h2 data-i18n="hSec6">6 · Legend</h2>
     <div style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.9">
-      <div><span class="sw" style="background:#79c0ff"></span>hauteur h(u) &gt; 0</div>
-      <div><span class="sw" style="background:#ff7b72"></span>hauteur h(u) &lt; 0</div>
-      <div><span class="sw" style="background:#f0883e"></span>arête occupée (h(u)≠h(v))</div>
-      <div><span class="sw" style="background:#7ee787"></span>boucle de contour</div>
+      <div><span class="sw" style="background:#79c0ff"></span><span data-i18n="leg1">height h(u) &gt; 0</span></div>
+      <div><span class="sw" style="background:#ff7b72"></span><span data-i18n="leg2">height h(u) &lt; 0</span></div>
+      <div><span class="sw" style="background:#f0883e"></span><span data-i18n="leg3">occupied edge (h(u)≠h(v))</span></div>
+      <div><span class="sw" style="background:#7ee787"></span><span data-i18n="leg4">contour loop</span></div>
     </div>
   </div>
   <div id="stage">
     <div id="hud"></div>
     <div id="legendClient">
-      <div><span class="sw" style="background:#79c0ff"></span>h &gt; 0</div>
-      <div><span class="sw" style="background:#ff7b72"></span>h &lt; 0</div>
-      <div><span class="sw" style="background:#f0883e"></span>arête occupée</div>
-      <div><span class="sw" style="background:#7ee787"></span>boucle</div>
+      <div><span class="sw" style="background:#79c0ff"></span><span data-i18n="legC1">h &gt; 0</span></div>
+      <div><span class="sw" style="background:#ff7b72"></span><span data-i18n="legC2">h &lt; 0</span></div>
+      <div><span class="sw" style="background:#f0883e"></span><span data-i18n="legC3">occupied edge</span></div>
+      <div><span class="sw" style="background:#7ee787"></span><span data-i18n="legC4">loop</span></div>
     </div>
-    <div id="keysHint">glisser : orbite · molette : zoom · Espace : pause rotation</div>
+    <div id="keysHint" data-i18n="keysHint">drag : orbit · wheel : zoom · Space : pause rotation</div>
 
     <div id="cinemaOverlay">
       <div class="top">
-        <div class="title" id="cTitle">Lipschitz entier · GFF</div>
-        <div class="subtitle" id="cSub">Réseau triangulaire · boucles O(2)</div>
+        <div class="title" id="cTitle">Integer Lipschitz · GFF</div>
+        <div class="subtitle" id="cSub">Triangular grid · O(2) loops</div>
         <div class="params">
           <div><span class="k">N</span> <span id="cN">9</span> &nbsp;·&nbsp;
                <span class="k">x</span> <span id="cX">0.850</span> &nbsp;·&nbsp;
-               <span class="k">h moyen</span> <span id="cMean">0.00</span> &nbsp;·&nbsp;
+               <span class="k">h mean</span> <span id="cMean">0.00</span> &nbsp;·&nbsp;
                <span class="k">N_δ(h)</span> <span id="cNp">0</span></div>
         </div>
       </div>
       <div class="bottom">
-        <div class="fig" id="cFig">Réseau triangulaire · hauteur Lipschitz</div>
+        <div class="fig" id="cFig">Triangular grid · Lipschitz height</div>
         <div class="eq" id="cEq">P_{δ,x}(h) = x^{N_δ(h)}/Z_{δ,x}</div>
-        <div class="legend" id="cLeg">
-          <span class="sw" style="background:#79c0ff"></span>h &gt; 0 &nbsp;&nbsp;
-          <span class="sw" style="background:#ff7b72"></span>h &lt; 0 &nbsp;&nbsp;
-          <span class="sw" style="background:#f0883e"></span>arête occupée &nbsp;&nbsp;
-          <span class="sw" style="background:#7ee787"></span>boucle de contour
-        </div>
       </div>
     </div>
+
+    <!-- Script display (no buttons) -->
+    <div id="scriptDisplayBox"></div>
+
     <div id="cinemaTimer">00:00</div>
 
-    <button id="videoBtn">▶ Mode cinéma</button>
-    <button id="recordBtn">● Mode enregistrement</button>
+    <button id="videoBtn" data-i18n="videoBtn">▶ Cinema mode</button>
+    <button id="recordBtn" data-i18n="recordBtn">● Record mode</button>
 
     <div id="recBar">
-      <label style="margin:0">Résolution</label>
+      <label style="margin:0" data-i18n="lblRes">Resolution</label>
       <select id="recRes">
         <option value="720">720p</option>
         <option value="1080" selected>1080p</option>
         <option value="1440">1440p</option>
         <option value="2160">4K</option>
       </select>
-      <label style="margin:0">fps</label>
+      <label style="margin:0" data-i18n="lblFps">fps</label>
       <select id="recFps">
         <option value="24">24</option>
         <option value="30" selected>30</option>
         <option value="60">60</option>
       </select>
-      <button id="recBtn">● Enregistrer</button>
-      <button id="quitRecord" style="background:#21262d">✕ Quitter</button>
+      <button id="recBtn" data-i18n="recBtn">● Record</button>
+      <button id="quitRecord" style="background:#21262d" data-i18n="quitRecord">✕ Quit</button>
     </div>
     <div id="recInfo"></div>
   </div>
@@ -233,7 +280,7 @@
 "use strict";
 
 // ============================================================
-// 1. Réseau triangulaire
+// 1. TRIANGULAR LATTICE
 // ============================================================
 const SQ3 = Math.sqrt(3);
 function buildFaces(N) {
@@ -261,7 +308,7 @@ function buildAdjacency(faces) {
 }
 
 // ============================================================
-// 2. Metropolis
+// 2. METROPOLIS
 // ============================================================
 function sampleHeight(faces, x, sweeps) {
   for (const f of faces) f.h = 0;
@@ -291,7 +338,7 @@ function sampleHeight(faces, x, sweeps) {
 }
 
 // ============================================================
-// 3. Arêtes occupées (contours)
+// 3. CONTOUR EDGES
 // ============================================================
 function buildContourEdges(faces) {
   const seen = new Set(), segs = [];
@@ -307,20 +354,24 @@ function buildContourEdges(faces) {
 }
 
 // ============================================================
-// 4. État global
+// 4. GLOBAL STATE
 // ============================================================
 const state = {
   x: 0.85, N: 9, sweeps: 50,
   d: 12, el: 35, az: 30,
-  autoRot: true, rotSpeed: 0.4,
+  autoRot: false, rotSpeed: 0.9,
   showLoops: true,
-  mode: 'client', // 'client' | 'video' | 'record'
+  mode: 'client',
+  lang: 'en',
+  scriptStep: 0,
+  scriptPlaying: true,
+  scriptActive: false
 };
 
 let faces = [], contour = [], centerX = 0, centerY = 0;
 
 // ============================================================
-// 5. Canvas et projection
+// 5. CANVAS & PROJECTION
 // ============================================================
 const stage = document.getElementById("stage");
 const cv = document.getElementById("cv");
@@ -342,7 +393,6 @@ function resize() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-// camera orbitale — centre calculé dynamiquement sur le patch
 function makeCamera(W, H, az, el, dist, scale) {
   const a = az * Math.PI / 180, e = el * Math.PI / 180;
   const ca = Math.cos(a), sa = Math.sin(a);
@@ -360,7 +410,7 @@ function makeCamera(W, H, az, el, dist, scale) {
 }
 
 // ============================================================
-// 6. Rendu — rendu correct avec tri par profondeur réelle
+// 6. RENDERING
 // ============================================================
 function render() {
   const W = stage.clientWidth, H = stage.clientHeight;
@@ -372,10 +422,9 @@ function render() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  const scale = state.d * 10;
+  const scale = state.d * 7;
   const proj = makeCamera(W, H, state.az, state.el, 8, scale);
 
-  // grille de sol légère
   ctx.strokeStyle = "rgba(255,255,255,0.045)";
   ctx.lineWidth = 1;
   for (const f of faces) {
@@ -392,17 +441,14 @@ function render() {
     ctx.stroke();
   }
 
-  // tri des faces par profondeur (peintre) — profondeur = z du centre de colonne
   const sorted = faces.slice().sort((a, b) => {
     const A = proj(a.cx, a.cy, a.h);
     const B = proj(b.cx, b.cy, b.h);
     return A[2] - B[2];
   });
 
-  // colonnes
   for (const f of sorted) drawColumn(proj, f);
 
-  // boucles
   if (state.showLoops) {
     for (const s of contour) {
       drawTube(proj, s, "rgba(240,136,62,0.95)", 3);
@@ -417,18 +463,16 @@ function render() {
     }
   }
 
-  // HUD client
   const mean = faces.reduce((s, f) => s + f.h, 0) / Math.max(1, faces.length);
   const nPairs = contour.length;
   const hudEl = document.getElementById("hud");
   if (hudEl) {
     hudEl.textContent =
       `x = ${state.x.toFixed(3)}   N = ${state.N}\n` +
-      `h moyen = ${mean.toFixed(2)}   N_δ(h) = ${nPairs}\n` +
+      `h mean = ${mean.toFixed(2)}   N_δ(h) = ${nPairs}\n` +
       `az = ${Math.round(state.az)}°   el = ${Math.round(state.el)}°`;
   }
 
-  // Mise à jour overlay cinéma
   updateCinemaText(mean, nPairs);
 }
 
@@ -442,7 +486,6 @@ function drawColumn(proj, f) {
   }
   const top = pts.map(([x, y]) => proj(x, y, h));
   const bot = pts.map(([x, y]) => proj(x, y, 0));
-  // Faces latérales
   for (let k = 0; k < 6; k++) {
     const k2 = (k + 1) % 6;
     ctx.beginPath();
@@ -458,7 +501,6 @@ function drawColumn(proj, f) {
     ctx.fillStyle = col;
     ctx.fill();
   }
-  // Dessus (toujours dessiné, même pour h=0 → évite les "pyramides vides")
   ctx.beginPath();
   ctx.moveTo(top[0][0], top[0][1]);
   for (let k = 1; k < 6; k++) ctx.lineTo(top[k][0], top[k][1]);
@@ -484,7 +526,7 @@ function drawTube(proj, s, color, width) {
 }
 
 // ============================================================
-// 7. Régénération — centre calculé dynamiquement
+// 7. REGENERATE
 // ============================================================
 function regenerate() {
   faces = buildFaces(state.N);
@@ -492,7 +534,6 @@ function regenerate() {
   sampleHeight(faces, state.x, state.sweeps);
   contour = buildContourEdges(faces);
 
-  // centroïde du patch : moyenne des centres de faces
   let sx = 0, sy = 0;
   for (const f of faces) { sx += f.cx; sy += f.cy; }
   centerX = sx / Math.max(1, faces.length);
@@ -503,7 +544,239 @@ function regenerate() {
 }
 
 // ============================================================
-// 8. Modes cinéma / enregistrement
+// 8. VOICEOVER SCRIPTS & LANGUAGE LOGIC
+// ============================================================
+const scripts = {
+  en: [
+    { step: "1", text: "Welcome! This is a random height model on a triangular grid. Each hexagonal column represents the height of a discrete surface.", time: 7000 },
+    { step: "2", text: "The rule is simple: neighboring columns can differ by at most 1. This is the Lipschitz constraint, ensuring the surface is not too steep.", time: 8000 },
+    { step: "3", text: "The orange lines are 'occupied edges' — where the height changes between two neighbors. Notice how they form closed loops.", time: 8000 },
+    { step: "4", text: "These loops are the famous O(2) loop model! As we tune the weight 'x' towards 1/√2, the surface flattens, and the loops become critical.", time: 9000 },
+    { step: "5", text: "When we scale this discrete surface down (δ → 0) and divide by its standard deviation σ(x), the fluctuations converge to the continuous Gaussian Free Field (GFF).", time: 10000 }
+  ],
+  fr: [
+    { step: "1", text: "Bienvenue ! Voici un modèle de hauteur aléatoire sur un réseau triangulaire. Chaque colonne hexagonale représente la hauteur d'une surface discrète.", time: 8000 },
+    { step: "2", text: "La règle est simple : deux colonnes voisines diffèrent d'au plus 1. C'est la contrainte de Lipschitz, qui empêche la surface d'être trop abrupte.", time: 10000 },
+    { step: "3", text: "Les lignes orange sont les 'arêtes occupées' — là où la hauteur change. Remarquez qu'elles forment des boucles fermées.", time: 15000 },
+    { step: "4", text: "Ces boucles forment le célèbre modèle O(2) ! Quand le poids 'x' descend vers 1/√2, la surface s'aplatit et les boucles deviennent critiques.", time: 15000 },
+    { step: "5", text: "Quand on réduit l'échelle de cette surface (δ → 0) et qu'on normalise par σ(x), les fluctuations convergent vers le Champ Gaussien Libre (GFF).", time: 12000 }
+  ],
+  ar: [
+    { step: "1", text: "مرحباً! هذا نموذج ارتفاع عشوائي على شبكة مثلثة. كل عمود سداسي يمثل ارتفاع سطح متقطع.", time: 9000 },
+    { step: "2", text: "القاعدة بسيطة: الأعمدة المتجاورة يمكن أن تختلف بمقدار 1 فقط. هذا هو قيد ليبشيتز الذي يضمن عدم انحدار السطح بشدة.", time: 15000 },
+    { step: "3", text: "الخطوط البرتقالية هي 'الحواف المشغولة' حيث يتغير الارتفاع. لاحظ كيف تشكل حلقات مغلقة.", time: 15000 },
+    { step: "4", text: "هذه الحلقات هي نموذج O(2) الشهير! كلما اقتربنا من الوزن الحرج، يصبح السطح أكثر استواءً وتصبح الحلقات حرجة.", time: 16000 },
+    { step: "5", text: "عندما نقوم بتصغير هذا السطح (δ → 0) ونقسم على σ(x)، تتقارب التقلبات نحو حقل غاوسي حر (GFF).", time: 15000 }
+  ],
+  zgh: [
+    { step: "1", text: "ⴰⵏⵙⵓⴼ ⵢⴰⴷ! ⴰⴷ ⵉⴳⴰ ⵢⴰⵏ ⵓⵎⴷⵢⴰ ⵏ ⵜⵖⵣⵉ ⵜⴰⵎⵓⵔⴰⵏⵜ ⵖⴼ ⵢⴰⵏ ⵓⵥⵟⵟⴰ ⴰⵎⴽⵕⴹⴰⵙ.", time: 10000 },
+    { step: "2", text: "ⴰⵍⵍⵓⴳ ⵉⴳⴰ ⵓⵙⵍⴽⵉⵏ: ⵜⵉⵙⵎⵓⴽⴽⴰⵍ ⵜⵉⵎⵙⵓⵜⴰⵍⵉⵏ ⵣⴷⵉⵏⵜ ⵙ 1. ⴰⵢⴰ ⴷ ⵜⴰⵎⵓⵔⴰⵏⵜ ⵏ ⵍⵉⴱⵛⵉⵜⵣ.", time: 11000 },
+    { step: "3", text: "ⵜⵉⵣⵔⵉⵔⵉⵏ ⵜⵉⵍⵎⵓⵏⵉⵏ ⴷ ⵜⵉⴼⵔⴽⵉⵡⵉⵏ ⵏ ⵜⵖⵣⵉ. ⵥⵕ ⵎⴰⵎⵏⴽ ⵜⴳⴰ ⵜⵉⵎⵔⵙⴰⵍ ⵜⵉⵎⴽⴽⵓⵥⴰⵍ.", time: 11000 },
+    { step: "4", text: "ⵜⵉⵎⵔⵙⴰⵍ ⴰⴷ ⴷ ⵓⵎⴷⵢⴰ O(2) ⴰⵎⵇⵇⵔⴰⵏ! ⵎⴰⵢⴰⴷ ⵉⴳⴰⵏ ⴰⵎⵙⴰⵙⴰ ⵏ ⵜⵖⵣⵉ.", time: 12000 },
+    { step: "5", text: "ⵎⵉ ⵏⵙⵎⵥⵥⵉ ⴰⵙⴰⵜⵉ ⴰⴷ (δ → 0) ⵏⵙⵎⵓⵇⵇⵍ ⵙ σ(x), ⵜⵉⵎⵙⵓⵜⴰⵍ ⵜⵉⵎⴳⴰⵍⴰⵏⵉⵏ ⴰⴷ ⴽⴽⵙⵏⵜ ⵙ ⵓⵎⴷⵢⴰ ⴰⴳⴰⵡⵙⴰⵏ ⴰⵎⵙⴰⵙⴰ (GFF).", time: 13000 }
+  ],
+  zh: [
+    { step: "1", text: "欢迎！这是一个三角网格上的随机高度模型。每个六边形柱体代表一个离散表面的高度。", time: 9000 },
+    { step: "2", text: "规则很简单：相邻柱体的高度差最多为 1。这就是利普希茨约束，确保表面不会过于陡峭。", time: 15000 },
+    { step: "3", text: "橙色线条是'占用边'——即两个相邻柱体高度不同的地方。注意它们是如何形成闭合环路的。", time: 15000 },
+    { step: "4", text: "这些环路就是著名的 O(2) 环模型！当权重 'x' 趋近于 1/√2 时，表面变得平坦，环路变得临界。", time: 16000 },
+    { step: "5", text: "当我们缩小这个离散表面（δ → 0）并除以其标准差 σ(x) 时，波动收敛到连续的高斯自由场（GFF）。", time: 15000 }
+  ]
+};
+
+const uiTranslations = {
+  en: {
+    titleMain: "Height Model & GFF", titleSub: "Lipschitz heights · O(2) loops",
+    hSec1: "1 · Model", lblX: "Weight x ∈ [1/√2, 1] :", lblN: "Grid size N :", lblS: "Metropolis sweeps :", regen: "⟳ Regenerate heights",
+    hSec2: "2 · Camera", lblD: "Distance :", lblEl: "Elevation :", lblAz: "Azimuth :", lblRot: "Rotation speed :", toggleRot: "⏸ Pause rotation", resetCam: "↺ Reset camera",
+    hSec3: "3 · Display", toggleLoops: "Loops : ON",
+    hSec5: "5 · Equations", eqLbl1: "Measure :", eqLbl2: "Loops :", eqLbl3: "GFF :", eqLbl4: "Thm 1.2 :",
+    hSec6: "6 · Legend", leg1: "height h(u) > 0", leg2: "height h(u) < 0", leg3: "occupied edge (h(u)≠h(v))", leg4: "contour loop",
+    legC1: "h > 0", legC2: "h < 0", legC3: "occupied edge", legC4: "loop",
+    cTitle: "Integer Lipschitz · GFF", cSub: "Triangular grid · O(2) loops", cFig: "Triangular grid · Lipschitz height",
+    videoBtn: "▶ Cinema mode", recordBtn: "● Record mode", lblRes: "Resolution", lblFps: "fps", recBtn: "● Record", quitRecord: "✕ Quit", keysHint: "drag : orbit · wheel : zoom · Space : pause rotation",
+    exitCinema: "✕ Exit cinema", exitRecord: "✕ Exit record"
+  },
+  fr: {
+    titleMain: "Modèle de hauteur & GFF", titleSub: "Hauteurs de Lipschitz · boucles O(2)",
+    hSec1: "1 · Modèle", lblX: "Poids x ∈ [1/√2, 1] :", lblN: "Taille du réseau N :", lblS: "Balayages Metropolis :", regen: "⟳ Régénérer la hauteur",
+    hSec2: "2 · Caméra", lblD: "Distance :", lblEl: "Élévation :", lblAz: "Azimut :", lblRot: "Vitesse de rotation :", toggleRot: "⏸ Pause rotation", resetCam: "↺ Réinitialiser caméra",
+    hSec3: "3 · Affichage", toggleLoops: "Boucles : ON",
+    hSec5: "5 · Équations", eqLbl1: "Mesure :", eqLbl2: "Boucles :", eqLbl3: "GFF :", eqLbl4: "Thm 1.2 :",
+    hSec6: "6 · Légende", leg1: "hauteur h(u) > 0", leg2: "hauteur h(u) < 0", leg3: "arête occupée (h(u)≠h(v))", leg4: "boucle de contour",
+    legC1: "h > 0", legC2: "h < 0", legC3: "arête occupée", legC4: "boucle",
+    cTitle: "Lipschitz entier · GFF", cSub: "Réseau triangulaire · boucles O(2)", cFig: "Réseau triangulaire · hauteur Lipschitz",
+    videoBtn: "▶ Mode cinéma", recordBtn: "● Mode enregistrement", lblRes: "Résolution", lblFps: "fps", recBtn: "● Enregistrer", quitRecord: "✕ Quitter", keysHint: "glisser : orbite · molette : zoom · Espace : pause rotation",
+    exitCinema: "✕ Quitter cinéma", exitRecord: "✕ Quitter enregistrement"
+  },
+  ar: {
+    titleMain: "نموذج الارتفاع والحقل الغاوسي الحر", titleSub: "ارتفاعات ليبشيتز · حلقات O(2)",
+    hSec1: "1 · النموذج", lblX: "الوزن x ∈ [1/√2, 1] :", lblN: "حجم الشبكة N :", lblS: "خطوات ميتروبوليس :", regen: "⟳ إعادة توليد الارتفاعات",
+    hSec2: "2 · الكاميرا", lblD: "المسافة :", lblEl: "الارتفاع :", lblAz: "الزاوية :", lblRot: "سرعة الدوران :", toggleRot: "⏸ إيقاف الدوران", resetCam: "↺ إعادة ضبط الكاميرا",
+    hSec3: "3 · العرض", toggleLoops: "الحلقات : مفعلة",
+    hSec5: "5 · المعادلات", eqLbl1: "القياس :", eqLbl2: "الحلقات :", eqLbl3: "GFF :", eqLbl4: "نظرية 1.2 :",
+    hSec6: "6 · المفتاح", leg1: "الارتفاع h(u) > 0", leg2: "الارتفاع h(u) < 0", leg3: "حافة مشغولة (h(u)≠h(v))", leg4: "حلقة الكنتور",
+    legC1: "h > 0", legC2: "h < 0", legC3: "حافة مشغولة", legC4: "حلقة",
+    cTitle: "ليبشيتز صحيح · GFF", cSub: "شبكة مثلثة · حلقات O(2)", cFig: "شبكة مثلثة · ارتفاع ليبشيتز",
+    videoBtn: "▶ وضع السينما", recordBtn: "● وضع التسجيل", lblRes: "الدقة", lblFps: "إطار/ثانية", recBtn: "● تسجيل", quitRecord: "✕ خروج", keysHint: "سحب : مدار · عجلة : تكبير · مسافة : إيقاف الدوران",
+    exitCinema: "✕ خروج من السينما", exitRecord: "✕ خروج من التسجيل"
+  },
+  zgh: {
+    titleMain: "ⴰⵎⴷⵢⴰ ⵏ ⵜⵖⵣⵉ & GFF", titleSub: "ⵜⵉⵖⵣⵉⵡⵉⵏ ⵏ ⵍⵉⴱⵛⵉⵜⵣ · ⵜⵉⵎⵔⵙⴰⵍ O(2)",
+    hSec1: "1 · ⴰⵎⴷⵢⴰ", lblX: "ⴰⵣⴰⵍ x ∈ [1/√2, 1] :", lblN: "ⵜⵉⵖⵣⵉ ⵏ ⵓⵥⵟⵟⴰ N :", lblS: "ⵜⵉⵎⵙⵓⵜⴰⵍ ⵏ ⵎⵉⵜⵔⵓⴱⵓⵍⵉⵙ :", regen: "⟳ ⵙⵎⴰⵢⵏⵓ ⵜⵉⵖⵣⵉⵡⵉⵏ",
+    hSec2: "2 · ⵜⴰⴽⴰⵎⵉⵔⴰ", lblD: "ⵜⴰⵎⵢⴰⵡⴰⵙⵜ :", lblEl: "ⴰⵜⵜⵓⵢ :", lblAz: "ⵜⴰⵎⵓⵖⵍⵉ :", lblRot: "ⵜⴰⵣⵣⴰⵔⵜ ⵏ ⵓⵙⵓⵏⴼⵓ :", toggleRot: "⏸ ⵙⴱⴷⴷ ⴰⵙⵓⵏⴼⵓ", resetCam: "↺ ⵙⵎⵓⵜⵜⵢ ⵜⴰⴽⴰⵎⵉⵔⴰ",
+    hSec3: "3 · ⵜⴰⵙⴽⵏⵉⵜ", toggleLoops: "ⵜⵉⵎⵔⵙⴰⵍ : ⵜⵉⵎⵉⵔⵉⵏ",
+    hSec5: "5 · ⵜⵉⵎⵙⵉⵙⵍⵜⵉⵏ", eqLbl1: "ⴰⵙⴰⵜⵉ :", eqLbl2: "ⵜⵉⵎⵔⵙⴰⵍ :", eqLbl3: "GFF :", eqLbl4: "ⵜⵉⵣⵔⵉ 1.2 :",
+    hSec6: "6 · ⵜⴰⵎⴰⵜⴰⵔⵜ", leg1: "ⵜⴰⵖⵣⵉ h(u) > 0", leg2: "ⵜⴰⵖⵣⵉ h(u) < 0", leg3: "ⵜⴰⴼⵔⴽⵉⵜ ⵜⴰⵎⵙⵓⵜⴰⵍⵜ (h(u)≠h(v))", leg4: "ⵜⴰⵎⵔⵙⴰⵍⵜ ⵏ ⵓⴽⵏⵜⵓⵕ",
+    legC1: "h > 0", legC2: "h < 0", legC3: "ⵜⴰⴼⵔⴽⵉⵜ ⵜⴰⵎⵙⵓⵜⴰⵍⵜ", legC4: "ⵜⴰⵎⵔⵙⴰⵍⵜ",
+    cTitle: "ⵍⵉⴱⵛⵉⵜⵣ ⴰⵎⵎⵉⴷ · GFF", cSub: "ⴰⵥⵟⵟⴰ ⴰⵎⴽⵕⴹⴰⵙ · ⵜⵉⵎⵔⵙⴰⵍ O(2)", cFig: "ⴰⵥⵟⵟⴰ ⴰⵎⴽⵕⴹⴰⵙ · ⵜⴰⵖⵣⵉ ⵏ ⵍⵉⴱⵛⵉⵜⵣ",
+    videoBtn: "▶ ⴰⵎⴰⴷⴰ ⵏ ⵙⵉⵏⵉⵎⴰ", recordBtn: "● ⴰⵎⴰⴷⴰ ⵏ ⵓⵙⵓⵙⵔⵓ", lblRes: "ⵜⴰⵣⵡⴰⵔⵜ", lblFps: "fps", recBtn: "● ⵙⵙⵓⵙⵔ", quitRecord: "✕ ⴼⴼⵖ", keysHint: "ⵜⴰⵎⵢⴰⵡⴰⵙⵜ : ⵜⴰⵎⵓⵖⵍⵉ · ⵜⴰⵎⵙⴽⴰⵔⵜ : ⵜⴰⵙⵎⵖⵓⵔⵜ · ⵜⴰⵎⵙⴽⴰⵔⵜ : ⵙⴱⴷⴷ ⴰⵙⵓⵏⴼⵓ",
+    exitCinema: "✕ ⴼⴼⵖ ⵙⴳ ⵙⵉⵏⵉⵎⴰ", exitRecord: "✕ ⴼⴼⵖ ⵙⴳ ⵓⵙⵓⵙⵔⵓ"
+  },
+  zh: {
+    titleMain: "高度模型与高斯自由场", titleSub: "利普希茨高度 · O(2) 环",
+    hSec1: "1 · 模型", lblX: "权重 x ∈ [1/√2, 1] :", lblN: "网格大小 N :", lblS: "Metropolis 步数 :", regen: "⟳ 重新生成高度",
+    hSec2: "2 · 摄像机", lblD: "距离 :", lblEl: "仰角 :", lblAz: "方位角 :", lblRot: "旋转速度 :", toggleRot: "⏸ 暂停旋转", resetCam: "↺ 重置摄像机",
+    hSec3: "3 · 显示", toggleLoops: "环 : 开",
+    hSec5: "5 · 方程", eqLbl1: "测度 :", eqLbl2: "环 :", eqLbl3: "GFF :", eqLbl4: "定理 1.2 :",
+    hSec6: "6 · 图例", leg1: "高度 h(u) > 0", leg2: "高度 h(u) < 0", leg3: "占用边 (h(u)≠h(v))", leg4: "轮廓环",
+    legC1: "h > 0", legC2: "h < 0", legC3: "占用边", legC4: "环",
+    cTitle: "整数利普希茨 · GFF", cSub: "三角网格 · O(2) 环", cFig: "三角网格 · 利普希茨高度",
+    videoBtn: "▶ 电影模式", recordBtn: "● 录制模式", lblRes: "分辨率", lblFps: "帧/秒", recBtn: "● 录制", quitRecord: "✕ 退出", keysHint: "拖拽 : 轨道 · 滚轮 : 缩放 · 空格 : 暂停旋转",
+    exitCinema: "✕ 退出电影模式", exitRecord: "✕ 退出录制模式"
+  }
+};
+
+function updateUILanguage() {
+  const dict = uiTranslations[state.lang];
+  if (!dict) return;
+  
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) {
+      el.textContent = dict[key];
+    }
+  });
+
+  const loopsBtn = document.getElementById('toggleLoops');
+  if (loopsBtn) loopsBtn.textContent = dict.toggleLoops.replace('ON', state.showLoops ? 'ON' : 'OFF').replace('开', state.showLoops ? '开' : '关');
+  
+  const rotBtn = document.getElementById('toggleRot');
+  if (rotBtn) {
+    if (state.autoRot) {
+      rotBtn.textContent = dict.toggleRot;
+    } else {
+      rotBtn.textContent = dict.toggleRot.replace('⏸', '▶').replace('Pause', 'Play').replace('إيقاف', 'تشغيل').replace('暂停', '开始');
+    }
+  }
+
+  if (state.mode === 'video') {
+    updateScriptUI();
+  }
+  
+  syncUI();
+}
+
+// ============================================================
+// 9. SCRIPT CONTROLS & TIMER LOGIC
+// ============================================================
+let scriptTimer = null;
+
+function updateScriptUI() {
+  const stepData = scripts[state.lang][state.scriptStep];
+  if (!stepData) return;
+  
+  // Update left panel text
+  const panelDisplay = document.getElementById("scriptTextDisplay");
+  if (panelDisplay) {
+    panelDisplay.innerHTML = `<span class="step">${stepData.step}/5</span> ${stepData.text}`;
+  }
+  
+  // Update overlay text
+  const overlayBox = document.getElementById("scriptDisplayBox");
+  if (overlayBox) {
+    overlayBox.innerHTML = `<span class="step">${stepData.step}/5</span> ${stepData.text}`;
+    overlayBox.style.opacity = 0;
+    setTimeout(() => { overlayBox.style.opacity = 1; }, 50);
+  }
+}
+
+function startScript() {
+  state.scriptStep = 0;
+  state.scriptPlaying = true;
+  state.scriptActive = true;
+  document.getElementById("scriptDisplayBox").classList.add("active");
+  document.getElementById("playPauseScript").textContent = "⏸";
+  updateScriptUI();
+  resetScriptTimer();
+}
+
+function resetScriptTimer() {
+  if (scriptTimer) clearTimeout(scriptTimer);
+  if (!state.scriptPlaying || !state.scriptActive) return;
+  
+  const stepData = scripts[state.lang][state.scriptStep];
+  if (stepData && stepData.time) {
+    scriptTimer = setTimeout(() => {
+      if (state.scriptStep < 4) {
+        state.scriptStep++;
+        updateScriptUI();
+        resetScriptTimer();
+      } else {
+        state.scriptPlaying = false;
+        document.getElementById("playPauseScript").textContent = "▶";
+      }
+    }, stepData.time);
+  }
+}
+
+function stopScript() {
+  if (scriptTimer) { clearTimeout(scriptTimer); scriptTimer = null; }
+  document.getElementById("scriptDisplayBox").classList.remove("active");
+  state.scriptStep = 0;
+  state.scriptPlaying = true;
+  state.scriptActive = false;
+}
+
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.lang = btn.dataset.lang;
+    updateUILanguage(); 
+    if (state.mode === 'video') {
+      resetScriptTimer();
+    }
+  };
+});
+
+// SCRIPT CONTROLS EVENT LISTENERS
+document.getElementById('prevScript').onclick = () => {
+  if (state.scriptStep > 0) {
+    state.scriptStep--;
+    updateScriptUI();
+    resetScriptTimer();
+  }
+};
+document.getElementById('nextScript').onclick = () => {
+  if (state.scriptStep < 4) {
+    state.scriptStep++;
+    updateScriptUI();
+    resetScriptTimer();
+  }
+};
+document.getElementById('playPauseScript').onclick = () => {
+  state.scriptPlaying = !state.scriptPlaying;
+  document.getElementById('playPauseScript').textContent = state.scriptPlaying ? "⏸" : "▶";
+  if (state.scriptPlaying) resetScriptTimer();
+  else if (scriptTimer) clearTimeout(scriptTimer);
+};
+document.getElementById('closeScript').onclick = () => {
+  stopScript();
+};
+
+// ============================================================
+// 10. MODES (CINEMA / RECORD)
 // ============================================================
 const cinemaTimerEl = document.getElementById("cinemaTimer");
 let videoStart = 0, videoRAF = null;
@@ -512,16 +785,19 @@ function setMode(mode) {
   state.mode = mode;
   document.body.classList.toggle('video', mode === 'video');
   document.body.classList.toggle('record', mode === 'record');
-  document.getElementById('videoBtn').textContent =
-    mode === 'video' ? '✕ Quitter cinéma' : '▶ Mode cinéma';
-  document.getElementById('recordBtn').textContent =
-    mode === 'record' ? '✕ Quitter enregistrement' : '● Mode enregistrement';
+  
+  const dict = uiTranslations[state.lang];
+  document.getElementById('videoBtn').textContent = mode === 'video' ? dict.exitCinema : dict.videoBtn;
+  document.getElementById('recordBtn').textContent = mode === 'record' ? dict.exitRecord : dict.recordBtn;
+    
   if (mode === 'video') {
     videoStart = performance.now();
     if (!videoRAF) videoRAF = requestAnimationFrame(updateTimer);
+    startScript();
   } else {
     if (videoRAF) { cancelAnimationFrame(videoRAF); videoRAF = null; }
     cinemaTimerEl.textContent = '00:00';
+    stopScript();
   }
   if (mode === 'client') stopRecording();
   setTimeout(() => { resize(); render(); }, 380);
@@ -545,7 +821,7 @@ document.getElementById('recordBtn').onclick = () => {
 document.getElementById('quitRecord').onclick = () => setMode('client');
 
 // ============================================================
-// 9. Overlay cinéma
+// 11. CINEMA OVERLAY
 // ============================================================
 function updateCinemaText(mean, nPairs) {
   document.getElementById('cN').textContent = state.N;
@@ -555,7 +831,7 @@ function updateCinemaText(mean, nPairs) {
 }
 
 // ============================================================
-// 10. Enregistrement WebM
+// 12. RECORDING (WEBM)
 // ============================================================
 let mediaRecorder = null, recordedChunks = [], recStart = 0, recRAF = null;
 const recBtn = document.getElementById('recBtn');
@@ -588,37 +864,27 @@ function startRecording() {
     a.download = `lipschitz-gff-${Date.now()}.webm`;
     a.click();
     URL.revokeObjectURL(url);
-    recInfo.textContent = '✓ Vidéo téléchargée';
+    recInfo.textContent = '✓ Video downloaded';
     setTimeout(() => { recInfo.textContent = ''; }, 3000);
   };
   mediaRecorder.start();
 
   function recLoop() {
     if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
-    // Rendu à la résolution cible dans un canvas offscreen
-    // On utilise les dimensions de l'écran mais à l'échelle cible
     const srcW = stage.clientWidth, srcH = stage.clientHeight;
     recCtx.fillStyle = "#0a0e14";
     recCtx.fillRect(0, 0, W, H);
-    // recompose la scène dans le canvas offscreen via un rendu temporaire
     const oldW = canvas.width, oldH = canvas.height;
     const dpr = window.devicePixelRatio || 1;
-    const saveTransform = ctx.getTransform();
-    // redimensionner temporairement le canvas pour capturer à la bonne résolution
     canvas.width = W;
     canvas.height = H;
-    const r = stage.getBoundingClientRect();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    // Recalculer le rendu à l'échelle cible
-    const savedState = { ...state };
-    // Rendu normal (utilise les dimensions réelles du canvas)
     render();
     recCtx.drawImage(canvas, 0, 0, W, H);
-    // Restaurer
     canvas.width = oldW;
     canvas.height = oldH;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // Overlay
+    
     drawOverlay(recCtx, W, H);
     const t = (performance.now() - recStart)/1000;
     const mm = String(Math.floor(t/60)).padStart(2,'0');
@@ -628,7 +894,7 @@ function startRecording() {
   }
   recStart = performance.now();
   recLoop();
-  recBtn.textContent = '■ Arrêter';
+  recBtn.textContent = '■ Stop';
   recBtn.classList.add('recording');
 }
 
@@ -636,20 +902,18 @@ function drawOverlay(ctx, W, H) {
   const scale = H / 1080;
   const mean = faces.reduce((s, f) => s + f.h, 0) / Math.max(1, faces.length);
   const nPairs = contour.length;
+  const dict = uiTranslations[state.lang];
 
-  // Titre
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#e6edf3';
   ctx.font = `300 ${54*scale}px 'Cormorant Garamond', serif`;
-  ctx.fillText('Lipschitz entier · GFF', W/2, 24*scale);
+  ctx.fillText(dict.cTitle, W/2, 24*scale);
 
-  // Sous-titre
   ctx.fillStyle = '#79c0ff';
   ctx.font = `${13*scale}px 'JetBrains Mono', monospace`;
-  ctx.fillText('RÉSEAU TRIANGULAIRE · BOUCLES O(2)', W/2, 96*scale);
+  ctx.fillText(dict.cSub.toUpperCase(), W/2, 96*scale);
 
-  // Paramètres
   const paramBoxW = 620*scale, paramBoxH = 40*scale, paramY = 130*scale;
   ctx.fillStyle = 'rgba(5,7,11,.78)';
   ctx.fillRect(W/2 - paramBoxW/2, paramY, paramBoxW, paramBoxH);
@@ -660,17 +924,15 @@ function drawOverlay(ctx, W, H) {
   ctx.font = `${13*scale}px 'JetBrains Mono', monospace`;
   ctx.textBaseline = 'middle';
   ctx.fillText(
-    `N = ${state.N}   ·   x = ${state.x.toFixed(3)}   ·   h moyen = ${mean.toFixed(2)}   ·   N_δ(h) = ${nPairs}`,
+    `N = ${state.N}   ·   x = ${state.x.toFixed(3)}   ·   h mean = ${mean.toFixed(2)}   ·   N_δ(h) = ${nPairs}`,
     W/2, paramY + paramBoxH/2);
 
-  // Bas : figure + équation + légende
   const baseY = H - 180*scale;
   ctx.textBaseline = 'top';
   ctx.fillStyle = '#e6edf3';
   ctx.font = `300 ${26*scale}px 'Cormorant Garamond', serif`;
-  ctx.fillText('Réseau triangulaire · hauteur Lipschitz', W/2, baseY);
+  ctx.fillText(dict.cFig, W/2, baseY);
 
-  // Équation
   const eqY = baseY + 40*scale;
   const eqW = 520*scale, eqH = 34*scale;
   ctx.fillStyle = 'rgba(5,7,11,.78)';
@@ -682,14 +944,13 @@ function drawOverlay(ctx, W, H) {
   ctx.textBaseline = 'middle';
   ctx.fillText('P_{δ,x}(h) = x^{N_δ(h)} / Z_{δ,x}', W/2, eqY + eqH/2);
 
-  // Légende
   const legY = eqY + eqH + 20*scale;
   ctx.textBaseline = 'top';
   const items = [
-    { color: '#79c0ff', label: 'h > 0' },
-    { color: '#ff7b72', label: 'h < 0' },
-    { color: '#f0883e', label: 'arête occupée' },
-    { color: '#7ee787', label: 'boucle de contour' },
+    { color: '#79c0ff', label: dict.legC1 },
+    { color: '#ff7b72', label: dict.legC2 },
+    { color: '#f0883e', label: dict.legC3 },
+    { color: '#7ee787', label: dict.legC4 },
   ];
   ctx.font = `${12*scale}px 'JetBrains Mono', monospace`;
   let totalW = 0;
@@ -706,7 +967,6 @@ function drawOverlay(ctx, W, H) {
     x0 += 24*scale + ctx.measureText(it.label).width + 20*scale;
   }
 
-  // Chrono
   const t = (performance.now() - recStart)/1000;
   const mm = String(Math.floor(t/60)).padStart(2,'0');
   const ss = String(Math.floor(t%60)).padStart(2,'0');
@@ -727,7 +987,7 @@ function drawOverlay(ctx, W, H) {
 function stopRecording() {
   if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
   if (recRAF) { cancelAnimationFrame(recRAF); recRAF = null; }
-  recBtn.textContent = '● Enregistrer';
+  recBtn.textContent = '● Record';
   recBtn.classList.remove('recording');
   recInfo.textContent = '';
 }
@@ -737,17 +997,17 @@ recBtn.onclick = () => {
 };
 
 // ============================================================
-// 11. Contrôles UI
+// 13. UI CONTROLS
 // ============================================================
 const $ = id => document.getElementById(id);
 function syncUI() {
-  $('vx').textContent = state.x.toFixed(4);
-  $('vN').textContent = state.N;
-  $('vS').textContent = state.sweeps;
-  $('vd').textContent = state.d;
-  $('vel').textContent = state.el + '°';
-  $('vaz').textContent = state.az + '°';
-  $('vrot').textContent = state.rotSpeed.toFixed(2);
+  if ($('vx')) $('vx').textContent = state.x.toFixed(4);
+  if ($('vN')) $('vN').textContent = state.N;
+  if ($('vS')) $('vS').textContent = state.sweeps;
+  if ($('vd')) $('vd').textContent = state.d;
+  if ($('vel')) $('vel').textContent = state.el + '°';
+  if ($('vaz')) $('vaz').textContent = state.az + '°';
+  if ($('vrot')) $('vrot').textContent = state.rotSpeed.toFixed(2);
 }
 
 $('x').oninput = e => {
@@ -765,12 +1025,18 @@ $('rotSpeed').oninput = e => { state.rotSpeed = +e.target.value; syncUI(); };
 $('regen').onclick = regenerate;
 $('toggleLoops').onclick = () => {
   state.showLoops = !state.showLoops;
-  $('toggleLoops').textContent = 'Boucles : ' + (state.showLoops ? 'ON' : 'OFF');
+  const dict = uiTranslations[state.lang];
+  $('toggleLoops').textContent = dict.toggleLoops.replace('ON', state.showLoops ? 'ON' : 'OFF').replace('开', state.showLoops ? '开' : '关');
   render();
 };
 $('toggleRot').onclick = () => {
   state.autoRot = !state.autoRot;
-  $('toggleRot').textContent = (state.autoRot ? '⏸' : '▶') + ' Rotation';
+  const dict = uiTranslations[state.lang];
+  if (state.autoRot) {
+    $('toggleRot').textContent = dict.toggleRot;
+  } else {
+    $('toggleRot').textContent = dict.toggleRot.replace('⏸', '▶').replace('Pause', 'Play').replace('إيقاف', 'تشغيل').replace('暂停', '开始');
+  }
 };
 $('resetCam').onclick = () => {
   state.d = 12; state.el = 35; state.az = 30;
@@ -778,7 +1044,6 @@ $('resetCam').onclick = () => {
   syncUI(); render();
 };
 
-// glisser pour tourner
 let drag = null;
 canvas.addEventListener('pointerdown', e => {
   drag = { x: e.clientX, y: e.clientY };
@@ -795,27 +1060,27 @@ canvas.addEventListener('pointermove', e => {
 });
 canvas.addEventListener('pointerup', () => { drag = null; });
 
-// molette pour zoom
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  state.d = Math.max(6, Math.min(20, state.d - Math.sign(e.deltaY)));
+  state.d = Math.max(6, Math.min(80, state.d - Math.sign(e.deltaY)));
   $('d').value = state.d;
   syncUI(); render();
 }, { passive: false });
 
-// espace = pause rotation
 window.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   if (e.key === ' ') {
     state.autoRot = !state.autoRot;
-    $('toggleRot').textContent = (state.autoRot ? '⏸' : '▶') + ' Rotation';
+    const dict = uiTranslations[state.lang];
+    if (state.autoRot) {
+      $('toggleRot').textContent = dict.toggleRot;
+    } else {
+      $('toggleRot').textContent = dict.toggleRot.replace('⏸', '▶').replace('Pause', 'Play').replace('إيقاف', 'تشغيل').replace('暂停', '开始');
+    }
     e.preventDefault();
   }
 });
 
-// ============================================================
-// 12. Resize + boucle d'animation (auto-rotation)
-// ============================================================
 window.addEventListener('resize', () => { resize(); render(); });
 document.getElementById('panel').addEventListener('transitionend', () => { resize(); render(); });
 
@@ -830,11 +1095,13 @@ function animate() {
 }
 
 // ============================================================
-// 13. Démarrage
+// 14. STARTUP
 // ============================================================
 syncUI();
+updateUILanguage(); 
 regenerate();
 animate();
+
 </script>
 </body>
 </html>
