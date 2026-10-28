@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lipschitz entier · GFF · spirales · formes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e14; --fg:#e6edf3; --muted:#8b949e;
+    --acc:#7ee787; --acc2:#79c0ff; --warn:#f0883e; --vio:#d2a8ff; --crit:#ff7b72;
+    --serif:'Cormorant Garamond',Georgia,serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
+    font:14px/1.55 system-ui,sans-serif}
+  #app{display:flex;height:100vh}
+  #panel{width:420px;flex-shrink:0;padding:14px;background:#11161d;
+    overflow-y:auto;border-right:1px solid #21262d;transition:margin-left .35s ease}
+  /* panneau caché UNIQUEMENT en mode enregistrement */
+  body.record #panel{margin-left:-420px}
+  #panel h1{font-family:var(--serif);font-size:21px;font-weight:600;
+    color:var(--acc);margin-bottom:4px}
+  #panel h2{font-family:var(--serif);font-size:12.5px;font-weight:600;
+    color:var(--acc2);text-transform:uppercase;letter-spacing:.14em;
+    margin:16px 0 6px;padding-bottom:4px;border-bottom:1px solid #21262d}
+  #panel label{display:block;font-family:var(--mono);font-size:11px;
+    color:var(--muted);margin:8px 0 3px}
+  #panel input[type=range]{width:100%;accent-color:var(--acc2);height:20px;cursor:pointer}
+  #panel .val{color:var(--acc2);font-family:var(--mono);font-variant-numeric:tabular-nums}
+  #panel select,#panel button{width:100%;margin-top:5px;padding:7px;
+    background:#21262d;color:var(--fg);border:1px solid #30363d;
+    border-radius:6px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:.15s}
+  #panel select:hover,#panel button:hover{background:#30363d;border-color:var(--acc2)}
+  #panel .eq{background:#0d1117;border:1px solid #30363d;border-radius:6px;
+    padding:8px 10px;margin:5px 0;font-family:var(--mono);font-size:10.5px;
+    color:#c9d1d9;line-height:1.65;overflow-x:auto}
+  #panel .eq b{color:var(--acc2);font-family:var(--serif);font-size:12px}
+  #panel .sub{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-bottom:6px}
+  .stmt{background:#0d1117;border-left:3px solid #30363d;padding:6px 9px;margin:5px 0;
+    font-size:11.5px;border-radius:0 5px 5px 0;line-height:1.55}
+  .stmt b{color:var(--acc2);font-family:var(--serif);font-size:12.5px}
+  .stmt .tag{float:right;font-size:9.5px;padding:1px 6px;border-radius:8px;
+    background:#21262d;color:var(--muted);font-family:var(--mono)}
+  .stmt.ok{border-left-color:var(--acc)}.stmt.ok .tag{background:#16341f;color:var(--acc)}
+  .stmt.adm{border-left-color:var(--warn)}.stmt.adm .tag{background:#3a2410;color:var(--warn)}
+  .stmt.thm{border-left-color:var(--vio)}.stmt.thm .tag{background:#2a1a3a;color:var(--vio)}
+
+  #view{flex:1;position:relative;background:radial-gradient(ellipse at 30% 20%, #1a2233 0%, #0a0e14 40%, #05070b 100%);overflow:hidden;min-width:0}
+  #view canvas{display:block;width:100%;height:100%}
+
+  /* HUD client (masqué en vidéo/record) */
+  #hud{position:absolute;top:12px;left:12px;font-family:var(--mono);font-size:11px;
+    color:var(--muted);background:rgba(5,7,11,.82);padding:8px 12px;border-radius:6px;
+    pointer-events:none;white-space:pre;border:1px solid #21262d;z-index:2}
+  body.video #hud,
+  body.record #hud{display:none}
+
+  #legend{position:absolute;bottom:12px;right:12px;font-family:var(--mono);
+    font-size:11px;color:var(--muted);background:rgba(5,7,11,.82);padding:8px 12px;
+    border-radius:6px;border:1px solid #21262d;z-index:2}
+  body.video #legend,
+  body.record #legend{display:none}
+  .sw{display:inline-block;width:10px;height:10px;margin-right:6px;
+    vertical-align:middle;border-radius:2px}
+
+  #keysHint{position:absolute;bottom:12px;left:12px;font-family:var(--mono);
+    font-size:10.5px;color:var(--muted);background:rgba(5,7,11,.82);
+    padding:6px 10px;border-radius:6px;border:1px solid #21262d;z-index:2;
+    line-height:1.6}
+  body.video #keysHint,
+  body.record #keysHint{display:none}
+
+  /* OVERLAY CINÉMA (DOM visible seulement en mode cinéma) */
+  #cinemaOverlay{position:absolute;inset:0;pointer-events:none;z-index:3;
+    display:none;flex-direction:column;justify-content:space-between;
+    padding:24px 0 28px 0}
+  body.video #cinemaOverlay{display:flex}
+  #cinemaOverlay .top{text-align:center}
+  #cinemaOverlay .title{font-family:var(--serif);font-size:56px;font-weight:300;
+    color:#e6edf3;letter-spacing:.04em;line-height:1.05;
+    text-shadow:0 2px 28px rgba(0,0,0,.95)}
+  #cinemaOverlay .subtitle{font-family:var(--mono);font-size:13px;
+    letter-spacing:.3em;color:var(--acc2);margin-top:12px;text-transform:uppercase}
+  #cinemaOverlay .eq{margin:24px auto 0;display:inline-block;
+    background:rgba(5,7,11,.78);border:1px solid #30363d;
+    padding:10px 28px;border-radius:6px;
+    font-family:var(--mono);font-size:14px;color:#c9d1d9}
+  #cinemaOverlay .bottom{text-align:center;font-family:var(--serif);color:#e6edf3}
+  #cinemaOverlay .bottom .lbl{font-family:var(--mono);font-size:13px;
+    color:var(--acc2);letter-spacing:.2em;margin-top:10px}
+  #cinemaOverlay .bottom .val{font-size:26px;font-weight:300;margin-top:2px}
+  #cinemaOverlay .bottom .val.small{font-size:20px}
+
+  #cinemaTimer{position:absolute;top:28px;right:28px;font-family:var(--mono);
+    font-size:14px;color:var(--muted);background:rgba(5,7,11,.7);padding:6px 12px;
+    border-radius:6px;border:1px solid #21262d;z-index:4;display:none}
+  body.video #cinemaTimer{display:block}
+
+  /* Boutons top-right */
+  #videoBtn, #recordBtn{position:absolute;top:12px;right:12px;padding:7px 14px;
+    background:rgba(5,7,11,.85);color:var(--fg);border:1px solid #30363d;
+    border-radius:6px;font-family:var(--mono);font-size:12px;cursor:pointer;
+    transition:.15s;z-index:10}
+  #videoBtn:hover, #recordBtn:hover{background:#161b22;border-color:var(--acc2)}
+  body.video #videoBtn,
+  body.record #videoBtn,
+  body.record #recordBtn{top:auto;bottom:28px;right:28px;opacity:.85}
+  body.video #videoBtn:hover,
+  body.record #videoBtn:hover{opacity:1}
+  body.video #recordBtn{display:none}
+  #recordBtn{right:130px}
+
+  /* Barre rec visible en mode record */
+  #recBar{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
+    display:flex;gap:8px;align-items:center;z-index:10;
+    background:rgba(5,7,11,.85);padding:8px 12px;border-radius:8px;
+    border:1px solid #21262d;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  body.record #recBar{display:flex}
+  body:not(.record) #recBar{display:none}
+  #recBar select,#recBar button{padding:5px 8px;background:#161b22;color:var(--fg);
+    border:1px solid #30363d;border-radius:4px;font-family:var(--mono);font-size:11px;cursor:pointer}
+  #recBar button#recBtn{background:rgba(200,30,30,.85);color:#fff;border-color:#ff5555;font-weight:600}
+  #recBar button#recBtn.recording{background:#ff3333;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  #recInfo{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:11px;color:var(--crit);
+    background:rgba(5,7,11,.85);padding:4px 10px;border-radius:4px;
+    display:none;z-index:10}
+  body.record #recInfo{display:block}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="panel">
+    <h1>Modèle de hauteur Lipschitz · GFF</h1>
+    <div class="sub">Simulation · spirales · projection 3D · énoncés du papier</div>
+
+    <h2>1 · Modèle</h2>
+    <label>Poids <i>x</i> ∈ [1/√2, 1] : <span class="val" id="vx"></span></label>
+    <input type="range" id="x" min="0.70710678" max="1" step="0.001" value="0.85">
+    <label>N (résolution du lattice) : <span class="val" id="vN"></span></label>
+    <input type="range" id="N" min="6" max="40" step="1" value="22">
+    <label>Balayages Metropolis : <span class="val" id="vS"></span></label>
+    <input type="range" id="S" min="5" max="100" step="1" value="35">
+    <button id="regen">⟳ Régénérer la hauteur</button>
+
+    <h2>2 · Forme de projection</h2>
+    <label>Forme cible</label>
+    <select id="shape">
+      <option value="sphere">Sphère</option>
+      <option value="torus">Tore</option>
+      <option value="cylinder">Cylindre</option>
+      <option value="mobius">Ruban de Möbius</option>
+      <option value="spiral3d">Spirale 3D</option>
+      <option value="shell">Coquille logarithmique</option>
+      <option value="catenoid">Catenoïde</option>
+      <option value="helicoid">Hélicoïde</option>
+      <option value="plane">Plan (réseau natif)</option>
+    </select>
+    <label>Échelle de la forme : <span class="val" id="vR"></span></label>
+    <input type="range" id="R" min="3" max="14" step="0.5" value="7">
+    <label>Hauteur des colonnes : <span class="val" id="vHc"></span></label>
+    <input type="range" id="Hc" min="0.05" max="1.2" step="0.05" value="0.35">
+
+    <h2>3 · Spirale (shader)</h2>
+    <label>Type</label>
+    <select id="spiral">
+      <option value="log">Logarithmique</option>
+      <option value="gold">D'or</option>
+      <option value="arch">Archimède</option>
+      <option value="fermat">Fermat</option>
+      <option value="hyper">Hyperbolique</option>
+      <option value="vortex">Vortex</option>
+      <option value="galaxy">Galaxie</option>
+    </select>
+    <label>Bras : <span class="val" id="vB"></span></label>
+    <input type="range" id="B" min="1" max="8" step="1" value="2">
+    <label>Intensité : <span class="val" id="vF"></span></label>
+    <input type="range" id="F" min="0" max="1" step="0.01" value="0.55">
+    <label>Enroulement : <span class="val" id="vw"></span></label>
+    <input type="range" id="w" min="0.5" max="6" step="0.1" value="1.6">
+    <button id="rot">⏸ Pause rotation</button>
+
+    <h2>4 · Caméra</h2>
+    <label>Vitesse de rotation : <span class="val" id="vRot"></span></label>
+    <input type="range" id="rotSpeed" min="0" max="3" step="0.1" value="0.5">
+    <button id="resetCam">↺ Réinitialiser caméra</button>
+
+    <h2>5 · Énoncés couverts</h2>
+    <div class="stmt ok"><b>Lemme 2.1</b> lift entier<span class="tag">illustré</span><br>H_v−H_u=(W_uB_v−B_uW_v)/2∈{−1,0,1}.</div>
+    <div class="stmt ok"><b>Lemme 2.2</b> coupe ouverte<span class="tag">illustré</span><br>τ_y=s ⇒ B=s, q_y=x² ou x ; côtés indépendants.</div>
+    <div class="stmt adm"><b>Thm 2.3</b> anneau<span class="tag">admis</span><br>P(circuit+) ≥ c(x,a)>0.</div>
+    <div class="stmt ok"><b>Prop 2.4</b> ordre<span class="tag">illustré</span><br>Histoires ordonnées ⇒ ordre stochastique.</div>
+    <div class="stmt adm"><b>Prop 2.11</b> pins rares<span class="tag">admis</span><br>c^k∏P(P_i) ≤ P(∩P_i) ≤ C^k∏P(P_i).</div>
+    <div class="stmt ok"><b>Prop 3.6</b> smearing borné<span class="tag">illustré</span><br>‖Σw_uH(u)‖_p ≤ C(1+K+√log(n/a)).</div>
+    <div class="stmt ok"><b>Prop 3.7</b> moments plans<span class="tag">illustré</span><br>Totale nulle ⇒ ‖Y‖_p ≤ C uniforme.</div>
+    <div class="stmt thm"><b>Prop 4.1</b> covariance<span class="tag">admis</span><br>lim E[H_δ(f)H_δ(g)] = (v/2π)∬ f log(1/|z−w|) g.</div>
+    <div class="stmt thm"><b>Lemme 4.8</b> cutoff<span class="tag">admis</span><br>σ(x)=√v=(2π)√c.</div>
+    <div class="stmt ok"><b>Lemme 5.8</b> translation analytique<span class="tag">illustré</span><br>M_δ(s_δ)→0 sur ouvert ⇒ M_δ(0)→0.</div>
+    <div class="stmt thm"><b>Prop 7.7</b> collision<span class="tag">admis</span><br>L(y,z)=(v/2π)T_{j−2}(z).</div>
+    <div class="stmt thm"><b>Thm 7.8</b> Wick<span class="tag">admis</span><br>T_j = v Σ G_D T_{j−2}.</div>
+    <div class="stmt thm"><b>Thm 1.2</b> principal<span class="tag">admis</span><br>h_δ/σ(x) ⇒ Φ_D dans D′(D).</div>
+
+    <h2>6 · Équations</h2>
+    <div class="eq"><b>Mesure :</b><br>P_{δ,x}(h)=x^{N_δ(h)}/Z_{δ,x}</div>
+    <div class="eq"><b>Boucles :</b><br>2^{#loops} x^{#edges}</div>
+    <div class="eq"><b>GFF :</b><br>G_D=(−Δ_D)^{−1}<br>G(z,w) ~ (2π)^{−1} log(1/|z−w|)</div>
+    <div class="eq"><b>Thm 1.2 :</b><br>h_δ/σ(x) ⇒ Φ_D</div>
+
+    <h2>7 · Légende</h2>
+    <div><span class="sw" style="background:#79c0ff"></span>hauteur h(u)</div>
+    <div><span class="sw" style="background:#f0883e"></span>arête occupée</div>
+    <div><span class="sw" style="background:#7ee787"></span>boucle de contour</div>
+    <div><span class="sw" style="background:#d2a8ff"></span>spirale (shader)</div>
+  </div>
+  <div id="view">
+    <div id="hud"></div>
+    <div id="legend">glisser : orbite · molette : zoom</div>
+    <div id="keysHint">Espace : pause rotation · ← → : changer de forme</div>
+
+    <!-- OVERLAY CINÉMA (DOM, visible seulement en mode vidéo) -->
+    <div id="cinemaOverlay">
+      <div class="top">
+        <div class="title" id="cTitleMain">Lipschitz entier · GFF</div>
+        <div class="subtitle" id="cTitleSub">Simulation · x = 0.85</div>
+        <div class="eq" id="cEq">P_δ,x(h) = x^N_δ(h) / Z_δ,x</div>
+      </div>
+      <div class="bottom">
+        <div class="lbl">FORME</div>
+        <div class="val" id="cFig">Sphère</div>
+        <div class="lbl">RÉSULTAT</div>
+        <div class="val small" id="cTransform">N_δ(h) = 0</div>
+      </div>
+    </div>
+    <div id="cinemaTimer">00:00</div>
+
+    <button id="videoBtn">▶ Mode cinéma</button>
+    <button id="recordBtn">● Mode enregistrement</button>
+
+    <div id="recBar">
+      <label style="margin:0">Résolution</label>
+      <select id="recRes">
+        <option value="720">720p</option>
+        <option value="1080" selected>1080p</option>
+        <option value="1440">1440p</option>
+        <option value="2160">4K</option>
+      </select>
+      <label style="margin:0">fps</label>
+      <select id="recFps">
+        <option value="24">24</option>
+        <option value="30" selected>30</option>
+        <option value="60">60</option>
+      </select>
+      <button id="recBtn">● Enregistrer</button>
+      <button id="quitRecord" style="background:#21262d">✕ Quitter</button>
+    </div>
+    <div id="recInfo"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================
+// ÉTAT
+// ============================================================
+const state = {
+  x: 0.85, N: 22, sweeps: 35,
+  shape: 'sphere', scale: 7, colH: 0.35,
+  spiral: 'log', arms: 2, frac: 0.55, wrap: 1.6,
+  autoRot: true, rotSpeed: 0.5,
+  mode: 'client', // 'client' | 'video' | 'record'
+};
+
+// ============================================================
+// 1. Lattice triangulaire
+// ============================================================
+function buildLattice(N) {
+  const faces = [], map = new Map();
+  for (let i = 0; i < N; i++) for (let j = 0; j < N - i; j++) {
+    const u = i / (N - 1);
+    const v = j / (N - 1);
+    const f = { i, j, u, v, h: 0, nbrs: [],
+                boundary: (i===0 || j===0 || i+j===N-1) };
+    faces.push(f); map.set(i+','+j, f);
+  }
+  const NB = [[1,0],[-1,0],[0,1],[0,-1],[1,-1],[-1,1]];
+  for (const f of faces) for (const [di,dj] of NB) {
+    const g = map.get((f.i+di)+','+(f.j+dj));
+    if (g) f.nbrs.push(g);
+  }
+  return faces;
+}
+
+// ============================================================
+// 2. Metropolis : P ∝ x^{N_δ(h)}, |Δh|≤1, h=0 sur frontière
+// ============================================================
+function sampleHeight(faces, x, sweeps) {
+  for (const f of faces) f.h = 0;
+  const interior = faces.filter(f => !f.boundary);
+  if (!interior.length) return;
+  const logx = Math.log(x);
+  const dPairs = (f, nh) => { let d=0; for (const g of f.nbrs) d += (nh!==g.h?1:0)-(f.h!==g.h?1:0); return d; };
+  const ok = (f, nh) => f.nbrs.every(g => Math.abs(nh - g.h) <= 1);
+  for (let s = 0; s < sweeps; s++) {
+    for (let k = interior.length-1; k>0; k--) {
+      const r = Math.floor(Math.random()*(k+1));
+      [interior[k], interior[r]] = [interior[r], interior[k]];
+    }
+    for (const f of interior) {
+      const nh = f.h + (Math.random()<0.5?-1:1);
+      if (!ok(f, nh)) continue;
+      if (Math.log(Math.random()) < dPairs(f, nh) * logx) f.h = nh;
+    }
+  }
+}
+
+// ============================================================
+// 3. Formes
+// ============================================================
+const TAU = Math.PI * 2;
+const shapes = {
+  sphere(u, v, S) {
+    const lon = u * TAU;
+    const lat = (v - 0.5) * Math.PI;
+    return new THREE.Vector3(
+      S * Math.cos(lat) * Math.cos(lon),
+      S * Math.sin(lat),
+      S * Math.cos(lat) * Math.sin(lon));
+  },
+  torus(u, v, S) {
+    const th = u * TAU, ph = v * TAU;
+    const R = S * 0.7, r = S * 0.3;
+    return new THREE.Vector3(
+      (R + r*Math.cos(ph)) * Math.cos(th),
+      r * Math.sin(ph),
+      (R + r*Math.cos(ph)) * Math.sin(th));
+  },
+  cylinder(u, v, S) {
+    const th = u * TAU;
+    const R = S * 0.55, H = S * 0.9;
+    return new THREE.Vector3(R*Math.cos(th), (v - 0.5)*H, R*Math.sin(th));
+  },
+  mobius(u, v, S) {
+    const t = u * TAU;
+    const s = (v - 0.5) * S * 0.5;
+    return new THREE.Vector3(
+      (S*0.55 + s*Math.cos(t/2)) * Math.cos(t),
+      s * Math.sin(t/2),
+      (S*0.55 + s*Math.cos(t/2)) * Math.sin(t));
+  },
+  spiral3d(u, v, S) {
+    const t = u * TAU * 1.8;
+    const r = S * 0.25 + (v) * S * 0.45;
+    return new THREE.Vector3(r*Math.cos(t), (v - 0.5)*S, r*Math.sin(t));
+  },
+  shell(u, v, S) {
+    const t = u * TAU * 2.2;
+    const r = S * 0.08 * Math.exp(0.55 * t);
+    return new THREE.Vector3(r*Math.cos(t), (v - 0.5)*S, r*Math.sin(t));
+  },
+  catenoid(u, v, S) {
+    const a = S * 0.3;
+    const th = u * TAU;
+    const h = (v - 0.5) * S * 1.1;
+    const r = a * Math.cosh(h / a);
+    return new THREE.Vector3(r*Math.cos(th), h, r*Math.sin(th));
+  },
+  helicoid(u, v, S) {
+    const th = u * TAU * 1.4;
+    const h = (v - 0.5) * S * 1.2;
+    const r = S * 0.5;
+    return new THREE.Vector3(r*Math.cos(th), h + th*0.25, r*Math.sin(th));
+  },
+  plane(u, v, S) {
+    return new THREE.Vector3((u-0.5)*S*1.6, 0, (v-0.5)*S*1.6);
+  },
+};
+function mapPoint(shape, u, v, S) {
+  const f = shapes[shape] || shapes.plane;
+  return f(u, v, S);
+}
+const _e = 0.002;
+function normalAt(shape, u, v, S) {
+  const Pu = mapPoint(shape, u+_e, v, S).sub(mapPoint(shape, u-_e, v, S));
+  const Pv = mapPoint(shape, u, v+_e, S).sub(mapPoint(shape, u, v-_e, S));
+  const n = new THREE.Vector3().crossVectors(Pu, Pv);
+  if (n.lengthSq() < 1e-10) return new THREE.Vector3(0,1,0);
+  return n.normalize();
+}
+
+// ============================================================
+// 4. Three.js
+// ============================================================
+const view = document.getElementById('view');
+const scene = new THREE.Scene();
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 2000);
+camera.position.set(12, 9, 16);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, preserveDrawingBuffer:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+view.appendChild(renderer.domElement);
+
+let captureRenderer = null;
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.autoRotate = state.autoRot;
+controls.autoRotateSpeed = state.rotSpeed;
+controls.minDistance = 2;
+controls.maxDistance = 200;
+controls.zoomSpeed = 0.8;
+controls.panSpeed = 0.6;
+
+// Lumières
+scene.add(new THREE.AmbientLight(0x404860, 0.9));
+const key = new THREE.DirectionalLight(0xffffff, 1.5);
+key.position.set(10, 20, 12); scene.add(key);
+const rim = new THREE.DirectionalLight(0x79c0ff, 1.0);
+rim.position.set(-14, 8, -12); scene.add(rim);
+const fill = new THREE.PointLight(0x7ee787, 40, 60, 2);
+fill.position.set(0, 6, 0); scene.add(fill);
+
+// ============================================================
+// 5. Shaders spirales
+// ============================================================
+const vertexShader = /* glsl */`
+  varying vec2 vUv; varying vec3 vWorld; varying vec3 vNormal; varying float vH;
+  void main(){
+    vUv = uv; vH = position.y;
+    vNormal = normalize(normalMatrix * normal);
+    vec4 wp = modelMatrix * vec4(position,1.0);
+    vWorld = wp.xyz;
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+
+const fragmentShader = /* glsl */`
+  precision highp float;
+  varying vec2 vUv; varying vec3 vWorld; varying vec3 vNormal; varying float vH;
+  uniform float uTime, uFrac, uArms, uSpiral, uWrap;
+  uniform vec3 uA, uB, uC;
+
+  float spLog(vec2 p, float b, float arms){
+    float r=length(p)+1e-4; float a=atan(p.y,p.x);
+    return 0.5+0.5*cos(a*arms + b*log(r)*arms - uTime*0.6);
+  }
+  float spArch(vec2 p, float arms){
+    float r=length(p); float a=atan(p.y,p.x);
+    return 0.5+0.5*cos(a*arms + r*arms*3.0 - uTime*0.6);
+  }
+  float spFermat(vec2 p, float arms){
+    float r=length(p); float a=atan(p.y,p.x);
+    return 0.5+0.5*cos(a*arms + r*r*arms*2.0 - uTime*0.6);
+  }
+  float spHyper(vec2 p, float arms){
+    float r=length(p)+0.05; float a=atan(p.y,p.x);
+    return 0.5+0.5*cos(a*arms + arms/r - uTime*0.6);
+  }
+  float spVortex(vec2 p, float arms){
+    float r=length(p)+1e-3; float a=atan(p.y,p.x);
+    return pow(0.5+0.5*cos(a*arms + 2.0/r - uTime*0.8), 3.0);
+  }
+  float spGalaxy(vec2 p, float arms){
+    float r=length(p); float a=atan(p.y,p.x);
+    return exp(-r*0.15)*(0.5+0.5*cos(a*arms + r*arms*1.5 - uTime*0.5));
+  }
+
+  void main(){
+    vec3 n = normalize(vNormal);
+    vec3 P = vWorld;
+    float r = length(P) + 1e-4;
+    float theta = atan(P.z, P.x);
+    float phi = asin(clamp(P.y / r, -1.0, 1.0));
+    vec2 p = vec2(theta * 1.2, phi * 2.0 + r * 0.15);
+
+    float m = 0.0;
+    float arms = uArms;
+    if (uSpiral < 0.5)      m = spLog(p, uWrap, arms);
+    else if (uSpiral < 1.5) m = spLog(p, 0.3063, arms);
+    else if (uSpiral < 2.5) m = spArch(p, arms);
+    else if (uSpiral < 3.5) m = spFermat(p, arms);
+    else if (uSpiral < 4.5) m = spHyper(p, arms);
+    else if (uSpiral < 5.5) m = spVortex(p, arms);
+    else                    m = spGalaxy(p, arms);
+
+    vec3 base = (vH >= 0.0)
+      ? mix(uA, uB, clamp(vH/3.0, 0.0, 1.0))
+      : mix(uC, vec3(1.0,0.35,0.3), clamp(-vH/3.0, 0.0, 1.0));
+
+    vec3 sp = mix(vec3(0.05,0.02,0.10), uB, m);
+    sp = mix(sp, uC, pow(m, 2.0));
+    vec3 col = mix(base, sp, uFrac);
+
+    vec3 L = normalize(vec3(0.6, 0.9, 0.4));
+    float diff = max(dot(n, L), 0.0);
+    float rimL = pow(1.0 - max(dot(n, normalize(cameraPosition - vWorld)), 0.0), 2.0);
+    vec3 lit = col * (0.30 + 0.9*diff) + rimL * vec3(0.3,0.5,0.9)*0.45;
+    lit *= 0.96 + 0.04*sin(uTime*1.5 + vH*3.0);
+    gl_FragColor = vec4(lit, 1.0);
+  }
+`;
+
+const uniforms = {
+  uTime: { value: 0 }, uFrac: { value: state.frac },
+  uArms: { value: state.arms }, uSpiral: { value: 0 }, uWrap: { value: state.wrap },
+  uA: { value: new THREE.Color(0x79c0ff) },
+  uB: { value: new THREE.Color(0x7ee787) },
+  uC: { value: new THREE.Color(0xd2a8ff) },
+};
+
+function faceMat() {
+  return new THREE.ShaderMaterial({
+    vertexShader, fragmentShader, uniforms, side: THREE.DoubleSide,
+  });
+}
+
+// ============================================================
+// 6. Construction du terrain
+// ============================================================
+let group = new THREE.Group();
+scene.add(group);
+let currentStats = { mean: 0, nPairs: 0 };
+
+function rebuild() {
+  while (group.children.length) {
+    const c = group.children.pop();
+    if (c.geometry) c.geometry.dispose();
+    if (c.material && c.material.dispose) c.material.dispose();
+  }
+
+  const faces = buildLattice(state.N);
+  sampleHeight(faces, state.x, state.sweeps);
+
+  const S = state.scale;
+  const shape = state.shape;
+  const mat = faceMat();
+
+  for (const f of faces) {
+    f.P = mapPoint(shape, f.u, f.v, S);
+    f.N = normalAt(shape, f.u, f.v, S);
+  }
+
+  const colRadius = S * 0.06;
+  const colHeight = state.colH * S * 0.5;
+
+  for (const f of faces) {
+    const h = f.h;
+    const height = Math.abs(h) * colHeight + 0.001;
+    const geo = new THREE.CylinderGeometry(colRadius, colRadius, height, 6, 1);
+    geo.rotateY(Math.PI/6);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), f.N);
+    const base = f.P.clone();
+    if (h >= 0) mesh.position.copy(base).addScaledVector(f.N, height/2);
+    else mesh.position.copy(base).addScaledVector(f.N, -height/2);
+    group.add(mesh);
+  }
+
+  const occPts = [];
+  const seen = new Set();
+  for (const f of faces) for (const g of f.nbrs) {
+    const k = [f.i+','+f.j, g.i+','+g.j].sort().join('|');
+    if (seen.has(k)) continue; seen.add(k);
+    if (f.h === g.h) continue;
+    const A = f.P.clone().addScaledVector(f.N, Math.abs(f.h)*colHeight + 0.02);
+    const B = g.P.clone().addScaledVector(g.N, Math.abs(g.h)*colHeight + 0.02);
+    occPts.push(A.x,A.y,A.z, B.x,B.y,B.z);
+  }
+  if (occPts.length) {
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute('position', new THREE.Float32BufferAttribute(occPts, 3));
+    group.add(new THREE.LineSegments(lg,
+      new THREE.LineBasicMaterial({ color: 0xf0883e })));
+  }
+
+  const box = new THREE.Box3().setFromObject(group);
+  if (box.isEmpty()) { controls.target.set(0,0,0); }
+  else {
+    const center = box.getCenter(new THREE.Vector3());
+    controls.target.copy(center);
+    const size = box.getSize(new THREE.Vector3()).length();
+    const dist = Math.max(2.5, size * 1.3);
+    const dir = camera.position.clone().sub(controls.target).normalize();
+    camera.position.copy(center).addScaledVector(dir, dist);
+    controls.minDistance = size * 0.4;
+    controls.maxDistance = size * 4;
+  }
+  controls.update();
+
+  const mean = faces.reduce((s,f)=>s+f.h,0)/faces.length;
+  const nPairs = faces.reduce((s,f)=>s + f.nbrs.filter(g=>g.h!==f.h).length,0)/2;
+  currentStats = { mean, nPairs };
+
+  document.getElementById('hud').textContent =
+    `x = ${state.x.toFixed(3)}   N = ${state.N}   sweeps = ${state.sweeps}\n` +
+    `h moyen = ${mean.toFixed(3)}   N_δ(h) = ${nPairs}\n` +
+    `forme = ${shape}   spirale = ${state.spiral}   bras = ${state.arms}`;
+
+  updateCinemaText();
+}
+
+// ============================================================
+// 7. Fonds
+// ============================================================
+function makeFloor() {
+  const geo = new THREE.CircleGeometry(60, 64);
+  geo.rotateX(-Math.PI/2);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x0d1117, transparent:true, opacity:0.6 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.y = -state.scale * 1.2;
+  scene.add(mesh);
+}
+
+function makeParticles() {
+  const N = 400, pos = new Float32Array(N*3);
+  for (let i=0;i<N;i++){
+    const r = 8 + Math.random()*14;
+    const a = Math.random()*TAU;
+    const y = (Math.random()-0.5)*10;
+    pos[i*3]=Math.cos(a)*r; pos[i*3+1]=y; pos[i*3+2]=Math.sin(a)*r;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const m = new THREE.PointsMaterial({ color:0x79c0ff, size:0.06,
+    transparent:true, opacity:0.5, blending:THREE.AdditiveBlending, depthWrite:false });
+  const pts = new THREE.Points(g, m); scene.add(pts); return pts;
+}
+
+// ============================================================
+// 8. Titres / textes cinéma
+// ============================================================
+const shapeLabel = {
+  sphere: 'Sphère', torus: 'Tore', cylinder: 'Cylindre',
+  mobius: 'Möbius', spiral3d: 'Spirale 3D', shell: 'Coquille log.',
+  catenoid: 'Catenoïde', helicoid: 'Hélicoïde', plane: 'Plan'
+};
+const spiralLabel = {
+  log: 'logarithmique', gold: "d'or", arch: 'Archimède', fermat: 'Fermat',
+  hyper: 'hyperbolique', vortex: 'vortex', galaxy: 'galaxie'
+};
+
+function updateCinemaText() {
+  const tMain = 'Lipschitz entier · GFF';
+  const tSub = `Projection sur ${shapeLabel[state.shape] || state.shape} · spirale ${spiralLabel[state.spiral] || state.spiral}`;
+  const eq = 'P_{δ,x}(h) = x^{N_δ(h)} / Z_{δ,x}';
+  const fig = `${shapeLabel[state.shape] || state.shape} · ${spiralLabel[state.spiral] || state.spiral}`;
+  const tr = `x = ${state.x.toFixed(3)} · N_δ(h) = ${currentStats.nPairs}`;
+  document.getElementById('cTitleMain').textContent = tMain;
+  document.getElementById('cTitleSub').textContent = tSub;
+  document.getElementById('cEq').textContent = eq;
+  document.getElementById('cFig').textContent = fig;
+  document.getElementById('cTransform').textContent = tr;
+}
+
+// ============================================================
+// 9. Modes cinéma / enregistrement
+// ============================================================
+const cinemaTimerEl = document.getElementById('cinemaTimer');
+let videoStart = 0, videoRAF = null;
+
+function setMode(mode) {
+  state.mode = mode;
+  document.body.classList.toggle('video', mode === 'video');
+  document.body.classList.toggle('record', mode === 'record');
+  setTimeout(() => { resize(); }, 380);
+  document.getElementById('videoBtn').textContent =
+    mode === 'video' ? '✕ Quitter cinéma' : '▶ Mode cinéma';
+  document.getElementById('recordBtn').textContent =
+    mode === 'record' ? '✕ Quitter enregistrement' : '● Mode enregistrement';
+  if (mode === 'video') {
+    videoStart = performance.now();
+    if (!videoRAF) videoRAF = requestAnimationFrame(updateTimer);
+  } else {
+    if (videoRAF) { cancelAnimationFrame(videoRAF); videoRAF = null; }
+    cinemaTimerEl.textContent = '00:00';
+  }
+  if (mode === 'client') stopRecording();
+  updateCinemaText();
+}
+
+function updateTimer() {
+  if (state.mode !== 'video') return;
+  const t = (performance.now() - videoStart)/1000;
+  const mm = String(Math.floor(t/60)).padStart(2,'0');
+  const ss = String(Math.floor(t%60)).padStart(2,'0');
+  cinemaTimerEl.textContent = `${mm}:${ss}`;
+  videoRAF = requestAnimationFrame(updateTimer);
+}
+
+document.getElementById('videoBtn').onclick = () => {
+  setMode(state.mode === 'video' ? 'client' : 'video');
+};
+document.getElementById('recordBtn').onclick = () => {
+  setMode(state.mode === 'record' ? 'client' : 'record');
+};
+document.getElementById('quitRecord').onclick = () => setMode('client');
+
+// ============================================================
+// 10. Enregistrement WebM (renderer séparé)
+// ============================================================
+let mediaRecorder = null;
+let recordedChunks = [];
+let recStart = 0;
+let recRAF = null;
+const recBtn = document.getElementById('recBtn');
+const recInfo = document.getElementById('recInfo');
+
+function startRecording() {
+  const resSelect = document.getElementById('recRes').value;
+  const fps = parseInt(document.getElementById('recFps').value, 10);
+  const heights = { '720': 720, '1080': 1080, '1440': 1440, '2160': 2160 };
+  const H = heights[resSelect] || 1080;
+  const W = Math.round(H * 16/9);
+
+  const recCanvas = document.createElement('canvas');
+  recCanvas.width = W; recCanvas.height = H;
+  const recCtx = recCanvas.getContext('2d');
+
+  if (captureRenderer) captureRenderer.dispose();
+  captureRenderer = new THREE.WebGLRenderer({
+    canvas: document.createElement('canvas'),
+    antialias: true, alpha: true, preserveDrawingBuffer: true,
+  });
+  captureRenderer.setPixelRatio(1);
+  captureRenderer.setSize(W, H, false);
+  captureRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+  captureRenderer.toneMappingExposure = 1.1;
+  captureRenderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  const captureCamera = camera.clone();
+  captureCamera.aspect = W / H;
+  captureCamera.updateProjectionMatrix();
+
+  const stream = recCanvas.captureStream(fps);
+  recordedChunks = [];
+  const options = { mimeType: 'video/webm;codecs=vp9' };
+  if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+    options.mimeType = 'video/webm;codecs=vp8';
+  }
+  mediaRecorder = new MediaRecorder(stream, options);
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lipschitz-gff-${state.shape}-${Date.now()}.webm`;
+    a.click();
+    URL.revokeObjectURL(url);
+    recInfo.textContent = '✓ Vidéo téléchargée';
+    setTimeout(() => { recInfo.textContent = ''; }, 3000);
+    if (captureRenderer) { captureRenderer.dispose(); captureRenderer = null; }
+  };
+  mediaRecorder.start();
+
+  function recLoop() {
+    if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+    captureCamera.position.copy(camera.position);
+    captureCamera.quaternion.copy(camera.quaternion);
+    captureCamera.aspect = W / H;
+    captureCamera.updateProjectionMatrix();
+    captureRenderer.render(scene, captureCamera);
+    recCtx.drawImage(captureRenderer.domElement, 0, 0, W, H);
+    drawOverlay(recCtx, W, H);
+    const t = (performance.now() - recStart)/1000;
+    const mm = String(Math.floor(t/60)).padStart(2,'0');
+    const ss = String(Math.floor(t%60)).padStart(2,'0');
+    recInfo.textContent = `● ${mm}:${ss} · ${W}×${H} · ${fps}fps`;
+    recRAF = requestAnimationFrame(recLoop);
+  }
+  recStart = performance.now();
+  recLoop();
+  recBtn.textContent = '■ Arrêter';
+  recBtn.classList.add('recording');
+}
+
+function drawOverlay(ctx, W, H) {
+  const scale = H / 1080;
+  const g = ctx.createRadialGradient(W*0.3, H*0.2, 0, W*0.3, H*0.2, W*0.9);
+  g.addColorStop(0, '#1a2233');
+  g.addColorStop(0.4, '#0a0e14');
+  g.addColorStop(1, '#05070b');
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'source-over';
+
+  const tMain = 'Lipschitz entier · GFF';
+  const tSub = `Projection sur ${shapeLabel[state.shape] || state.shape} · spirale ${spiralLabel[state.spiral] || state.spiral}`;
+  const eq = 'P_{δ,x}(h) = x^{N_δ(h)} / Z_{δ,x}';
+  const fig = `${shapeLabel[state.shape] || state.shape} · ${spiralLabel[state.spiral] || state.spiral}`;
+  const tr = `x = ${state.x.toFixed(3)} · N_δ(h) = ${currentStats.nPairs}`;
+
+  // Titre
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#e6edf3';
+  ctx.font = `300 ${56*scale}px 'Cormorant Garamond', serif`;
+  ctx.fillText(tMain, W/2, 24*scale);
+
+  // Sous-titre
+  ctx.fillStyle = '#79c0ff';
+  ctx.font = `${13*scale}px 'JetBrains Mono', monospace`;
+  ctx.fillText(tSub.toUpperCase(), W/2, 100*scale);
+
+  // Équation
+  const eqW = 620*scale, eqH = 40*scale, eqY = 150*scale;
+  ctx.fillStyle = 'rgba(5,7,11,.78)';
+  ctx.fillRect(W/2 - eqW/2, eqY, eqW, eqH);
+  ctx.strokeStyle = '#30363d';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(W/2 - eqW/2, eqY, eqW, eqH);
+  ctx.fillStyle = '#c9d1d9';
+  ctx.font = `${14*scale}px 'JetBrains Mono', monospace`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(eq, W/2, eqY + eqH/2);
+
+  // Bas : figure + résultat
+  const baseY = H - 100*scale;
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#79c0ff';
+  ctx.font = `${13*scale}px 'JetBrains Mono', monospace`;
+  ctx.fillText('FORME', W/2, baseY);
+  ctx.fillStyle = '#e6edf3';
+  ctx.font = `300 ${26*scale}px 'Cormorant Garamond', serif`;
+  ctx.fillText(fig, W/2, baseY + 20*scale);
+  ctx.fillStyle = '#79c0ff';
+  ctx.font = `${13*scale}px 'JetBrains Mono', monospace`;
+  ctx.fillText('RÉSULTAT', W/2, baseY + 60*scale);
+  ctx.fillStyle = '#e6edf3';
+  ctx.font = `300 ${20*scale}px 'Cormorant Garamond', serif`;
+  ctx.fillText(tr, W/2, baseY + 80*scale);
+
+  // Chrono
+  const t = (performance.now() - recStart)/1000;
+  const mm = String(Math.floor(t/60)).padStart(2,'0');
+  const ss = String(Math.floor(t%60)).padStart(2,'0');
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(5,7,11,.7)';
+  const tw = 70*scale, th = 26*scale, tx = W - 28*scale - tw, ty = 28*scale;
+  ctx.fillRect(tx, ty, tw, th);
+  ctx.strokeStyle = '#21262d';
+  ctx.strokeRect(tx, ty, tw, th);
+  ctx.fillStyle = '#8b949e';
+  ctx.font = `${14*scale}px 'JetBrains Mono', monospace`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${mm}:${ss}`, W - 28*scale - tw/2, ty + th/2);
+  ctx.textAlign = 'center';
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+  if (recRAF) { cancelAnimationFrame(recRAF); recRAF = null; }
+  recBtn.textContent = '● Enregistrer';
+  recBtn.classList.remove('recording');
+  recInfo.textContent = '';
+}
+recBtn.onclick = () => {
+  if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
+  else startRecording();
+};
+
+// ============================================================
+// 11. Clavier
+// ============================================================
+const SHAPES_LIST = ['sphere','torus','cylinder','mobius','spiral3d','shell','catenoid','helicoid','plane'];
+function cycleShape(dir) {
+  const idx = SHAPES_LIST.indexOf(state.shape);
+  const next = (idx + dir + SHAPES_LIST.length) % SHAPES_LIST.length;
+  state.shape = SHAPES_LIST[next];
+  document.getElementById('shape').value = state.shape;
+  rebuild();
+}
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') {
+    state.autoRot = !state.autoRot;
+    controls.autoRotate = state.autoRot;
+    document.getElementById('rot').textContent = (state.autoRot ? '⏸' : '▶') + ' Rotation';
+    e.preventDefault();
+  } else if (e.key === 'ArrowLeft') {
+    cycleShape(-1); e.preventDefault();
+  } else if (e.key === 'ArrowRight') {
+    cycleShape(1); e.preventDefault();
+  }
+});
+
+// ============================================================
+// 12. UI
+// ============================================================
+const $ = id => document.getElementById(id);
+function sync() {
+  $('vx').textContent = state.x.toFixed(4);
+  $('vN').textContent = state.N;
+  $('vS').textContent = state.sweeps;
+  $('vR').textContent = state.scale.toFixed(1);
+  $('vHc').textContent = state.colH.toFixed(2);
+  $('vw').textContent = state.wrap.toFixed(1);
+  $('vB').textContent = state.arms;
+  $('vF').textContent = state.frac.toFixed(2);
+  $('vRot').textContent = state.rotSpeed.toFixed(1);
+}
+
+$('x').oninput = e => { state.x = +e.target.value; sync(); rebuild(); };
+$('N').oninput = e => { state.N = +e.target.value; sync(); rebuild(); };
+$('S').oninput = e => { state.sweeps = +e.target.value; sync(); rebuild(); };
+$('regen').onclick = rebuild;
+$('shape').onchange = e => { state.shape = e.target.value; rebuild(); };
+$('R').oninput = e => { state.scale = +e.target.value; sync(); rebuild(); };
+$('Hc').oninput = e => { state.colH = +e.target.value; sync(); rebuild(); };
+$('spiral').onchange = e => {
+  state.spiral = e.target.value;
+  const m = { log:0, gold:1, arch:2, fermat:3, hyper:4, vortex:5, galaxy:6 };
+  uniforms.uSpiral.value = m[state.spiral] ?? 0;
+  updateCinemaText();
+};
+$('B').oninput = e => { state.arms = +e.target.value; uniforms.uArms.value = state.arms; sync(); };
+$('F').oninput = e => { state.frac = +e.target.value; uniforms.uFrac.value = state.frac; sync(); };
+$('w').oninput = e => { state.wrap = +e.target.value; uniforms.uWrap.value = state.wrap; sync(); };
+$('rot').onclick = () => {
+  state.autoRot = !state.autoRot;
+  controls.autoRotate = state.autoRot;
+  $('rot').textContent = (state.autoRot ? '⏸' : '▶') + ' Rotation';
+};
+$('rotSpeed').oninput = e => { state.rotSpeed = +e.target.value; controls.autoRotateSpeed = state.rotSpeed; sync(); };
+$('resetCam').onclick = () => {
+  const box = new THREE.Box3().setFromObject(group);
+  if (!box.isEmpty()) {
+    const center = box.getCenter(new THREE.Vector3());
+    controls.target.copy(center);
+    const size = box.getSize(new THREE.Vector3()).length();
+    const dir = camera.position.clone().sub(center).normalize();
+    camera.position.copy(center).addScaledVector(dir, Math.max(2.5, size*1.3));
+    controls.update();
+  }
+};
+
+// ============================================================
+// 13. Resize + boucle
+// ============================================================
+function resize() {
+  const r = view.getBoundingClientRect();
+  if (r.width === 0 || r.height === 0) return;
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / r.height;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+document.getElementById('panel').addEventListener('transitionend', () => resize());
+
+const clock = new THREE.Clock();
+let particles;
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  uniforms.uTime.value = t;
+  if (particles) particles.rotation.y = t * 0.04;
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ============================================================
+// 14. Démarrage
+// ============================================================
+sync();
+makeFloor();
+particles = makeParticles();
+rebuild();
+resize();
+animate();
+</script>
+</body>
+</html>
