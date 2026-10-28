@@ -20,8 +20,9 @@
   #app{display:flex;height:100vh}
 
   #panel{width:420px;flex-shrink:0;padding:14px;background:var(--panel);
-    overflow-y:auto;border-right:1px solid #21262d;transition:margin-left .35s ease}
-  body.video #panel{margin-left:-420px}
+    overflow-y:auto;border-right:1px solid #21262d}
+  /* Panel remains visible in video mode */
+  
   #panel h1{font-family:var(--serif);font-size:22px;font-weight:600;
     color:var(--acc);margin-bottom:4px}
   #panel h2{font-family:var(--serif);font-size:13px;font-weight:600;
@@ -53,6 +54,25 @@
   .stmt.info{border-left-color:var(--acc2)}.stmt.info .tag{background:#162a3a;color:var(--acc2)}
   .stmt .sub{font-size:10.5px;color:var(--muted);font-family:var(--mono);margin-top:4px;display:block}
 
+  .lang-bar{display:flex;gap:6px;margin-top:12px;justify-content:center;flex-wrap:wrap}
+  .lang-btn{padding:6px 10px;background:#21262d;border:1px solid #30363d;
+    border-radius:6px;font-family:var(--mono);font-size:18px;cursor:pointer;
+    transition:.15s;line-height:1}
+  .lang-btn:hover{background:#30363d;border-color:var(--acc2)}
+  .lang-btn.active{background:var(--acc2);border-color:var(--acc2)}
+
+  #scriptPanelControls{display:none;flex-direction:column;gap:8px;margin-top:10px;
+    background:#05070b;padding:10px;border-radius:6px;border:1px solid var(--acc2)}
+  body.video #scriptPanelControls{display:flex}
+  #scriptTextDisplay{font-family:var(--mono);font-size:12px;color:var(--fg);
+    line-height:1.5;margin-bottom:6px;min-height:80px;border-bottom:1px solid #30363d;padding-bottom:8px}
+  #scriptTextDisplay .step {color:var(--acc);font-weight:600;margin-right:4px}
+  .script-buttons{display:flex;gap:4px;justify-content:space-between}
+  .script-buttons button{flex:1;margin:0;padding:8px 0;font-size:14px;
+    display:flex;align-items:center;justify-content:center}
+  .script-buttons button.close-btn{background:#3a1416;color:var(--crit);border-color:var(--crit)}
+  .script-buttons button.close-btn:hover{background:var(--crit);color:#fff}
+
   #view{flex:1;position:relative;background:#05070b;overflow:hidden;min-width:0}
   #view canvas{display:block;width:100%;height:100%}
   #hud{position:absolute;top:12px;left:12px;font-family:var(--mono);font-size:11px;
@@ -82,6 +102,15 @@
     padding:0 6px;border-bottom:1px solid #30363d}
   body.video #videoOptions{opacity:1}
 
+  #scriptDisplayBox{position:absolute;bottom:120px;left:50%;transform:translateX(-50%);
+    width:85%;max-width:900px;background:rgba(5,7,11,.92);border:1px solid var(--acc2);
+    padding:20px 24px;border-radius:8px;font-family:var(--mono);font-size:16px;
+    color:#e6edf3;text-align:center;line-height:1.6;pointer-events:none;
+    backdrop-filter:blur(6px);transition:opacity 0.3s;box-shadow:0 4px 20px rgba(0,0,0,0.5);
+    display:none;z-index:5}
+  body.video #scriptDisplayBox.active {display:block}
+  #scriptDisplayBox .step {color:var(--acc);font-weight:600;margin-right:8px;font-size:18px}
+
   #legend{position:absolute;bottom:12px;right:12px;font-family:var(--mono);
     font-size:11px;color:var(--muted);background:rgba(5,7,11,.82);padding:8px 12px;
     border-radius:6px;border:1px solid #21262d;z-index:2}
@@ -99,99 +128,119 @@
     border-radius:6px;font-family:var(--mono);font-size:12px;cursor:pointer;
     transition:.15s;z-index:10}
   #videoBtn:hover{background:#161b22;border-color:var(--acc2)}
-  body.video #videoBtn{top:auto;bottom:28px;right:28px;opacity:.35}
+  body.video #videoBtn{top:auto;bottom:28px;right:28px;opacity:.85}
   body.video #videoBtn:hover{opacity:1}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="panel">
-    <h1>Champ gaussien libre de Dirichlet</h1>
-    <div class="sub">Thm 1.2 · h<sub>δ</sub>/σ(x) ⇒ Φ<sub>D</sub> pour x ∈ [1/√2, 1]</div>
+    <h1 data-i18n="titleMain">Champ gaussien libre de Dirichlet</h1>
+    <div class="sub" data-i18n="titleSub">Thm 1.2 · h_δ/σ(x) ⇒ Φ_D pour x ∈ [1/√2, 1]</div>
 
-    <h2>1 · Paramètre x</h2>
-    <label>Poids x ∈ [1/√2, 1] : <span class="val" id="vx"></span> · σ(x) mesuré : <span class="val" id="vs"></span></label>
+    <h2 data-i18n="hSec1">1 · Paramètre x</h2>
+    <label><span data-i18n="lblX">Poids x ∈ [1/√2, 1] :</span> <span class="val" id="vx"></span> · <span data-i18n="lblSigma">σ(x) mesuré :</span> <span class="val" id="vs"></span></label>
     <input type="range" id="x" min="0.70710678" max="1" step="0.001" value="0.85">
-    <label>Point critique x<sub>c</sub> = 1/√2 ≈ 0.7071 : <span class="val crit">0.7071</span></label>
-    <button id="toCrit">→ Aller à x<sub>c</sub></button>
-    <label>Hauteur affichée</label>
+    <label><span data-i18n="lblCrit">Point critique x_c = 1/√2 ≈ 0.7071 :</span> <span class="val crit">0.7071</span></label>
+    <button id="toCrit" data-i18n="btnCrit">→ Aller à x_c</button>
+    <label data-i18n="lblMode">Hauteur affichée</label>
     <select id="mode">
-      <option value="raw">h_δ = σ(x)·Φ (x agit sur la hauteur)</option>
-      <option value="norm">h_δ/σ(x) = Φ_D (indépendant de x)</option>
+      <option value="raw" data-i18n="optRaw">h_δ = σ(x)·Φ (x agit sur la hauteur)</option>
+      <option value="norm" data-i18n="optNorm">h_δ/σ(x) = Φ_D (indépendant de x)</option>
     </select>
-    <div class="sub" style="margin-top:6px">Loi réelle : P<sub>δ,x</sub>(h) ∝ x<sup>N<sub>δ</sub>(h)</sup>, Metropolis ancré + lissage sous-niveau.</div>
+    <div class="sub" data-i18n="subMode">Loi réelle : P_δ,x(h) ∝ x^N_δ(h), Metropolis ancré + lissage sous-niveau.</div>
 
-    <h2>2 · Domaine D</h2>
-    <label>Forme du domaine</label>
+    <h2 data-i18n="hSec2">2 · Domaine D</h2>
+    <label data-i18n="lblShape">Forme du domaine</label>
     <select id="shape">
-      <option value="disk">Disque</option>
-      <option value="square" selected>Carré</option>
-      <option value="hexagon">Hexagone</option>
-      <option value="triangle">Triangle</option>
-      <option value="annulus">Couronne</option>
-      <option value="star">Étoile</option>
+      <option value="disk" data-i18n="shDisk">Disque</option>
+      <option value="square" selected data-i18n="shSquare">Carré</option>
+      <option value="hexagon" data-i18n="shHex">Hexagone</option>
+      <option value="triangle" data-i18n="shTri">Triangle</option>
+      <option value="annulus" data-i18n="shAnn">Couronne</option>
+      <option value="star" data-i18n="shStar">Étoile</option>
     </select>
-    <label>Résolution de la grille FFT : <span class="val" id="vR"></span></label>
+    <label><span data-i18n="lblRes">Résolution de la grille FFT :</span> <span class="val" id="vR"></span></label>
     <input type="range" id="R" min="0" max="3" step="1" value="2">
-    <label>Amplitude verticale : <span class="val" id="vA"></span></label>
+    <label><span data-i18n="lblAmp">Amplitude verticale :</span> <span class="val" id="vA"></span></label>
     <input type="range" id="A" min="0.3" max="3" step="0.05" value="1">
-    <label>Lissage sous-niveau (passes) : <span class="val" id="vL"></span></label>
+    <label><span data-i18n="lblSmooth">Lissage sous-niveau (passes) :</span> <span class="val" id="vL"></span></label>
     <input type="range" id="L" min="0" max="4" step="1" value="2">
-    <button id="resample">⟳ Nouvel échantillon GFF</button>
+    <button id="resample" data-i18n="btnResample">⟳ Nouvel échantillon GFF</button>
 
-    <h2>3 · Couleur / caméra / cadre</h2>
-    <label>Palette</label>
+    <h2 data-i18n="hSec3">3 · Couleur / caméra / cadre</h2>
+    <label data-i18n="lblPalette">Palette</label>
     <select id="palette">
-      <option value="gff">GFF (bleu↔rouge)</option>
-      <option value="heat">Chaleur</option>
-      <option value="viridis">Viridis</option>
-      <option value="cool">Cool/warm</option>
-      <option value="mono">Monochrome</option>
+      <option value="gff" data-i18n="palGFF">GFF (bleu↔rouge)</option>
+      <option value="heat" data-i18n="palHeat">Chaleur</option>
+      <option value="viridis" data-i18n="palVir">Viridis</option>
+      <option value="cool" data-i18n="palCool">Cool/warm</option>
+      <option value="mono" data-i18n="palMono">Monochrome</option>
     </select>
-    <label>Zoom (crans molette) : <span class="val" id="vZ"></span></label>
+    <label><span data-i18n="lblZoom">Zoom (crans molette) :</span> <span class="val" id="vZ"></span></label>
     <input type="range" id="Z" min="0" max="20" step="1" value="6">
     <label style="display:flex;align-items:center;gap:8px;margin-top:8px">
       <input type="checkbox" id="frameOn" checked style="width:auto;accent-color:var(--acc2)">
-      Plaque de cadre planaire
+      <span data-i18n="lblFrame">Plaque de cadre planaire</span>
     </label>
     <label style="display:flex;align-items:center;gap:8px;margin-top:4px">
       <input type="checkbox" id="bdOn" checked style="width:auto;accent-color:var(--acc2)">
-      Bord ∂D (points violets)
+      <span data-i18n="lblBd">Bord ∂D (points violets)</span>
     </label>
-    <button id="rot">⏸ Pause rotation</button>
-    <button id="resetCam">↺ Réinitialiser caméra</button>
+    <button id="rot" data-i18n="btnRot">⏸ Pause rotation</button>
+    <button id="resetCam" data-i18n="btnResetCam">↺ Réinitialiser caméra</button>
 
-    <h2>4 · Vérifications numériques</h2>
-    <div class="stmt ok"><b>Prop 4.1</b> covariance<span class="tag">vérifié</span><br>E[Φ<sub>D</sub>(f)Φ<sub>D</sub>(g)] = (v/2π)∬ f log(1/|z−w|) g<span class="sub" id="covCheck">—</span></div>
-    <div class="stmt crit"><b>Variance critique</b><span class="tag">affiché</span><br>Var[Φ(z)] ~ (v/2π) log(1/d(z))<span class="sub" id="varCheck">—</span></div>
-    <div class="stmt info"><b>Poids Metropolis</b><span class="tag">vérifié</span><br>ratio = x<sup>N<sub>δ</sub>(h')−N<sub>δ</sub>(h)</sup>, ancre ±2, qstep=1/6<span class="sub" id="mcCheck">—</span></div>
-    <div class="stmt thm"><b>Thm 1.2</b> limite<span class="tag">admis</span><br>h<sub>δ</sub>/σ(x) ⇒ Φ<sub>D</sub>, moments mixtes convergents</div>
-    <div class="stmt thm"><b>Lemme 4.8</b> cutoff<span class="tag">admis</span><br>Identité scalaire fixant c ; v = (2π)² c</div>
-    <div class="stmt thm"><b>Prop 7.7</b> collision<span class="tag">admis</span><br>L(y,z) = (v/2π) T<sub>j−2</sub>(z)</div>
-    <div class="stmt thm"><b>Thm 7.8</b> Wick<span class="tag">admis</span><br>T<sub>j</sub> = v Σ<sub>i</sub> G<sub>D</sub>(x,y<sub>i</sub>) T<sub>j−2</sub></div>
+    <h2>4 · Language / Langue / اللغة / ⵜⴰⵎⴰⵣⵉⵖⵜ / 中文</h2>
+    <div class="lang-bar">
+      <button class="lang-btn active" data-lang="en" title="English">🇺🇸</button>
+      <button class="lang-btn" data-lang="fr" title="Français">🇫🇷</button>
+      <button class="lang-btn" data-lang="ar" title="العربية">🇸🇦</button>
+      <button class="lang-btn" data-lang="zgh" title="Tamazight">🇲🇦</button>
+      <button class="lang-btn" data-lang="zh" title="中文">🇨🇳</button>
+    </div>
 
-    <h2>5 · Équations</h2>
-    <div class="eq"><b>Mesure de hauteur :</b><br>P<sub>δ,x</sub>(h) = x<sup>N<sub>δ</sub>(h)</sup> / Z<sub>δ,x</sub></div>
-    <div class="eq"><b>GFF de Dirichlet :</b><br>(−Δ<sub>D</sub>) Φ = ξ,  Φ|<sub>∂D</sub> = 0<br>G<sub>D</sub> = (−Δ<sub>D</sub>)<sup>−1</sup></div>
-    <div class="eq"><b>Covariance :</b><br>E[Φ<sub>D</sub>(f)Φ<sub>D</sub>(g)] = ∬ f G<sub>D</sub> g</div>
-    <div class="eq"><b>Singularité :</b><br>G<sub>D</sub>(z,w) ~ (2π)<sup>−1</sup> log(1/|z−w|)</div>
-    <div class="eq"><b>Normalisation :</b><br>v = (2π)² c,  σ(x) = √v</div>
-    <div class="eq"><b>Thm 1.2 :</b><br>h<sub>δ</sub>/σ(x) ⇒ Φ<sub>D</sub> dans D′(D)</div>
+    <div id="scriptPanelControls">
+      <div id="scriptTextDisplay"></div>
+      <div class="script-buttons">
+        <button id="prevScript" title="Previous">⏮</button>
+        <button id="playPauseScript" title="Play/Pause">⏸</button>
+        <button id="nextScript" title="Next">⏭</button>
+        <button id="closeScript" class="close-btn" title="Close">✕</button>
+      </div>
+    </div>
 
-    <h2>6 · Légende</h2>
-    <div><span class="sw" style="background:#79c0ff"></span>Φ &lt; 0 (creux)</div>
-    <div><span class="sw" style="background:#7ee787"></span>Φ ≈ 0</div>
-    <div><span class="sw" style="background:#ff7b72"></span>Φ &gt; 0 (bosses)</div>
-    <div><span class="sw" style="background:#d2a8ff"></span>bord ∂D (Φ = 0)</div>
+    <h2 data-i18n="hSec4">5 · Vérifications numériques</h2>
+    <div class="stmt ok"><b>Prop 4.1</b> covariance<span class="tag" data-i18n="tagOk">vérifié</span><br>E[Φ<sub>D</sub>(f)Φ<sub>D</sub>(g)] = (v/2π)∬ f log(1/|z−w|) g<span class="sub" id="covCheck">—</span></div>
+    <div class="stmt crit"><b>Variance critique</b><span class="tag" data-i18n="tagCrit">affiché</span><br>Var[Φ(z)] ~ (v/2π) log(1/d(z))<span class="sub" id="varCheck">—</span></div>
+    <div class="stmt info"><b>Poids Metropolis</b><span class="tag" data-i18n="tagOk">vérifié</span><br>ratio = x<sup>N<sub>δ</sub>(h')−N<sub>δ</sub>(h)</sup>, ancre ±2, qstep=1/6<span class="sub" id="mcCheck">—</span></div>
+    <div class="stmt thm"><b>Thm 1.2</b> limite<span class="tag" data-i18n="tagAdm">admis</span><br>h<sub>δ</sub>/σ(x) ⇒ Φ<sub>D</sub>, moments mixtes convergents</div>
+    <div class="stmt thm"><b>Lemme 4.8</b> cutoff<span class="tag" data-i18n="tagAdm">admis</span><br>Identité scalaire fixant c ; v = (2π)² c</div>
+    <div class="stmt thm"><b>Prop 7.7</b> collision<span class="tag" data-i18n="tagAdm">admis</span><br>L(y,z) = (v/2π) T<sub>j−2</sub>(z)</div>
+    <div class="stmt thm"><b>Thm 7.8</b> Wick<span class="tag" data-i18n="tagAdm">admis</span><br>T<sub>j</sub> = v Σ<sub>i</sub> G<sub>D</sub>(x,y<sub>i</sub>) T<sub>j−2</sub></div>
+
+    <h2 data-i18n="hSec5">6 · Équations</h2>
+    <div class="eq"><b data-i18n="eqLbl1">Mesure de hauteur :</b><br>P<sub>δ,x</sub>(h) = x<sup>N<sub>δ</sub>(h)</sup> / Z<sub>δ,x</sub></div>
+    <div class="eq"><b data-i18n="eqLbl2">GFF de Dirichlet :</b><br>(−Δ<sub>D</sub>) Φ = ξ,  Φ|<sub>∂D</sub> = 0<br>G<sub>D</sub> = (−Δ<sub>D</sub>)<sup>−1</sup></div>
+    <div class="eq"><b data-i18n="eqLbl3">Covariance :</b><br>E[Φ<sub>D</sub>(f)Φ<sub>D</sub>(g)] = ∬ f G<sub>D</sub> g</div>
+    <div class="eq"><b data-i18n="eqLbl4">Singularité :</b><br>G<sub>D</sub>(z,w) ~ (2π)<sup>−1</sup> log(1/|z−w|)</div>
+    <div class="eq"><b data-i18n="eqLbl5">Normalisation :</b><br>v = (2π)² c,  σ(x) = √v</div>
+    <div class="eq"><b data-i18n="eqLbl6">Thm 1.2 :</b><br>h<sub>δ</sub>/σ(x) ⇒ Φ<sub>D</sub> dans D′(D)</div>
+
+    <h2 data-i18n="hSec6">7 · Légende</h2>
+    <div><span class="sw" style="background:#79c0ff"></span><span data-i18n="leg1">Φ &lt; 0 (creux)</span></div>
+    <div><span class="sw" style="background:#7ee787"></span><span data-i18n="leg2">Φ ≈ 0</span></div>
+    <div><span class="sw" style="background:#ff7b72"></span><span data-i18n="leg3">Φ &gt; 0 (bosses)</span></div>
+    <div><span class="sw" style="background:#d2a8ff"></span><span data-i18n="leg4">bord ∂D (Φ = 0)</span></div>
   </div>
   <div id="view">
     <div id="hud"></div>
-    <div id="videoTitle">Champ Gaussien Libre<small>Φ<sub>D</sub> · Dirichlet pondéré</small></div>
+    <div id="videoTitle"><span data-i18n="cTitle">Champ Gaussien Libre</span><small data-i18n="cSub">Φ<sub>D</sub> · Dirichlet pondéré</small></div>
     <div id="videoTimer">00:00</div>
     <div id="videoOptions"></div>
-    <div id="legend">glisser : orbite · molette : zoom par crans</div>
+    <div id="scriptDisplayBox"></div>
+    <div id="legend"><span data-i18n="keysHint">glisser : orbite · molette : zoom par crans</span></div>
     <div id="profile"><canvas id="pcv"></canvas></div>
-    <button id="videoBtn">▶ Mode vidéo</button>
+    <button id="videoBtn" data-i18n="videoBtn">▶ Mode vidéo</button>
   </div>
 </div>
 
@@ -204,22 +253,135 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+// ============================================================
+// GLOBAL VARIABLES
+// ============================================================
 const SIZE = 8;
 const RES_LIST = [32, 64, 128, 256];
+let N = RES_LIST[2];
+let phi = null, mask = null, mesh = null, boundary = null, frame = null;
+let measuredVar = 1, lastMC = '—';
+let cScale = 2.5;
 
 const state = {
   x: 0.85, resIdx: 2, amp: 1,
   shape: 'square', palette: 'gff', autoRot: true,
   zoomStep: 6, video: false, mode: 'raw',
   baseDist: 18,
-  frameOn: true,     // plaque + liseré
-  bdOn: true,        // points violets ∂D (séparé)
-  smoothPasses: 2,
+  frameOn: true, bdOn: true, smoothPasses: 2,
+  lang: 'en', scriptStep: 0, scriptPlaying: true, scriptActive: false
 };
-let N = RES_LIST[state.resIdx];
-let phi = null, mask = null, mesh = null, boundary = null, frame = null;
-let measuredVar = 1, lastMC = '—';
-let cScale = 2.5;
+
+const scripts = {
+  en: [
+    { step: "1", text: "Welcome to the Gaussian Free Field. We are visualizing a continuous random surface defined on a domain D.", time: 7000 },
+    { step: "2", text: "As we lower the weight 'x' towards the critical value 1/√2, the discrete height model becomes flatter and more rigid.", time: 8000 },
+    { step: "3", text: "The Theorem 1.2 states that if we scale the height by dividing by its standard deviation σ(x), we obtain the GFF.", time: 9000 },
+    { step: "4", text: "Notice the logarithmic covariance: the variance diverges with distance. The surface is extremely rough at small scales.", time: 9000 },
+    { step: "5", text: "This is the universal limit: a Gaussian Free Field with Dirichlet boundary conditions, shown here in 3D." , time: 9000 }
+  ],
+  fr: [
+    { step: "1", text: "Bienvenue dans le Champ Gaussien Libre. Nous visualisons une surface aléatoire continue définie sur un domaine D.", time: 8000 },
+    { step: "2", text: "Quand on abaisse le poids 'x' vers la valeur critique 1/√2, le modèle de hauteur discret devient plus plat et rigide.", time: 9000 },
+    { step: "3", text: "Le Théorème 1.2 stipule que si on normalise la hauteur par son écart-type σ(x), on obtient le GFF.", time: 10000 },
+    { step: "4", text: "Remarquez la covariance logarithmique : la variance diverge avec la distance. La surface est extrêmement rugueuse aux petites échelles.", time: 10000 },
+    { step: "5", text: "C'est la limite universelle : un Champ Gaussien Libre avec conditions de bord de Dirichlet, visualisé ici en 3D." , time: 10000 }
+  ],
+  ar: [
+    { step: "1", text: "مرحباً بكم في حقل غاوس الحر. نحن نعرض سطحاً عشوائياً مستمراً محدداً على مجال D.", time: 9000 },
+    { step: "2", text: "عندما نخفض الوزن 'x' نحو القيمة الحرجة 1/√2، يصبح نموذج الارتفاع المتقطع أكثر استواءً وصلابة.", time: 10000 },
+    { step: "3", text: "تنص النظرية 1.2 على أنه إذا قمنا بتطبيع الارتفاع بقسمته على الانحراف المعياري σ(x)، نحصل على GFF.", time: 11000 },
+    { step: "4", text: "لاحظ التغاير اللوغاريتمي: يتباعد التباين مع المسافة. السطح خشن للغاية على المقاييس الصغيرة.", time: 11000 },
+    { step: "5", text: "هذه هي النهاية العالمية: حقل غاوسي حر بشروط حدود ديريشليه، معروض هنا في 3D." , time: 11000 }
+  ],
+  zgh: [
+    { step: "1", text: "ⴰⵏⵙⵓⴼ ⵢⴰⴷ ⴳ ⵓⴳⴰⵡⵙⴰⵏ ⴰⵎⵙⴰⵙⴰ ⴰⴳⴰⵡⵙⴰⵏ. ⵏⵥⵕⵕⴰ ⵢⴰⵏ ⵓⵙⴰⵜⵉ ⴰⵎⵓⵔⴰⵏ ⴰⵎⵙⵓⵜⴰⵍ ⵖⴼ ⵓⴳⴰⵡⵙⴰⵏ D.", time: 10000 },
+    { step: "2", text: "ⵎⵉ ⵏⵙⵙⵓⵍⵍⵙ ⴰⵣⴰⵍ 'x' ⵙ ⵜⵉⵣⵔⵉ 1/√2, ⴰⵎⴷⵢⴰ ⵏ ⵜⵖⵣⵉ ⵉⴳⴰ ⴰⵎⵙⴰⵙⴰ ⴷ ⴰⵎⵙⵓⵜⴰⵍ.", time: 11000 },
+    { step: "3", text: "ⵜⵉⵣⵔⵉ 1.2 ⵜⵉⵏⵏⴰ: ⵎⵉ ⵏⵙⵎⵓⵇⵇⵍ ⵜⴰⵖⵣⵉ ⵙ σ(x), ⵏⵜⵜⴰⵎⴰⵏ ⵙ GFF.", time: 12000 },
+    { step: "4", text: "ⵥⵕ ⵜⴰⵎⵙⵓⵜⴰⵍⵜ ⵜⴰⵍⵓⴳⴰⵔⵉⵜⵎⵉⵜ: ⵜⴰⵎⵙⵓⵜⴰⵍⵜ ⵜⴻⵜⵜⵢⴰⵡⵙⵙⴰⵏ ⵙ ⵜⵎⵢⴰⵡⴰⵙⵜ. ⴰⵙⴰⵜⵉ ⵉⴳⴰ ⴰⵎⵛⵛⴰⵔ ⴳ ⵜⵙⵎⵥⵥⵉⵜ.", time: 12000 },
+    { step: "5", text: "ⴰⴷ ⴷ ⵜⵉⵣⵔⵉ ⵜⴰⵎⴰⴹⵍⴰⵏⵜ: ⴰⴳⴰⵡⵙⴰⵏ ⴰⵎⵙⴰⵙⴰ ⴰⴳⴰⵡⵙⴰⵏ ⵙ ⵜⵎⵙⵓⵜⴰⵍ ⵏ ⴷⵉⵔⵉⵛⵍⵉ, ⵉⵙⴽⵏ ⴳ 3D.", time: 12000 }
+  ],
+  zh: [
+    { step: "1", text: "欢迎来到高斯自由场。我们正在可视化定义在区域 D 上的连续随机表面。", time: 7000 },
+    { step: "2", text: "当我们将权重 'x' 降低到临界值 1/√2 时，离散高度模型变得更加平坦和刚性。", time: 8000 },
+    { step: "3", text: "定理 1.2 指出，如果我们将高度除以其标准差 σ(x) 进行归一化，就得到了 GFF。", time: 9000 },
+    { step: "4", text: "注意对数协方差：方差随距离发散。表面在小尺度上极其粗糙。", time: 9000 },
+    { step: "5", text: "这就是普适极限：具有狄利克雷边界条件的高斯自由场，此处以 3D 展示。" , time: 9000 }
+  ]
+};
+
+const uiTranslations = {
+  en: {
+    titleMain: "Dirichlet Gaussian Free Field", titleSub: "Thm 1.2 · h_δ/σ(x) ⇒ Φ_D for x ∈ [1/√2, 1]",
+    hSec1: "1 · Parameter x", lblX: "Weight x ∈ [1/√2, 1] :", lblSigma: "measured σ(x) :", lblCrit: "Critical point x_c = 1/√2 ≈ 0.7071 :", btnCrit: "→ Go to x_c",
+    lblMode: "Displayed height", optRaw: "h_δ = σ(x)·Φ (x affects height)", optNorm: "h_δ/σ(x) = Φ_D (independent of x)", subMode: "True law: P_δ,x(h) ∝ x^N_δ(h), anchored Metropolis + sub-level smoothing.",
+    hSec2: "2 · Domain D", lblShape: "Domain shape", shDisk: "Disk", shSquare: "Square", shHex: "Hexagon", shTri: "Triangle", shAnn: "Annulus", shStar: "Star",
+    lblRes: "FFT grid resolution :", lblAmp: "Vertical amplitude :", lblSmooth: "Sub-level smoothing (passes) :", btnResample: "⟳ New GFF sample",
+    hSec3: "3 · Color / camera / frame", lblPalette: "Palette", palGFF: "GFF (blue↔red)", palHeat: "Heat", palVir: "Viridis", palCool: "Cool/warm", palMono: "Monochrome",
+    lblZoom: "Zoom (wheel steps) :", lblFrame: "Planar frame plate", lblBd: "Boundary ∂D (purple dots)", btnRot: "⏸ Pause rotation", btnResetCam: "↺ Reset camera",
+    hSec4: "5 · Numerical checks", tagOk: "verified", tagCrit: "displayed", tagAdm: "admitted",
+    hSec5: "6 · Equations", eqLbl1: "Height measure :", eqLbl2: "Dirichlet GFF :", eqLbl3: "Covariance :", eqLbl4: "Singularity :", eqLbl5: "Normalization :", eqLbl6: "Thm 1.2 :",
+    hSec6: "7 · Legend", leg1: "Φ < 0 (troughs)", leg2: "Φ ≈ 0", leg3: "Φ > 0 (bumps)", leg4: "boundary ∂D (Φ = 0)",
+    cTitle: "Gaussian Free Field", cSub: "Φ_D · Dirichlet weighted", keysHint: "drag : orbit · wheel : zoom by steps",
+    videoBtn: "▶ Cinema mode", exitVideoBtn: "✕ Exit cinema"
+  },
+  fr: {
+    titleMain: "Champ gaussien libre de Dirichlet", titleSub: "Thm 1.2 · h_δ/σ(x) ⇒ Φ_D pour x ∈ [1/√2, 1]",
+    hSec1: "1 · Paramètre x", lblX: "Poids x ∈ [1/√2, 1] :", lblSigma: "σ(x) mesuré :", lblCrit: "Point critique x_c = 1/√2 ≈ 0.7071 :", btnCrit: "→ Aller à x_c",
+    lblMode: "Hauteur affichée", optRaw: "h_δ = σ(x)·Φ (x agit sur la hauteur)", optNorm: "h_δ/σ(x) = Φ_D (indépendant de x)", subMode: "Loi réelle : P_δ,x(h) ∝ x^N_δ(h), Metropolis ancré + lissage sous-niveau.",
+    hSec2: "2 · Domaine D", lblShape: "Forme du domaine", shDisk: "Disque", shSquare: "Carré", shHex: "Hexagone", shTri: "Triangle", shAnn: "Couronne", shStar: "Étoile",
+    lblRes: "Résolution de la grille FFT :", lblAmp: "Amplitude verticale :", lblSmooth: "Lissage sous-niveau (passes) :", btnResample: "⟳ Nouvel échantillon GFF",
+    hSec3: "3 · Couleur / caméra / cadre", lblPalette: "Palette", palGFF: "GFF (bleu↔rouge)", palHeat: "Chaleur", palVir: "Viridis", palCool: "Cool/warm", palMono: "Monochrome",
+    lblZoom: "Zoom (crans molette) :", lblFrame: "Plaque de cadre planaire", lblBd: "Bord ∂D (points violets)", btnRot: "⏸ Pause rotation", btnResetCam: "↺ Réinitialiser caméra",
+    hSec4: "5 · Vérifications numériques", tagOk: "vérifié", tagCrit: "affiché", tagAdm: "admis",
+    hSec5: "6 · Équations", eqLbl1: "Mesure de hauteur :", eqLbl2: "GFF de Dirichlet :", eqLbl3: "Covariance :", eqLbl4: "Singularité :", eqLbl5: "Normalisation :", eqLbl6: "Thm 1.2 :",
+    hSec6: "7 · Légende", leg1: "Φ < 0 (creux)", leg2: "Φ ≈ 0", leg3: "Φ > 0 (bosses)", leg4: "bord ∂D (Φ = 0)",
+    cTitle: "Champ Gaussien Libre", cSub: "Φ_D · Dirichlet pondéré", keysHint: "glisser : orbite · molette : zoom par crans",
+    videoBtn: "▶ Mode cinéma", exitVideoBtn: "✕ Quitter cinéma"
+  },
+  ar: {
+    titleMain: "حقل غاوس الحر لديريشليه", titleSub: "نظرية 1.2 · h_δ/σ(x) ⇒ Φ_D لـ x ∈ [1/√2, 1]",
+    hSec1: "1 · المعلمة x", lblX: "الوزن x ∈ [1/√2, 1] :", lblSigma: "σ(x) المقاس :", lblCrit: "النقطة الحرجة x_c = 1/√2 ≈ 0.7071 :", btnCrit: "→ انتقل إلى x_c",
+    lblMode: "الارتفاع المعروض", optRaw: "h_δ = σ(x)·Φ (x يؤثر على الارتفاع)", optNorm: "h_δ/σ(x) = Φ_D (مستقل عن x)", subMode: "القانون الحقيقي: P_δ,x(h) ∝ x^N_δ(h)، مطرقة متروبوليس + تجانس.",
+    hSec2: "2 · المجال D", lblShape: "شكل المجال", shDisk: "قرص", shSquare: "مربع", shHex: "مسدس", shTri: "مثلث", shAnn: "حلقة", shStar: "نجمة",
+    lblRes: "دقة شبكة FFT :", lblAmp: "السعة العمودية :", lblSmooth: "تجانس المستوى الفرعي (مرات) :", btnResample: "⟳ عينة GFF جديدة",
+    hSec3: "3 · اللون / الكاميرا / الإطار", lblPalette: "لوحة الألوان", palGFF: "GFF (أزرق↔أحمر)", palHeat: "حرارة", palVir: "Viridis", palCool: "بارد/دافئ", palMono: "أحادي اللون",
+    lblZoom: "تكبير (خطوات العجلة) :", lblFrame: "لوحة الإطار المستوي", lblBd: "الحدود ∂D (نقاط بنفسجية)", btnRot: "⏸ إيقاف الدوران", btnResetCam: "↺ إعادة ضبط الكاميرا",
+    hSec4: "5 · التحققات العددية", tagOk: "تم التحقق", tagCrit: "معروض", tagAdm: "مُسلّم به",
+    hSec5: "6 · المعادلات", eqLbl1: "قياس الارتفاع :", eqLbl2: "GFF ديريشليه :", eqLbl3: "التغاير :", eqLbl4: "التفرد :", eqLbl5: "التطبيع :", eqLbl6: "نظرية 1.2 :",
+    hSec6: "7 · المفتاح", leg1: "Φ < 0 (وديان)", leg2: "Φ ≈ 0", leg3: "Φ > 0 (نتوءات)", leg4: "الحدود ∂D (Φ = 0)",
+    cTitle: "حقل غاوس الحر", cSub: "Φ_D · ديريشليه موزون", keysHint: "سحب : مدار · عجلة : تكبير بالخطوات",
+    videoBtn: "▶ وضع السينما", exitVideoBtn: "✕ خروج من السينما"
+  },
+  zgh: {
+    titleMain: "ⴰⴳⴰⵡⵙⴰⵏ ⴰⴳⴰⵡⵙⴰⵏ ⴰⵎⵙⴰⵙⴰ ⵏ ⴷⵉⵔⵉⵛⵍⵉ", titleSub: "ⵜⵉⵣⵔⵉ 1.2 · h_δ/σ(x) ⇒ Φ_D ⵉ x ∈ [1/√2, 1]",
+    hSec1: "1 · ⴰⵎⵙⵉⵙⵍⴽⵉⵏ x", lblX: "ⴰⵣⴰⵍ x ∈ [1/√2, 1] :", lblSigma: "σ(x) ⵉⵜⵜⵢⴰⵡⵙⵙⴰⵏ :", lblCrit: "ⵜⴰⵎⵙⵓⵜⴰⵍⵜ x_c = 1/√2 ≈ 0.7071 :", btnCrit: "→ ⴷⴷⵓ ⵙ x_c",
+    lblMode: "ⵜⴰⵖⵣⵉ ⵜⴰⵙⴽⵏⵜ", optRaw: "h_δ = σ(x)·Φ (x ⵉⴳⴰ ⵖⴼ ⵜⵖⵣⵉ)", optNorm: "h_δ/σ(x) = Φ_D (ⵉⴳⴰ ⵙⴳ x)", subMode: "ⴰⵍⵍⵓⴳ ⴰⵎⵙⵓⵜⴰⵍ: P_δ,x(h) ∝ x^N_δ(h), Metropolis ⴷ ⵓⵙⵎⵓⵜⵜⴳ.",
+    hSec2: "2 · ⴰⴳⴰⵡⵙⴰⵏ D", lblShape: "ⵜⴰⵎⵓⵔⴰⵏⵜ ⵏ ⵓⴳⴰⵡⵙⴰⵏ", shDisk: "ⴰⵎⴽⴽⵓⵥ", shSquare: "ⴰⵎⴽⴽⵓⵥ", shHex: "ⴰⵎⴽⵕⴹⴰⵙ", shTri: "ⴰⵎⴽⵕⴹⴰⵙ", shAnn: "ⵜⴰⵎⵔⵙⴰⵍⵜ", shStar: "ⵜⵉⵣⵔⵉ",
+    lblRes: "ⵜⴰⵣⵡⴰⵔⵜ ⵏ ⵜⵙⵎⵉⵔⵜ FFT :", lblAmp: "ⵜⴰⵎⵙⵓⵜⴰⵍⵜ ⵜⴰⵎⵙⵓⵜⴰⵍⵜ :", lblSmooth: "ⴰⵙⵎⵓⵜⵜⴳ ⴰⵎⵙⵓⵜⴰⵍ (ⵜⵉⵎⵔⵙⴰⵍ) :", btnResample: "⟳ ⵜⴰⵎⵙⵓⵜⴰⵍⵜ ⵜⴰⵎⴰⵢⵏⵓⵜ GFF",
+    hSec3: "3 · ⴰⴽⵍⵓ / ⵜⴰⴽⴰⵎⵉⵔⴰ / ⴰⵙⴽⴽⵉⵏ", lblPalette: "ⵜⴰⵍⴳⴰⵎⵜ ⵏ ⵉⴽⵍⵡⴰⵏ", palGFF: "GFF (ⴰⵣⵔⴰⵡ↔ⴰⵣⴳⴳⵯⴰⵖ)", palHeat: "ⵜⴰⴼⵓⴽⵜ", palVir: "Viridis", palCool: "ⴰⵙⵎⵎⵉⴹ/ⴰⵙⵎⵎⵉⴹ", palMono: "ⴰⵢⵢⴰⴼ",
+    lblZoom: "ⴰⵙⵎⵖⵓⵔ (ⵜⵉⵎⵔⵙⴰⵍ ⵏ ⵜⵎⵙⴽⴰⵔⵜ) :", lblFrame: "ⵜⴰⵍⴳⴰⵎⵜ ⵏ ⵓⵙⴽⴽⵉⵏ ⵜⴰⵎⵙⵓⵜⴰⵍⵜ", lblBd: "ⵜⵉⵎⵔⵙⴰⵍ ∂D (ⵜⵉⵎⵏⵓⴽⴽⴰⵍ ⵜⵉⵎⵍⵎⵓⵏⵉⵏ)", btnRot: "⏸ ⵙⴱⴷⴷ ⴰⵙⵓⵏⴼⵓ", btnResetCam: "↺ ⵙⵎⵓⵜⵜⵢ ⵜⴰⴽⴰⵎⵉⵔⴰ",
+    hSec4: "5 · ⵜⵉⵙⵎⵉⵔⵜⵉⵏ ⵜⵉⵎⵓⵟⵟⵓⵏⵉⵏ", tagOk: "ⵉⵜⵜⵢⴰⵡⵙⵙⴰⵏ", tagCrit: "ⵉⵙⴽⵏ", tagAdm: "ⵉⵜⵜⵢⴰⵡⵙⵙⴰⵏ",
+    hSec5: "6 · ⵜⵉⵎⵙⵉⵙⵍⵜⵉⵏ", eqLbl1: "ⴰⵙⴰⵜⵉ ⵏ ⵜⵖⵣⵉ :", eqLbl2: "GFF ⵏ ⴷⵉⵔⵉⵛⵍⵉ :", eqLbl3: "ⵜⴰⵎⵙⵓⵜⴰⵍⵜ :", eqLbl4: "ⵜⴰⵎⵙⵓⵜⴰⵍⵜ :", eqLbl5: "ⴰⵙⵎⵓⵜⵜⴳ :", eqLbl6: "ⵜⵉⵣⵔⵉ 1.2 :",
+    hSec6: "7 · ⵜⴰⵎⴰⵜⴰⵔⵜ", leg1: "Φ < 0 (ⵉⵎⵉⵣⵉ)", leg2: "Φ ≈ 0", leg3: "Φ > 0 (ⵜⵉⵎⵔⵙⴰⵍ)", leg4: "ⵜⵉⵎⵔⵙⴰⵍ ∂D (Φ = 0)",
+    cTitle: "ⴰⴳⴰⵡⵙⴰⵏ ⴰⴳⴰⵡⵙⴰⵏ ⴰⵎⵙⴰⵙⴰ", cSub: "Φ_D · ⴷⵉⵔⵉⵛⵍⵉ ⴰⵎⵙⵓⵜⴰⵍ", keysHint: "ⵜⴰⵎⵢⴰⵡⴰⵙⵜ : ⵜⴰⵎⵓⵖⵍⵉ · ⵜⴰⵎⵙⴽⴰⵔⵜ : ⵜⴰⵙⵎⵖⵓⵔⵜ ⵙ ⵜⵉⵎⵔⵙⴰⵍ",
+    videoBtn: "▶ ⴰⵎⴰⴷⴰ ⵏ ⵙⵉⵏⵉⵎⴰ", exitVideoBtn: "✕ ⴼⴼⵖ ⵙⴳ ⵙⵉⵏⵉⵎⴰ"
+  },
+  zh: {
+    titleMain: "狄利克雷高斯自由场", titleSub: "定理 1.2 · h_δ/σ(x) ⇒ Φ_D 对于 x ∈ [1/√2, 1]",
+    hSec1: "1 · 参数 x", lblX: "权重 x ∈ [1/√2, 1] :", lblSigma: "测量的 σ(x) :", lblCrit: "临界点 x_c = 1/√2 ≈ 0.7071 :", btnCrit: "→ 转到 x_c",
+    lblMode: "显示高度", optRaw: "h_δ = σ(x)·Φ (x 影响高度)", optNorm: "h_δ/σ(x) = Φ_D (与 x 无关)", subMode: "真实规律：P_δ,x(h) ∝ x^N_δ(h)，锚定 Metropolis + 子级平滑。",
+    hSec2: "2 · 区域 D", lblShape: "区域形状", shDisk: "圆盘", shSquare: "正方形", shHex: "六边形", shTri: "三角形", shAnn: "圆环", shStar: "星形",
+    lblRes: "FFT 网格分辨率 :", lblAmp: "垂直振幅 :", lblSmooth: "子级平滑（次数） :", btnResample: "⟳ 新的 GFF 样本",
+    hSec3: "3 · 颜色 / 摄像机 / 框架", lblPalette: "调色板", palGFF: "GFF (蓝↔红)", palHeat: "热力", palVir: "Viridis", palCool: "冷/暖", palMono: "单色",
+    lblZoom: "缩放（滚轮步数） :", lblFrame: "平面框架板", lblBd: "边界 ∂D（紫色点）", btnRot: "⏸ 暂停旋转", btnResetCam: "↺ 重置摄像机",
+    hSec4: "5 · 数值检查", tagOk: "已验证", tagCrit: "已显示", tagAdm: "已承认",
+    hSec5: "6 · 方程", eqLbl1: "高度测度 :", eqLbl2: "狄利克雷 GFF :", eqLbl3: "协方差 :", eqLbl4: "奇点 :", eqLbl5: "归一化 :", eqLbl6: "定理 1.2 :",
+    hSec6: "7 · 图例", leg1: "Φ < 0 (波谷)", leg2: "Φ ≈ 0", leg3: "Φ > 0 (波峰)", leg4: "边界 ∂D (Φ = 0)",
+    cTitle: "高斯自由场", cSub: "Φ_D · 狄利克雷加权", keysHint: "拖拽 : 轨道 · 滚轮 : 按步缩放",
+    videoBtn: "▶ 电影模式", exitVideoBtn: "✕ 退出电影模式"
+  }
+};
 
 // ============================================================
 // FFT 2D (n puissance de 2 par construction)
@@ -492,7 +654,7 @@ const fill = new THREE.PointLight(0x7ee787, 30, 50, 2);
 fill.position.set(0, 6, 0); scene.add(fill);
 
 // ============================================================
-// Plaque de cadre planaire — SEUL objet lié à la case "frameOn"
+// Plaque de cadre planaire
 // ============================================================
 function buildFrame() {
   if (frame) {
@@ -547,7 +709,7 @@ function buildFrame() {
 }
 
 // ============================================================
-// Bord ∂D — points violets, contrôlé par bdOn (indépendant du cadre)
+// Bord ∂D — points violets
 // ============================================================
 function buildBoundary() {
   if (boundary) {
@@ -576,7 +738,7 @@ function buildBoundary() {
 }
 
 // ============================================================
-// Palette — échelle en écarts-types
+// Palette
 // ============================================================
 const _c = new THREE.Color();
 function colorFor(v, inside) {
@@ -607,10 +769,7 @@ function rebuildGeometry() {
   N = RES_LIST[state.resIdx];
   mask = buildMask(N, state.shape);
   const gff = sampleGFF(N, mask);
-
-  // Metropolis ancré
   const mc = weightedSample(N, mask, gff, state.x);
-  // Lissage sous-niveau (détail restauré, anti-escalier)
   const field = smoothField(N, mask, mc.field, state.smoothPasses);
 
   const pct = mc.proposed ? (100*mc.accepted/mc.proposed).toFixed(1) : '—';
@@ -619,7 +778,6 @@ function rebuildGeometry() {
          + (mc.truncated ? ' · tronqué' : '')
          + ` · lissage ${state.smoothPasses} passe(s)`;
 
-  // Variance globale du domaine
   let s2 = 0, cnt = 0;
   for (let k = 0; k < N*N; k++) if (mask[k]) { s2 += field[k]*field[k]; cnt++; }
   measuredVar = cnt ? s2/cnt : 1;
@@ -628,7 +786,7 @@ function rebuildGeometry() {
   phi = new Float64Array(N*N);
   for (let k = 0; k < N*N; k++) phi[k] = mask[k] ? field[k]/s0 : 0;
 
-  cScale = 2.5; // phi normalisé à σ=1
+  cScale = 2.5;
 
   const size = SIZE;
   const H0 = heightScale();
@@ -674,7 +832,6 @@ function rebuildGeometry() {
   updateProfile();
   updateVideoOptions();
   updateLabels();
-  console.log(`rebuild N=${N} ${state.shape} x=${state.x.toFixed(3)} mode=${state.mode} H0=${H0.toFixed(3)} smooth=${state.smoothPasses} t=${(performance.now()-t0).toFixed(1)}ms`);
 }
 
 function updateCameraTarget() {
@@ -763,19 +920,154 @@ function updateVideoOptions() {
   ].join('  ·  ');
 }
 
+// ============================================================
+// SCRIPT CONTROLS & TIMER LOGIC
+// ============================================================
+let scriptTimer = null;
+
+function updateScriptUI() {
+  const stepData = scripts[state.lang][state.scriptStep];
+  if (!stepData) return;
+  
+  const panelDisplay = document.getElementById("scriptTextDisplay");
+  if (panelDisplay) {
+    panelDisplay.innerHTML = `<span class="step">${stepData.step}/5</span> ${stepData.text}`;
+  }
+  
+  const overlayBox = document.getElementById("scriptDisplayBox");
+  if (overlayBox) {
+    overlayBox.innerHTML = `<span class="step">${stepData.step}/5</span> ${stepData.text}`;
+    overlayBox.style.opacity = 0;
+    setTimeout(() => { overlayBox.style.opacity = 1; }, 50);
+  }
+}
+
+function startScript() {
+  state.scriptStep = 0;
+  state.scriptPlaying = true;
+  state.scriptActive = true;
+  document.getElementById("scriptDisplayBox").classList.add("active");
+  document.getElementById("playPauseScript").textContent = "⏸";
+  updateScriptUI();
+  resetScriptTimer();
+}
+
+function resetScriptTimer() {
+  if (scriptTimer) clearTimeout(scriptTimer);
+  if (!state.scriptPlaying || !state.scriptActive) return;
+  
+  const stepData = scripts[state.lang][state.scriptStep];
+  if (stepData && stepData.time) {
+    scriptTimer = setTimeout(() => {
+      if (state.scriptStep < 4) {
+        state.scriptStep++;
+        updateScriptUI();
+        resetScriptTimer();
+      } else {
+        state.scriptPlaying = false;
+        document.getElementById("playPauseScript").textContent = "▶";
+      }
+    }, stepData.time);
+  }
+}
+
+function stopScript() {
+  if (scriptTimer) { clearTimeout(scriptTimer); scriptTimer = null; }
+  document.getElementById("scriptDisplayBox").classList.remove("active");
+  state.scriptStep = 0;
+  state.scriptPlaying = true;
+  state.scriptActive = false;
+}
+
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.lang = btn.dataset.lang;
+    updateUILanguage(); 
+    if (state.video) {
+      resetScriptTimer();
+    }
+  };
+});
+
+document.getElementById('prevScript').onclick = () => {
+  if (state.scriptStep > 0) {
+    state.scriptStep--;
+    updateScriptUI();
+    resetScriptTimer();
+  }
+};
+document.getElementById('nextScript').onclick = () => {
+  if (state.scriptStep < 4) {
+    state.scriptStep++;
+    updateScriptUI();
+    resetScriptTimer();
+  }
+};
+document.getElementById('playPauseScript').onclick = () => {
+  state.scriptPlaying = !state.scriptPlaying;
+  document.getElementById('playPauseScript').textContent = state.scriptPlaying ? "⏸" : "▶";
+  if (state.scriptPlaying) resetScriptTimer();
+  else if (scriptTimer) clearTimeout(scriptTimer);
+};
+document.getElementById('closeScript').onclick = () => {
+  stopScript();
+};
+
+// ============================================================
+// TRANSLATIONS
+// ============================================================
+function updateUILanguage() {
+  const dict = uiTranslations[state.lang];
+  if (!dict) return;
+  
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) {
+      el.textContent = dict[key];
+    }
+  });
+
+  const rotBtn = document.getElementById('rot');
+  if (rotBtn) {
+    if (state.autoRot) {
+      rotBtn.textContent = dict.btnRot;
+    } else {
+      rotBtn.textContent = dict.btnRot.replace('⏸', '▶').replace('Pause', 'Play').replace('إيقاف', 'تشغيل').replace('暂停', '开始');
+    }
+  }
+
+  if (state.video) {
+    updateScriptUI();
+  }
+  
+  updateLabels();
+}
+
+// ============================================================
+// MODE VIDEO / CINEMA
+// ============================================================
 function toggleVideo() {
   state.video = !state.video;
   document.body.classList.toggle('video', state.video);
   const btn = document.getElementById('videoBtn');
-  btn.textContent = state.video ? '✕ Quitter vidéo' : '▶ Mode vidéo';
+  const dict = uiTranslations[state.lang];
+  
+  btn.textContent = state.video ? dict.exitVideoBtn : dict.videoBtn;
+  
   if (state.video) {
     videoStart = performance.now();
     if (!videoRAF) videoRAF = requestAnimationFrame(updateTimer);
+    startScript();
   } else {
     if (videoRAF) { cancelAnimationFrame(videoRAF); videoRAF = null; }
     videoTimer.textContent = '00:00';
+    stopScript();
   }
+  setTimeout(() => resize(), 380);
 }
+
 function updateTimer() {
   if (!state.video) return;
   const t = (performance.now() - videoStart)/1000;
@@ -786,19 +1078,19 @@ function updateTimer() {
 }
 document.getElementById('videoBtn').onclick = toggleVideo;
 
+// ============================================================
+// CONTROLS & UI
+// ============================================================
 const $ = id => document.getElementById(id);
 function updateLabels() {
-  $('vx').textContent = state.x.toFixed(4);
-  $('vs').textContent = Math.sqrt(measuredVar).toFixed(3);
-  $('vR').textContent = `${N} (2^${Math.log2(N)})`;
-  $('vA').textContent = state.amp.toFixed(2);
-  $('vZ').textContent = state.zoomStep;
-  $('vL').textContent = state.smoothPasses;
+  if ($('vx')) $('vx').textContent = state.x.toFixed(4);
+  if ($('vs')) $('vs').textContent = Math.sqrt(measuredVar).toFixed(3);
+  if ($('vR')) $('vR').textContent = `${N} (2^${Math.log2(N)})`;
+  if ($('vA')) $('vA').textContent = state.amp.toFixed(2);
+  if ($('vZ')) $('vZ').textContent = state.zoomStep;
+  if ($('vL')) $('vL').textContent = state.smoothPasses;
 }
 
-// ============================================================
-// Contrôles
-// ============================================================
 $('x').oninput = e => { state.x = +e.target.value; $('vx').textContent = state.x.toFixed(4); rescaleHeight(); };
 $('x').onchange = () => rebuildGeometry();
 $('toCrit').onclick = () => { state.x = 1/Math.SQRT2; $('x').value = state.x; updateLabels(); rebuildGeometry(); };
@@ -809,9 +1101,9 @@ $('A').oninput = e => { state.amp = +e.target.value; updateLabels(); rescaleHeig
 $('L').oninput = e => {
   state.smoothPasses = +e.target.value;
   $('vL').textContent = state.smoothPasses;
-  rescaleHeight();       // preview immédiate de la géométrie ?
+  rescaleHeight();
 };
-$('L').onchange = () => rebuildGeometry();   // relance complète au relâchement
+$('L').onchange = () => rebuildGeometry();
 $('shape').onchange = e => { state.shape = e.target.value; rebuildGeometry(); };
 $('palette').onchange = e => { state.palette = e.target.value; rebuildGeometry(); };
 $('resample').onclick = rebuildGeometry;
@@ -820,7 +1112,12 @@ $('bdOn').onchange = e => { state.bdOn = e.target.checked; buildBoundary(); };
 $('rot').onclick = () => {
   state.autoRot = !state.autoRot;
   controls.autoRotate = state.autoRot;
-  $('rot').textContent = (state.autoRot ? '⏸' : '▶') + ' Rotation';
+  const dict = uiTranslations[state.lang];
+  if (state.autoRot) {
+    $('rot').textContent = dict.btnRot;
+  } else {
+    $('rot').textContent = dict.btnRot.replace('⏸', '▶').replace('Pause', 'Play').replace('إيقاف', 'تشغيل').replace('暂停', '开始');
+  }
 };
 $('resetCam').onclick = () => {
   controls.target.set(0,0,0); camera.position.copy(CAM0);
@@ -862,7 +1159,11 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+// ============================================================
+// STARTUP
+// ============================================================
 updateLabels();
+updateUILanguage();
 rebuildGeometry();
 resize();
 animate();
