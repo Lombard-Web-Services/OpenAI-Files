@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Ramanujan — Quantum Flow v16.1</title>
+<title>Ramanujan — Quantum Flow v16.2</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #050810;
@@ -1138,7 +1138,7 @@ function kmeans(data, k, iters=15) {
   const labels = new Array(n).fill(0);
   const t0 = performance.now();
   for (let it=0;it<iters;it++) {
-    if (performance.now() - t0 > 25) break;
+    if (performance.now() - t0 > 15) break;
     for (let i=0;i<n;i++) {
       let best = 0, bestD = Infinity;
       for (let c=0;c<k;c++) {
@@ -1177,7 +1177,7 @@ function hierarchicalClustering(data, k, linkage='ward') {
   let safety = 0;
   const t0 = performance.now();
   while (clusters.length > k && safety++ < 2000) {
-    if (performance.now() - t0 > 25) break;
+    if (performance.now() - t0 > 15) break;
     let bestI = 0, bestJ = 1, bestD = Infinity;
     for (let i=0;i<clusters.length;i++) {
       for (let j=i+1;j<clusters.length;j++) {
@@ -1623,51 +1623,42 @@ const state = {
   viewMode: 'sphere',
   loops: [],
   graphVersion: 0,
+  pendingRecolor: false, // flag pour différer les recolorations lourdes
 };
 
 const energyHistory = [];
 const MAX_HISTORY = 150;
 
 // ═══════════════════════════════════════════════════════════════
-//  CACHE DES BOUCLES
+//  DÉTECTION DE BOUCLES OPTIMISÉE
 // ═══════════════════════════════════════════════════════════════
+// Triangles uniquement, avec Sets d'adjacence précalculés → O(n·d²)
 let loopCacheKey = -1;
 let loopCacheValue = [];
 function detectLoopsCached(adj, version) {
   if (loopCacheKey === version) return loopCacheValue;
-  loopCacheValue = detectLoopsFast(adj);
+  loopCacheValue = detectTriangles(adj);
   loopCacheKey = version;
   return loopCacheValue;
 }
-function detectLoopsFast(adj) {
+
+function detectTriangles(adj) {
   const n = adj.length;
   const loops = new Set();
+  // Sets d'appartenance : O(1) au lieu de O(d)
+  const sets = adj.map(nbrs => new Set(nbrs));
   for (let i=0;i<n;i++) {
     const ni = adj[i];
     for (let a=0;a<ni.length;a++) {
-      for (let b=a+1;b<ni.length;b++) {
-        const u = ni[a], v = ni[b];
-        if (adj[u].includes(v)) {
-          loops.add(`${Math.min(i,u)}-${Math.max(i,u)}`);
-          loops.add(`${Math.min(i,v)}-${Math.max(i,v)}`);
-          loops.add(`${Math.min(u,v)}-${Math.max(u,v)}`);
-        }
-      }
-    }
-  }
-  for (let i=0;i<n;i++) {
-    for (const u of adj[i]) {
+      const u = ni[a];
       if (u <= i) continue;
-      for (const v of adj[u]) {
-        if (v === i || v === u) continue;
-        for (const w of adj[v]) {
-          if (w === i || w === u || w === v) continue;
-          if (adj[w].includes(i)) {
-            loops.add(`${Math.min(i,u)}-${Math.max(i,u)}`);
-            loops.add(`${Math.min(u,v)}-${Math.max(u,v)}`);
-            loops.add(`${Math.min(v,w)}-${Math.max(v,w)}`);
-            loops.add(`${Math.min(w,i)}-${Math.max(w,i)}`);
-          }
+      for (let b=a+1;b<ni.length;b++) {
+        const v = ni[b];
+        if (v <= i) continue;
+        if (sets[u].has(v)) {
+          loops.add(`${i}-${u}`);
+          loops.add(`${i}-${v}`);
+          loops.add(`${u}-${v}`);
         }
       }
     }
@@ -1696,10 +1687,13 @@ function computeClusters() {
   const Dinv = deg.map(d => 1 / Math.sqrt(Math.max(1, d)));
   const vecs = [];
   const k = Math.min(state.clusterK, n - 1);
+  const tStart = performance.now();
   for (let e=0;e<k;e++) {
+    // Budget temps global : on abandonne les vecteurs restants si > 20ms
+    if (performance.now() - tStart > 20) break;
     let v = new Float64Array(n);
     for (let i=0;i<n;i++) v[i] = clusterRnd() - 0.5;
-    for (let it=0;it<25;it++) {
+    for (let it=0;it<20;it++) {
       for (const prev of vecs) {
         let dot = 0;
         for (let i=0;i<n;i++) dot += v[i] * prev[i];
@@ -1723,6 +1717,7 @@ function computeClusters() {
   for (let i=0;i<n;i++) {
     const row = [];
     for (let e=0;e<vecs.length;e++) row.push(vecs[e][i]);
+    if (vecs.length === 0) row.push(0);
     data.push(row);
   }
   let labels;
@@ -2358,7 +2353,6 @@ function regenerate() {
   state.rnd = mulberry32(999 + seed);
   energyHistory.length = 0;
   energyHistory.push(spectralEnergy(state.eigs, graph.d));
-  // CORRECTIF : setTimeout(…, 0) au lieu de setImmediate (non supporté par les navigateurs)
   setTimeout(() => {
     computeClusters();
     buildGraphVisual(graph);
@@ -2498,6 +2492,7 @@ function drawEnergyChart() {
   ctx.stroke(); ctx.shadowBlur = 0;
 }
 
+// CORRECTIF : un seul step max par tick + flag différé pour recolor
 function mcmcTick() {
   if (!state.mcmcRunning) return;
   const now = performance.now();
@@ -2505,7 +2500,8 @@ function mcmcTick() {
   state.mcmcLastTick = now;
   let g = state.graph, eigs = state.eigs, accepted = 0;
   const t0 = performance.now();
-  for (let i=0;i<state.speed;i++) {
+  const maxSteps = Math.min(state.speed, 1); // 1 seul pas max pour ne jamais bloquer
+  for (let i=0;i<maxSteps;i++) {
     if (performance.now() - t0 > 30) break;
     const step = metropolisStep(g, eigs, state.beta, state.rnd, state.tilt);
     if (step.accepted) {
@@ -2517,12 +2513,20 @@ function mcmcTick() {
     state.acceptCount += accepted; state.totalSteps += accepted;
     const E = spectralEnergy(eigs, g.d);
     energyHistory.push(E); if (energyHistory.length > MAX_HISTORY) energyHistory.shift();
+    // Marquer qu'il faut recolorier — sera fait une fois par frame dans animate
+    state.pendingRecolor = true;
     updateEdgesOnly(g);
-    computeClusters();
-    updateUI();
   } else {
     state.totalSteps += 1;
   }
+}
+
+// Applique les recolorations lourdes différées (une fois par frame)
+function processPendingRecolor() {
+  if (!state.pendingRecolor) return;
+  state.pendingRecolor = false;
+  computeClusters();
+  updateUI();
 }
 
 // STORYTELLING
@@ -3089,6 +3093,7 @@ function animate(now) {
   }
 
   mcmcTick();
+  processPendingRecolor();
   if (state.showTimer) updateClientTimer();
   if (state.recording) updateRecTimer();
 
