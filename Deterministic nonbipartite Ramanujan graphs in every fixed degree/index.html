@@ -1641,7 +1641,6 @@ const edgeFragmentShader = `
   uniform float uTime;
   uniform float uFlowIntensity;
   void main() {
-    // Diffusion lumineuse locale en fonction de la position sur l'arête
     float flow = exp(-pow((vPosition - 0.5) * 4.0, 2.0)) * uFlowIntensity;
     vec3 color = vEdgeColor + vEdgeColor * flow * 2.0;
     gl_FragColor = vec4(color, 0.6 + flow * 0.4);
@@ -1838,6 +1837,12 @@ function computeClusters() {
     else if (state.clusterMethod === 'complete') labels = hierarchicalClustering(data, state.clusterK, 'complete');
     else if (state.clusterMethod === 'average') labels = hierarchicalClustering(data, state.clusterK, 'average');
     else labels = new Array(n).fill(0);
+    
+    // Validation : labels doit être un tableau de n entiers
+    if (!Array.isArray(labels) || labels.length !== n) {
+      console.warn('Clustering : labels invalides, fallback cluster 0');
+      labels = new Array(n).fill(0);
+    }
   } catch(e) {
     console.error("Erreur clustering :", e);
     labels = new Array(n).fill(0);
@@ -1852,22 +1857,24 @@ function computeClusters() {
 }
 
 function updateNodeColors() {
-  if (!nodeMesh || !state.clusterLabels) return;
+  if (!nodeMesh) return;
   const labels = state.clusterLabels;
+  if (!labels) return;
   const palette = PALETTES[currentPalette];
-  const colorMap = {};
+  const count = Math.min(nodeMesh.count, labels.length);
   
-  // Si l'option "Couleurs du clustering" est désactivée, on ne change pas les couleurs des nœuds
+  // S'assurer que nodeBaseColors / nodeTargetColors couvrent count
+  while (nodeBaseColors.length < count) nodeBaseColors.push(new THREE.Color(0x7dd3fc));
+  while (nodeTargetColors.length < count) nodeTargetColors.push(new THREE.Color(0x7dd3fc));
+
   if (!enableColorCluster) {
-    // Utiliser la couleur par défaut (cyan) pour tous les nœuds
-    for (let i=0;i<nodeMesh.count;i++) {
+    for (let i=0;i<count;i++) {
       const col = new THREE.Color(0x7dd3fc);
-      nodeBaseColors[i] = col.clone();
-      if (nodeMesh.instanceColor) nodeMesh.setColorAt(i, col);
+      nodeBaseColors[i].copy(col);
+      nodeMesh.setColorAt(i, col);
     }
     if (nodeMesh.instanceColor) nodeMesh.instanceColor.needsUpdate = true;
     
-    // Mettre à jour les halos aussi
     if (haloPoints) {
       const colAttr = haloPoints.geometry.attributes.aColor;
       for (let i=0;i<labels.length;i++) {
@@ -1881,13 +1888,13 @@ function updateNodeColors() {
     return;
   }
   
-  // Application normale de la palette de clustering
-  for (let i=0;i<nodeMesh.count;i++) {
+  for (let i=0;i<count;i++) {
     const l = labels[i] !== undefined ? labels[i] : 0;
-    const hex = palette[l % palette.length];
+    const hex = palette[((l % palette.length) + palette.length) % palette.length];
     const col = new THREE.Color(hex);
-    nodeBaseColors[i] = col.clone();
-    if (nodeMesh.instanceColor) nodeMesh.setColorAt(i, col);
+    nodeBaseColors[i].copy(col);
+    nodeTargetColors[i].copy(col);
+    nodeMesh.setColorAt(i, col);
   }
   if (nodeMesh.instanceColor) nodeMesh.instanceColor.needsUpdate = true;
   
@@ -1895,7 +1902,7 @@ function updateNodeColors() {
     const colAttr = haloPoints.geometry.attributes.aColor;
     for (let i=0;i<labels.length;i++) {
       const l = labels[i] !== undefined ? labels[i] : 0;
-      const hex = palette[l % palette.length];
+      const hex = palette[((l % palette.length) + palette.length) % palette.length];
       const compCol = getComplementaryColor(hex);
       colAttr.array[i*3] = compCol.r;
       colAttr.array[i*3+1] = compCol.g;
@@ -2048,8 +2055,28 @@ function safePos(idx) {
   return p;
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  FIX #2 : désactive toutes les particules de flux
+// ═══════════════════════════════════════════════════════════════
+function killAllFlowParticles() {
+  for (const p of flowParticles) {
+    p.active = false;
+    p.t = 0;
+  }
+  // Cache immédiatement les instances encore visibles
+  const dummy = new THREE.Object3D();
+  dummy.scale.set(0, 0, 0);
+  dummy.updateMatrix();
+  for (let i=0;i<FLOW_PARTICLES;i++) {
+    flowInstanced.setMatrixAt(i, dummy.matrix);
+  }
+  flowInstanced.instanceMatrix.needsUpdate = true;
+}
+
 function buildGraphVisual(graph) {
   disposeGraph();
+  killAllFlowParticles();
+
   const { n, adj } = graph;
 
   if (state.viewMode === 'circle') positions = circlePositions(n);
@@ -2071,14 +2098,13 @@ function buildGraphVisual(graph) {
       dummy.updateMatrix();
       nodeMesh.setMatrixAt(i, dummy.matrix);
       const l = state.clusterLabels[i] !== undefined ? state.clusterLabels[i] : 0;
-      const hex = palette[l % palette.length];
+      const hex = palette[((l % palette.length) + palette.length) % palette.length];
       const c = new THREE.Color(hex);
       nodeMesh.setColorAt(i, c);
       nodeBaseColors.push(c.clone());
       nodeTargetColors.push(c.clone());
     }
   } else {
-    // Couleur unique (cyan par défaut)
     for (let i=0;i<n;i++) {
       if (!positions[i]) continue;
       dummy.position.copy(positions[i]);
@@ -2092,7 +2118,7 @@ function buildGraphVisual(graph) {
   }
   
   nodeMesh.instanceMatrix.needsUpdate = true;
-  nodeMesh.instanceColor.needsUpdate = true;
+  if (nodeMesh.instanceColor) nodeMesh.instanceColor.needsUpdate = true;
   graphGroup.add(nodeMesh);
 
   // Halo
@@ -2107,7 +2133,7 @@ function buildGraphVisual(graph) {
     const l = state.clusterLabels ? state.clusterLabels[i] : 0;
     let col;
     if (enableColorCluster) {
-      const hex = palette[l % palette.length];
+      const hex = palette[((l % palette.length) + palette.length) % palette.length];
       col = getComplementaryColor(hex);
     } else {
       col = getComplementaryColor('#7dd3fc');
@@ -2121,73 +2147,12 @@ function buildGraphVisual(graph) {
   haloPoints = new THREE.Points(haloGeo, haloMat);
   graphGroup.add(haloPoints);
 
-  // Détection de boucles
   state.loops = detectLoops(adj);
   const loopSet = new Set(state.loops);
 
   // Arêtes
   edgeList = [];
   const edgeVerts = [], edgeColorAttr = [], edgePosAttr = [];
-  let edgeCounter = 0;
-  const seen = new Set();
-  for (let i=0;i<n;i++) {
-    const nbrs = adj[i];
-    if (!nbrs) continue;
-    for (let k=0;k<nbrs.length;k++) {
-      const j = nbrs[k];
-      if (i>=j) continue;
-      const key = i + '-' + j;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const pi = safePos(i), pj = safePos(j);
-      if (!pi || !pj) continue;
-      edgeVerts.push(pi.x, pi.y, pi.z, pj.x, pj.y, pj.z);
-      edgePosAttr.push(0.0, 1.0);
-      
-      const isBack = loopSet.has(`${Math.min(i,j)}-${Math.max(i,j)}`) ? 1 : 0;
-      
-      let edgeColor;
-      if (enableColorMode) {
-        if (isBack) {
-          edgeColor = new THREE.Color(0x22c55e); // Vert vif pour les boucles
-        } else if (state.mode === 'lps') {
-          edgeColor = new THREE.Color(0x00ffff); // Cyan
-        } else if (state.mode === 'switch') {
-          edgeColor = new THREE.Color(0xff00ff); // Magenta
-        } else {
-          edgeColor = new THREE.Color(0xffaa00); // Orange
-        }
-      } else {
-        // Couleur par défaut (blanc cassé)
-        edgeColor = new THREE.Color(0xaaaaaa);
-      }
-      
-      edgeColorAttr.push(edgeColor.r, edgeColor.g, edgeColor.b, edgeColor.r, edgeColor.g, edgeColor.b);
-      edgeList.push({ a: i, b: j, isLoop: isBack, color: edgeColor });
-      edgeCounter++;
-    }
-  }
-  const eg = new THREE.BufferGeometry();
-  eg.setAttribute('position', new THREE.Float32BufferAttribute(edgeVerts, 3));
-  eg.setAttribute('aPosition', new THREE.Float32BufferAttribute(edgePosAttr, 1));
-  eg.setAttribute('aEdgeColor', new THREE.Float32BufferAttribute(edgeColorAttr, 3));
-  edgeMesh = new THREE.LineSegments(eg, edgeMat);
-  graphGroup.add(edgeMesh);
-
-  for (const p of flowParticles) p.active = false;
-  phaseHighlight = 0;
-  rebuildParamLabels();
-  if (state.storyIndex === 12) highlightPhaseNodes();
-}
-
-function updateEdgesOnly(graph) {
-  if (!edgeMesh) return;
-  const { n, adj } = graph;
-  state.loops = detectLoops(adj);
-  const loopSet = new Set(state.loops);
-  edgeList = [];
-  const edgeVerts = [], edgeColorAttr = [], edgePosAttr = [];
-  let edgeCounter = 0;
   const seen = new Set();
   for (let i=0;i<n;i++) {
     const nbrs = adj[i];
@@ -2217,7 +2182,56 @@ function updateEdgesOnly(graph) {
       
       edgeColorAttr.push(edgeColor.r, edgeColor.g, edgeColor.b, edgeColor.r, edgeColor.g, edgeColor.b);
       edgeList.push({ a: i, b: j, isLoop: isBack, color: edgeColor });
-      edgeCounter++;
+    }
+  }
+  const eg = new THREE.BufferGeometry();
+  eg.setAttribute('position', new THREE.Float32BufferAttribute(edgeVerts, 3));
+  eg.setAttribute('aPosition', new THREE.Float32BufferAttribute(edgePosAttr, 1));
+  eg.setAttribute('aEdgeColor', new THREE.Float32BufferAttribute(edgeColorAttr, 3));
+  edgeMesh = new THREE.LineSegments(eg, edgeMat);
+  graphGroup.add(edgeMesh);
+
+  phaseHighlight = 0;
+  rebuildParamLabels();
+  if (state.storyIndex === 12) highlightPhaseNodes();
+}
+
+function updateEdgesOnly(graph) {
+  if (!edgeMesh) return;
+  const { n, adj } = graph;
+  state.loops = detectLoops(adj);
+  const loopSet = new Set(state.loops);
+  edgeList = [];
+  const edgeVerts = [], edgeColorAttr = [], edgePosAttr = [];
+  const seen = new Set();
+  for (let i=0;i<n;i++) {
+    const nbrs = adj[i];
+    if (!nbrs) continue;
+    for (let k=0;k<nbrs.length;k++) {
+      const j = nbrs[k];
+      if (i>=j) continue;
+      const key = i + '-' + j;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const pi = safePos(i), pj = safePos(j);
+      if (!pi || !pj) continue;
+      edgeVerts.push(pi.x, pi.y, pi.z, pj.x, pj.y, pj.z);
+      edgePosAttr.push(0.0, 1.0);
+      
+      const isBack = loopSet.has(`${Math.min(i,j)}-${Math.max(i,j)}`) ? 1 : 0;
+      
+      let edgeColor;
+      if (enableColorMode) {
+        if (isBack) edgeColor = new THREE.Color(0x22c55e);
+        else if (state.mode === 'lps') edgeColor = new THREE.Color(0x00ffff);
+        else if (state.mode === 'switch') edgeColor = new THREE.Color(0xff00ff);
+        else edgeColor = new THREE.Color(0xffaa00);
+      } else {
+        edgeColor = new THREE.Color(0xaaaaaa);
+      }
+      
+      edgeColorAttr.push(edgeColor.r, edgeColor.g, edgeColor.b, edgeColor.r, edgeColor.g, edgeColor.b);
+      edgeList.push({ a: i, b: j, isLoop: isBack, color: edgeColor });
     }
   }
   edgeMesh.geometry.dispose();
@@ -2719,6 +2733,9 @@ function renderStory() {
     const intensity = 0.3 + (state.storyIndex / STORY.length) * 0.5;
     for (let i=0;i<n;i++) if (Math.random() < 0.15) triggerNode(i, intensity);
   }
+
+  // FIX #3 : recalcul du cadrage après changement de contenu de la story
+  requestAnimationFrame(updateCameraOffset);
 }
 
 function highlightParamsInStep(step) {
@@ -2894,7 +2911,6 @@ function enterCinema() {
   document.getElementById('mini-maps').classList.remove('hidden');
   document.getElementById('quantum-panel').classList.add('hidden');
   
-  // Gestion de la légende des clusters en mode cinéma
   const clusterLegendCheckbox = document.getElementById('c-cluster-legend');
   if (clusterLegendCheckbox.checked) {
     document.getElementById('cluster-legend').classList.add('show');
@@ -2908,10 +2924,14 @@ function enterCinema() {
   if (document.documentElement.requestFullscreen) {
     document.documentElement.requestFullscreen().catch(()=>{});
   }
-  updateCameraOffset();
+  // FIX #3 : recalcul après que la transition CSS soit terminée + une frame
+  requestAnimationFrame(() => {
+    requestAnimationFrame(updateCameraOffset);
+  });
   setTimeout(() => {
     if (state.eigs) drawCinemaSpectrum(state.eigs, state.graph.d);
     computeClusters();
+    updateCameraOffset();
   }, 100);
 }
 function exitCinema() {
@@ -2931,28 +2951,49 @@ function exitCinema() {
 }
 function toggleCinema() { if (state.cinemaMode) exitCinema(); else enterCinema(); }
 
+// ═══════════════════════════════════════════════════════════════
+//  FIX #3 : cadrage cinéma mesuré dynamiquement
+// ═══════════════════════════════════════════════════════════════
 function updateCameraOffset() {
-  if (state.cinemaMode) {
-    const panelW = 360;
-    const offsetX = -panelW / 2;
-    
-    // Calcul du centrage vertical
-    // Le header fait environ 180px de haut, la story environ 320px de bas.
-    // La zone visuelle centrale est entre les deux.
-    const headerH = 180;
-    const storyH = 320;
-    const visualCenterY = (headerH + (innerHeight - storyH)) / 2;
-    const offsetY = innerHeight / 2 - visualCenterY;
-    const worldOffsetY = (offsetY / innerHeight) * 60;
-    
-    camera.setViewOffset(innerWidth, innerHeight, offsetX, 0, innerWidth, innerHeight);
-    controls.target.set(0, worldOffsetY, 0);
-    camera.position.set(0, worldOffsetY, CAMERA_BASE / currentZoom);
-  } else {
+  if (!state.cinemaMode) {
     camera.clearViewOffset();
     controls.target.set(0, 0, 0);
     camera.position.set(0, 0, CAMERA_BASE / currentZoom);
+    return;
   }
+
+  // Mesures réelles des éléments DOM (remplace les hauteurs codées en dur)
+  const panelW = 360;
+  const headerEl = document.getElementById('cinema-header');
+  const paramsEl = document.getElementById('cinema-params-bar');
+  const storyEl  = document.getElementById('story-cinema-panel');
+  const overlayEl = document.getElementById('cinema-overlay');
+
+  const overlayRect = overlayEl.getBoundingClientRect();
+  const headerRect  = headerEl.getBoundingClientRect();
+  const paramsRect  = paramsEl ? paramsEl.getBoundingClientRect() : headerRect;
+  const storyRect   = storyEl.getBoundingClientRect();
+
+  // Zone visible = entre le bas du header/params et le haut de la story
+  const zoneTop    = Math.max(headerRect.bottom, paramsRect.bottom);
+  const zoneBottom = storyRect.top;
+  const zoneCenterY = (zoneTop + zoneBottom) / 2;
+
+  // On veut que ce centre de zone libre soit au centre de l'écran
+  const offsetY = innerHeight / 2 - zoneCenterY;
+
+  // Largeur utile = largeur de l'overlay (on exclut le panneau gauche)
+  const usableW = overlayRect.width;
+  const offsetX = -panelW / 2 + (innerWidth - usableW - panelW) / 2;
+
+  camera.setViewOffset(
+    innerWidth, innerHeight,
+    offsetX,
+    offsetY,
+    innerWidth, innerHeight
+  );
+  controls.target.set(0, 0, 0);
+  camera.position.set(0, 0, CAMERA_BASE / currentZoom);
 }
 
 // UI EVENTS
@@ -3080,7 +3121,6 @@ $('c-color-mode').onchange = e => {
 $('c-color-cluster').onchange = e => {
   enableColorCluster = e.target.checked;
   updateNodeColors();
-  // Mettre à jour les halos
   if (haloPoints) {
     const labels = state.clusterLabels;
     const colAttr = haloPoints.geometry.attributes.aColor;
@@ -3089,7 +3129,7 @@ $('c-color-cluster').onchange = e => {
       let col;
       if (enableColorCluster) {
         const l = labels[i] !== undefined ? labels[i] : 0;
-        const hex = palette[l % palette.length];
+        const hex = palette[((l % palette.length) + palette.length) % palette.length];
         col = getComplementaryColor(hex);
       } else {
         col = getComplementaryColor('#7dd3fc');
@@ -3154,9 +3194,16 @@ function buildParamToggles() {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  FIX #1 : rebuildGraphVisual réapplique maintenant les couleurs
+// ═══════════════════════════════════════════════════════════════
 function rebuildGraphVisual() {
   if (!state.graph) return;
   const { n } = state.graph;
+
+  // FIX #2 : tue toutes les particules de flux avant de repositionner
+  killAllFlowParticles();
+
   if (state.viewMode === 'circle') positions = circlePositions(n);
   else if (state.viewMode === 'cluster3d') positions = clusterPositions(n, state.clusterLabels);
   else if (state.viewMode === 'dendrogram') positions = dendrogramPositions(n, state.clusterLabels);
@@ -3185,6 +3232,10 @@ function rebuildGraphVisual() {
   }
   
   updateEdgesOnly(state.graph);
+
+  // FIX #1 : réappliquer les couleurs de clustering (le bug initial)
+  updateNodeColors();
+  if (nodeMesh && nodeMesh.instanceColor) nodeMesh.instanceColor.needsUpdate = true;
 }
 
 // ANIMATION LOOP
