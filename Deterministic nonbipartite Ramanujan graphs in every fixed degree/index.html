@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Ramanujan — Quantum Flow v16.3</title>
+<title>Ramanujan — Quantum Flow v16.4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #050810;
@@ -305,7 +305,6 @@
   }
   #cinema-stats.show { opacity: 1; transform: translateY(0); display: block; }
 
-  /* ── MODE CINÉMA : stats centrées verticalement à droite ── */
   body.cinema-mode #cinema-stats.show {
     top: 50%;
     transform: translateY(-50%);
@@ -372,7 +371,6 @@
   .sl-box.ramanujan { background: rgba(125, 211, 252, 0.6); }
   .sl-box.outside { background: rgba(239, 68, 68, 0.6); }
 
-  /* ── MINI-MAPS : position bas-droite par défaut ── */
   #mini-maps {
     position: fixed; bottom: 20px; right: 20px;
     width: 380px;
@@ -384,7 +382,6 @@
   }
   #mini-maps.hidden { opacity: 0; transform: translateY(30px); pointer-events: none; }
 
-  /* ── MODE CINÉMA : mini-maps à GAUCHE, centrées verticalement ── */
   body.cinema-mode #mini-maps:not(.hidden) {
     left: 380px;
     right: auto;
@@ -409,7 +406,6 @@
   #mm-circle-canvas { height: 110px; }
   #mm-cluster-canvas { height: 110px; }
 
-  /* ── QUANTUM : position bas-droite par défaut ── */
   #quantum-panel {
     position: fixed; bottom: 200px; right: 20px;
     width: 380px;
@@ -422,7 +418,6 @@
   }
   #quantum-panel.hidden { opacity: 0; pointer-events: none; }
 
-  /* ── MODE CINÉMA : quantum à GAUCHE, centré verticalement, AU-DESSUS des mini-maps ── */
   body.cinema-mode #quantum-panel:not(.hidden) {
     left: 380px;
     right: auto;
@@ -450,6 +445,36 @@
   }
   @keyframes recPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
   #rec-time { font-variant-numeric: tabular-nums; color: #fbbf24; }
+
+  /* ── BOUTON STOP ENREGISTREMENT (hors canvas, n'apparaît PAS dans la vidéo) ── */
+  #rec-stop-btn {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    z-index: 500;
+    background: rgba(239, 68, 68, 0.95);
+    color: #fff;
+    border: 2px solid #fff;
+    border-radius: 30px;
+    padding: 14px 32px;
+    font-size: 15px; font-weight: 700;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.6), 0 0 0 4px rgba(239, 68, 68, 0.25);
+    display: none;
+    align-items: center; gap: 10px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    animation: stopPulse 2s ease-in-out infinite;
+  }
+  #rec-stop-btn.show { display: inline-flex; }
+  #rec-stop-btn:hover {
+    transform: translateX(-50%) scale(1.05);
+    box-shadow: 0 12px 48px rgba(239, 68, 68, 0.8), 0 0 0 6px rgba(239, 68, 68, 0.3);
+  }
+  #rec-stop-btn:active { transform: translateX(-50%) scale(0.97); }
+  @keyframes stopPulse {
+    0%, 100% { box-shadow: 0 8px 32px rgba(239, 68, 68, 0.6), 0 0 0 4px rgba(239, 68, 68, 0.25); }
+    50% { box-shadow: 0 8px 40px rgba(239, 68, 68, 0.9), 0 0 0 8px rgba(239, 68, 68, 0.15); }
+  }
 
   #client-timer {
     position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
@@ -563,113 +588,131 @@
   }
   .modal-footer .total strong { color: #fbbf24; }
   .modal-footer button { padding: 8px 18px; font-size: 12px; }
+
+  /* Language selector row */
+  .lang-row {
+    display: flex; gap: 4px; margin-bottom: 6px;
+  }
+  .lang-row button {
+    flex: 1; padding: 6px 4px; font-size: 11px;
+  }
 </style>
 </head>
 <body>
 
 <div id="panel">
-  <div class="panel-title">Ramanujan · Quantum Flow</div>
+  <div class="panel-title" data-i18n="title">Ramanujan · Quantum Flow</div>
+
+  <!-- LANGUAGE SELECTOR -->
+  <div class="section">
+    <div class="section-label" data-i18n="lang-label">Langue / Language / भाषा</div>
+    <div class="lang-row">
+      <button id="lang-fr" class="lang-btn active" data-lang="fr">FR</button>
+      <button id="lang-en" class="lang-btn" data-lang="en">EN</button>
+      <button id="lang-hi" class="lang-btn" data-lang="hi">हिं</button>
+    </div>
+  </div>
 
   <div class="section">
-    <div class="section-label">Graphe</div>
-    <div class="row"><span>Degré d</span><span class="val" id="v-degree">4</span></div>
+    <div class="section-label" data-i18n="graph">Graphe</div>
+    <div class="row"><span data-i18n="degree">Degré d</span><span class="val" id="v-degree">4</span></div>
     <input type="range" id="r-degree" min="3" max="10" value="4" step="1">
-    <div class="row"><span>Sommets n</span><span class="val" id="v-nverts">60</span></div>
+    <div class="row"><span data-i18n="vertices">Sommets n</span><span class="val" id="v-nverts">60</span></div>
     <input type="range" id="r-nverts" min="20" max="200" value="60" step="10">
     <div class="btn-row">
-      <button id="btn-random" class="active">Aléatoire</button>
-      <button id="btn-switch">Switches</button>
-      <button id="btn-lps">LPS</button>
+      <button id="btn-random" class="active" data-i18n="random">Aléatoire</button>
+      <button id="btn-switch" data-i18n="switch">Switches</button>
+      <button id="btn-lps" data-i18n="lps">LPS</button>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-label">Clustering (couleurs)</div>
-    <div class="row"><span>Méthode</span></div>
+    <div class="section-label" data-i18n="clustering">Clustering (couleurs)</div>
+    <div class="row"><span data-i18n="method">Méthode</span></div>
     <select id="sel-cluster">
-      <option value="none">Aucun (couleur unique)</option>
-      <option value="kmeans" selected>K-Means (spectral)</option>
-      <option value="ward">Hiérarchique — Ward</option>
-      <option value="single">Hiérarchique — Single</option>
-      <option value="complete">Hiérarchique — Complete</option>
-      <option value="average">Hiérarchique — Average</option>
+      <option value="none" data-i18n="cluster-none">Aucun (couleur unique)</option>
+      <option value="kmeans" selected data-i18n="cluster-kmeans">K-Means (spectral)</option>
+      <option value="ward" data-i18n="cluster-ward">Hiérarchique — Ward</option>
+      <option value="single" data-i18n="cluster-single">Hiérarchique — Single</option>
+      <option value="complete" data-i18n="cluster-complete">Hiérarchique — Complete</option>
+      <option value="average" data-i18n="cluster-average">Hiérarchique — Average</option>
     </select>
-    <div class="row"><span>Palette de couleurs</span></div>
+    <div class="row"><span data-i18n="palette">Palette de couleurs</span></div>
     <select id="sel-palette">
-      <option value="standard" selected>Standard (Vif)</option>
-      <option value="pastel">Pastel (Doux)</option>
-      <option value="neon">Néon (Fluo)</option>
-      <option value="contrast">Contrastée (Fort)</option>
+      <option value="standard" selected data-i18n="palette-standard">Standard (Vif)</option>
+      <option value="pastel" data-i18n="palette-pastel">Pastel (Doux)</option>
+      <option value="neon" data-i18n="palette-neon">Néon (Fluo)</option>
+      <option value="contrast" data-i18n="palette-contrast">Contrastée (Fort)</option>
     </select>
-    <div class="row"><span>k (clusters)</span><span class="val" id="v-k">6</span></div>
+    <div class="row"><span data-i18n="kclusters">k (clusters)</span><span class="val" id="v-k">6</span></div>
     <input type="range" id="r-k" min="2" max="12" value="6" step="1">
     <div class="btn-row">
-      <button id="btn-recluster">↻ Recalculer</button>
+      <button id="btn-recluster" data-i18n="recompute">↻ Recalculer</button>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-label">Vue principale</div>
+    <div class="section-label" data-i18n="main-view">Vue principale</div>
     <select id="sel-view">
-      <option value="sphere" selected>Sphère</option>
-      <option value="circle">Cercle</option>
-      <option value="cluster3d">Clusters 3D</option>
-      <option value="dendrogram">Dendrogramme</option>
+      <option value="sphere" selected data-i18n="view-sphere">Sphère</option>
+      <option value="circle" data-i18n="view-circle">Cercle</option>
+      <option value="cluster3d" data-i18n="view-cluster3d">Clusters 3D</option>
+      <option value="dendrogram" data-i18n="view-dendrogram">Dendrogramme</option>
     </select>
     <div class="btn-row">
-      <button id="btn-reposition">↻ Repositionner</button>
+      <button id="btn-reposition" data-i18n="reposition">↻ Repositionner</button>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-label">Metropolis-Hastings</div>
-    <div class="row"><span>β (inv. température)</span><span class="val" id="v-beta">20.0</span></div>
+    <div class="section-label" data-i18n="mcmc">Metropolis-Hastings</div>
+    <div class="row"><span data-i18n="beta-label">β (inv. température)</span><span class="val" id="v-beta">20.0</span></div>
     <input type="range" id="r-beta" min="0" max="100" value="20" step="1">
-    <div class="row"><span>Pas / frame</span><span class="val" id="v-speed">1</span></div>
+    <div class="row"><span data-i18n="speed">Pas / frame</span><span class="val" id="v-speed">1</span></div>
     <input type="range" id="r-speed" min="1" max="4" value="1" step="1">
     <div class="btn-row">
-      <button id="btn-mc">▶ MCMC</button>
-      <button id="btn-tilt">Tilt</button>
-      <button id="btn-reset">Reset</button>
+      <button id="btn-mc" data-i18n="mcmc-run">▶ MCMC</button>
+      <button id="btn-tilt" data-i18n="tilt">Tilt</button>
+      <button id="btn-reset" data-i18n="reset">Reset</button>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-label">Vue & Zoom</div>
-    <div class="row"><span>Zoom</span><span class="val" id="v-zoom">1.00×</span></div>
+    <div class="section-label" data-i18n="view-zoom">Vue & Zoom</div>
+    <div class="row"><span data-i18n="zoom">Zoom</span><span class="val" id="v-zoom">1.00×</span></div>
     <input type="range" id="r-zoom" min="0.3" max="3" value="1" step="0.05">
     <div class="btn-row">
       <button id="btn-zoom-out">−</button>
-      <button id="btn-zoom-reset">Reset</button>
+      <button id="btn-zoom-reset" data-i18n="reset">Reset</button>
       <button id="btn-zoom-in">+</button>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-label">Apparence</div>
-    <div class="row"><span>Luminance boules</span><span class="val" id="v-lum">0.6</span></div>
+    <div class="section-label" data-i18n="appearance">Apparence</div>
+    <div class="row"><span data-i18n="luminance">Luminance boules</span><span class="val" id="v-lum">0.6</span></div>
     <input type="range" id="r-lum" min="0" max="1.2" value="0.6" step="0.05">
-    <div class="row"><span>Halo</span><span class="val" id="v-halo">0.2</span></div>
+    <div class="row"><span data-i18n="halo">Halo</span><span class="val" id="v-halo">0.2</span></div>
     <input type="range" id="r-halo" min="0" max="1" value="0.2" step="0.05">
-    <div class="row"><span>Intensité flux</span><span class="val" id="v-flow">1.0</span></div>
+    <div class="row"><span data-i18n="flow-intensity">Intensité flux</span><span class="val" id="v-flow">1.0</span></div>
     <input type="range" id="r-flow" min="0" max="3" value="1" step="0.1">
   </div>
 
   <div class="section">
-    <div class="section-label">Paramètres sur la figure</div>
+    <div class="section-label" data-i18n="figure-params">Paramètres sur la figure</div>
     <div class="param-toggle-list" id="param-toggle-list"></div>
   </div>
 
   <div class="section">
-    <div class="section-label">Statistiques</div>
-    <div class="stat"><span class="stat-label">Énergie</span><span class="stat-val" id="s-energy">—</span></div>
-    <div class="stat"><span class="stat-label">Acceptation</span><span class="stat-val" id="s-accept">—</span></div>
-    <div class="stat"><span class="stat-label">λ_max hors borne</span><span class="stat-val" id="s-maxeig">—</span></div>
-    <div class="stat"><span class="stat-label">Statut</span><span class="stat-val" id="s-status"><span class="badge badge-neutral">?</span></span></div>
+    <div class="section-label" data-i18n="statistics">Statistiques</div>
+    <div class="stat"><span class="stat-label" data-i18n="energy">Énergie</span><span class="stat-val" id="s-energy">—</span></div>
+    <div class="stat"><span class="stat-label" data-i18n="acceptance">Acceptation</span><span class="stat-val" id="s-accept">—</span></div>
+    <div class="stat"><span class="stat-label" data-i18n="maxeig">λ_max hors borne</span><span class="stat-val" id="s-maxeig">—</span></div>
+    <div class="stat"><span class="stat-label" data-i18n="status">Statut</span><span class="stat-val" id="s-status"><span class="badge badge-neutral">?</span></span></div>
   </div>
 
   <div class="section">
-    <div class="section-label">Storytelling</div>
+    <div class="section-label" data-i18n="storytelling">Storytelling</div>
     <div class="btn-row">
       <button id="btn-story-start">⏮</button>
       <button id="btn-story-prev">←</button>
@@ -682,58 +725,58 @@
       <div id="story-progress-bar"><div id="story-progress-fill"></div></div>
     </div>
     <div class="btn-row" style="margin-top:8px;">
-      <button id="btn-story-timecode">⏱ Timecoding</button>
-      <button id="btn-story-cinema">🎬 Cinéma</button>
+      <button id="btn-story-timecode" data-i18n="timecode">⏱ Timecoding</button>
+      <button id="btn-story-cinema" data-i18n="cinema-btn">🎬 Cinéma</button>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-label">Lemmes & propositions</div>
+    <div class="section-label" data-i18n="lemmas">Lemmes & propositions</div>
     <div class="lemma-list" id="lemma-list"></div>
   </div>
 
   <div class="section">
-    <div class="section-label">Affichage</div>
+    <div class="section-label" data-i18n="display">Affichage</div>
     <label class="checkbox-row">
       <input type="checkbox" id="c-timer" checked>
-      <span>Timer client</span>
+      <span data-i18n="chk-timer">Timer client</span>
     </label>
     <label class="checkbox-row">
       <input type="checkbox" id="c-rotate" checked>
-      <span>Rotation auto</span>
+      <span data-i18n="chk-rotate">Rotation auto</span>
     </label>
     <label class="checkbox-row">
       <input type="checkbox" id="c-maps" checked>
-      <span>Mini-maps 2D</span>
+      <span data-i18n="chk-maps">Mini-maps 2D</span>
     </label>
     <label class="checkbox-row">
       <input type="checkbox" id="c-quantum" checked>
-      <span>Oscillateur quantique</span>
+      <span data-i18n="chk-quantum">Oscillateur quantique</span>
     </label>
     <label class="checkbox-row">
       <input type="checkbox" id="c-cluster-legend">
-      <span>Légende Clusters en cinéma</span>
+      <span data-i18n="chk-cluster-legend">Légende Clusters en cinéma</span>
     </label>
     <label class="checkbox-row">
       <input type="checkbox" id="c-story" checked>
-      <span>Story visible en cinéma</span>
+      <span data-i18n="chk-story">Story visible en cinéma</span>
     </label>
     <label class="checkbox-row">
       <input type="checkbox" id="c-flow" checked>
-      <span>Particules de flux</span>
+      <span data-i18n="chk-flow">Particules de flux</span>
     </label>
     <label class="checkbox-row">
       <input type="checkbox" id="c-color-mode" checked>
-      <span>Couleurs des arêtes (mode)</span>
+      <span data-i18n="chk-color-mode">Couleurs des arêtes (mode)</span>
     </label>
     <label class="checkbox-row">
       <input type="checkbox" id="c-color-cluster" checked>
-      <span>Couleurs du clustering</span>
+      <span data-i18n="chk-color-cluster">Couleurs du clustering</span>
     </label>
   </div>
 
   <div class="section">
-    <div class="section-label">Enregistrement WebM</div>
+    <div class="section-label" data-i18n="recording">Enregistrement WebM</div>
     <select id="sel-resolution">
       <option value="1280x720">1280 × 720 (HD)</option>
       <option value="1920x1080" selected>1920 × 1080 (Full HD)</option>
@@ -741,14 +784,14 @@
       <option value="3840x2160">3840 × 2160 (4K)</option>
     </select>
     <div class="row" style="margin-top:8px;">
-      <span>Qualité</span><span class="val" id="v-quality">8 Mbps</span>
+      <span data-i18n="quality">Qualité</span><span class="val" id="v-quality">8 Mbps</span>
     </div>
     <input type="range" id="r-quality" min="2" max="30" value="8" step="1">
     <div class="btn-row">
-      <button id="btn-record">⏺ Enregistrer</button>
+      <button id="btn-record" data-i18n="record-btn">⏺ Enregistrer</button>
     </div>
     <div class="row" style="margin-top:8px; font-size:10px; color:#475569;">
-      <span id="rec-status">Prêt</span>
+      <span id="rec-status" data-i18n="rec-ready">Prêt</span>
     </div>
   </div>
 </div>
@@ -756,8 +799,8 @@
 <!-- OVERLAY CINÉMA -->
 <div id="cinema-overlay">
   <div id="cinema-header">
-    <div id="cinema-title">Graphes de Ramanujan</div>
-    <div id="cinema-subtitle">Construction déterministe · tous degrés fixés</div>
+    <div id="cinema-title" data-i18n="cinema-title">Graphes de Ramanujan</div>
+    <div id="cinema-subtitle" data-i18n="cinema-subtitle">Construction déterministe · tous degrés fixés</div>
   </div>
 
   <div id="cinema-params-bar">
@@ -786,17 +829,17 @@
 
 <!-- STATS CINÉMA -->
 <div id="cinema-stats">
-  <div class="cs-title">Statistiques</div>
-  <div class="cs-row"><span class="cs-label">Énergie</span><span class="cs-val" id="cs-energy">—</span></div>
-  <div class="cs-row"><span class="cs-label">Acceptation</span><span class="cs-val" id="cs-accept">—</span></div>
-  <div class="cs-row"><span class="cs-label">λ_max hors borne</span><span class="cs-val" id="cs-maxeig">—</span></div>
-  <div class="cs-row"><span class="cs-label">Statut</span><span class="cs-val" id="cs-status"><span class="badge badge-neutral">?</span></span></div>
+  <div class="cs-title" data-i18n="stats-title">Statistiques</div>
+  <div class="cs-row"><span class="cs-label" data-i18n="energy">Énergie</span><span class="cs-val" id="cs-energy">—</span></div>
+  <div class="cs-row"><span class="cs-label" data-i18n="acceptance">Acceptation</span><span class="cs-val" id="cs-accept">—</span></div>
+  <div class="cs-row"><span class="cs-label" data-i18n="maxeig">λ_max hors borne</span><span class="cs-val" id="cs-maxeig">—</span></div>
+  <div class="cs-row"><span class="cs-label" data-i18n="status">Statut</span><span class="cs-val" id="cs-status"><span class="badge badge-neutral">?</span></span></div>
   <canvas id="cs-spectrum-canvas"></canvas>
 </div>
 
 <!-- LÉGENDE CLUSTERS -->
 <div id="cluster-legend">
-  <div class="cl-title">Clusters</div>
+  <div class="cl-title" data-i18n="clusters-title">Clusters</div>
   <div id="cluster-legend-rows"></div>
 </div>
 
@@ -805,15 +848,15 @@
   <div class="mm-row">
     <div class="mm-cell">
       <canvas id="mm-adj-canvas"></canvas>
-      <div class="mm-label">Adjacence</div>
+      <div class="mm-label" data-i18n="mm-adj">Adjacence</div>
     </div>
     <div class="mm-cell">
       <canvas id="mm-circle-canvas"></canvas>
-      <div class="mm-label">Circulaire</div>
+      <div class="mm-label" data-i18n="mm-circle">Circulaire</div>
     </div>
     <div class="mm-cell">
       <canvas id="mm-cluster-canvas"></canvas>
-      <div class="mm-label">Clusters</div>
+      <div class="mm-label" data-i18n="mm-clusters">Clusters</div>
     </div>
   </div>
 </div>
@@ -825,27 +868,33 @@
 
 <div id="rec-hud">
   <div id="rec-dot"></div>
-  <span>REC</span>
+  <span data-i18n="rec-hud">REC</span>
   <span id="rec-time">00:00</span>
 </div>
+
+<!-- BOUTON STOP ENREGISTREMENT — HTML overlay, n'apparaît PAS dans le WebM capturé -->
+<button id="rec-stop-btn" type="button">
+  <span>⏹</span>
+  <span data-i18n="rec-stop">Stop & Save</span>
+</button>
 
 <div id="client-timer">00:00.0</div>
 
 <!-- CHARTS (Spectre & Énergie) -->
 <div id="charts">
   <div class="chart-title">
-    <span>Spectre</span>
+    <span data-i18n="spectrum">Spectre</span>
     <span class="val" id="v-spectrum-info">—</span>
   </div>
   <canvas id="spectrum-canvas"></canvas>
   <div id="spectrum-legend">
-    <div class="sl-item"><div class="sl-box ramanujan"></div><span>Ramanujan (borne)</span></div>
-    <div class="sl-item"><div class="sl-box outside"></div><span>Hors borne</span></div>
+    <div class="sl-item"><div class="sl-box ramanujan"></div><span data-i18n="legend-ramanujan">Ramanujan (borne)</span></div>
+    <div class="sl-item"><div class="sl-box outside"></div><span data-i18n="legend-outside">Hors borne</span></div>
   </div>
   <div class="chart-axis"><span>−d</span><span>−s</span><span>0</span><span>+s</span><span>+d</span></div>
 
   <div class="chart-title" style="margin-top:10px;">
-    <span>Énergie E(t)</span>
+    <span data-i18n="energy-chart">Énergie E(t)</span>
     <span class="val" id="v-energy-info">0.000</span>
   </div>
   <canvas id="energy-canvas"></canvas>
@@ -854,20 +903,25 @@
 <!-- TIMECODE MODAL -->
 <div id="timecode-modal">
   <div class="modal-content">
-    <div class="modal-title">Timecoding du storytelling</div>
-    <div class="modal-subtitle">Réglez la durée de chaque étape. La durée totale détermine la lecture automatique.</div>
+    <div class="modal-title" data-i18n="tc-title">Timecoding du storytelling</div>
+    <div class="modal-subtitle" data-i18n="tc-subtitle">Réglez la durée de chaque étape. La durée totale détermine la lecture automatique.</div>
     <div class="modal-table-wrap">
       <table class="timecode-table">
         <thead>
-          <tr><th>#</th><th>Étape</th><th>Section</th><th>Durée</th></tr>
+          <tr>
+            <th>#</th>
+            <th data-i18n="tc-step">Étape</th>
+            <th data-i18n="tc-section">Section</th>
+            <th data-i18n="tc-duration">Durée</th>
+          </tr>
         </thead>
         <tbody id="timecode-tbody"></tbody>
       </table>
     </div>
     <div class="modal-footer">
-      <div class="total">Durée totale : <strong id="timecode-total">0.0s</strong></div>
-      <button id="btn-timecode-cancel">Annuler</button>
-      <button id="btn-timecode-apply" class="active">Appliquer</button>
+      <div class="total"><span data-i18n="tc-total">Durée totale</span> : <strong id="timecode-total">0.0s</strong></div>
+      <button id="btn-timecode-cancel" data-i18n="tc-cancel">Annuler</button>
+      <button id="btn-timecode-apply" class="active" data-i18n="tc-apply">Appliquer</button>
     </div>
   </div>
 </div>
@@ -895,6 +949,328 @@ function mulberry32(seed) {
   };
 }
 function factorial(n) { let r = 1; for (let i=2;i<=n;i++) r *= i; return r; }
+
+// ═══════════════════════════════════════════════════════════════
+//  I18N
+// ═══════════════════════════════════════════════════════════════
+const I18N = {
+  fr: {
+    title: "Ramanujan · Quantum Flow",
+    "lang-label": "Langue / Language / भाषा",
+    graph: "Graphe",
+    degree: "Degré d",
+    vertices: "Sommets n",
+    random: "Aléatoire",
+    switch: "Switches",
+    lps: "LPS",
+    clustering: "Clustering (couleurs)",
+    method: "Méthode",
+    "cluster-none": "Aucun (couleur unique)",
+    "cluster-kmeans": "K-Means (spectral)",
+    "cluster-ward": "Hiérarchique — Ward",
+    "cluster-single": "Hiérarchique — Single",
+    "cluster-complete": "Hiérarchique — Complete",
+    "cluster-average": "Hiérarchique — Average",
+    palette: "Palette de couleurs",
+    "palette-standard": "Standard (Vif)",
+    "palette-pastel": "Pastel (Doux)",
+    "palette-neon": "Néon (Fluo)",
+    "palette-contrast": "Contrastée (Fort)",
+    kclusters: "k (clusters)",
+    recompute: "↻ Recalculer",
+    "main-view": "Vue principale",
+    "view-sphere": "Sphère",
+    "view-circle": "Cercle",
+    "view-cluster3d": "Clusters 3D",
+    "view-dendrogram": "Dendrogramme",
+    reposition: "↻ Repositionner",
+    mcmc: "Metropolis-Hastings",
+    "beta-label": "β (inv. température)",
+    speed: "Pas / frame",
+    "mcmc-run": "▶ MCMC",
+    "mcmc-pause": "⏸ Pause",
+    tilt: "Tilt",
+    reset: "Reset",
+    "view-zoom": "Vue & Zoom",
+    zoom: "Zoom",
+    appearance: "Apparence",
+    luminance: "Luminance boules",
+    halo: "Halo",
+    "flow-intensity": "Intensité flux",
+    "figure-params": "Paramètres sur la figure",
+    statistics: "Statistiques",
+    energy: "Énergie",
+    acceptance: "Acceptation",
+    maxeig: "λ_max hors borne",
+    status: "Statut",
+    storytelling: "Storytelling",
+    timecode: "⏱ Timecoding",
+    "cinema-btn": "🎬 Cinéma",
+    "cinema-exit": "✕ Quitter",
+    lemmas: "Lemmes & propositions",
+    display: "Affichage",
+    "chk-timer": "Timer client",
+    "chk-rotate": "Rotation auto",
+    "chk-maps": "Mini-maps 2D",
+    "chk-quantum": "Oscillateur quantique",
+    "chk-cluster-legend": "Légende Clusters en cinéma",
+    "chk-story": "Story visible en cinéma",
+    "chk-flow": "Particules de flux",
+    "chk-color-mode": "Couleurs des arêtes (mode)",
+    "chk-color-cluster": "Couleurs du clustering",
+    recording: "Enregistrement WebM",
+    quality: "Qualité",
+    "record-btn": "⏺ Enregistrer",
+    "record-stop-btn": "⏹ Arrêter & Sauvegarder",
+    "rec-ready": "Prêt",
+    "rec-recording": "Enregistrement…",
+    "rec-saved": "Sauvegardé ✓",
+    "rec-stop": "Stop & Save",
+    "rec-hud": "REC",
+    "cinema-title": "Graphes de Ramanujan",
+    "cinema-subtitle": "Construction déterministe · tous degrés fixés",
+    "stats-title": "Statistiques",
+    "clusters-title": "Clusters",
+    "mm-adj": "Adjacence",
+    "mm-circle": "Circulaire",
+    "mm-clusters": "Clusters",
+    spectrum: "Spectre",
+    "legend-ramanujan": "Ramanujan (borne)",
+    "legend-outside": "Hors borne",
+    "energy-chart": "Énergie E(t)",
+    "tc-title": "Timecoding du storytelling",
+    "tc-subtitle": "Réglez la durée de chaque étape. La durée totale détermine la lecture automatique.",
+    "tc-step": "Étape",
+    "tc-section": "Section",
+    "tc-duration": "Durée",
+    "tc-total": "Durée totale",
+    "tc-cancel": "Annuler",
+    "tc-apply": "Appliquer",
+    "spectrum-ramanujan": "Ramanujan",
+    "step": "Étape",
+    "of": "/",
+    "fig-d": "degré",
+    "fig-n": "sommets",
+    "fig-beta": "température inverse",
+    "fig-s": "borne Ramanujan",
+    "status-ramanujan": "✓ Ramanujan",
+    "status-outside": "hors borne",
+    "status-outside-plural": "hors borne"
+  },
+  en: {
+    title: "Ramanujan · Quantum Flow",
+    "lang-label": "Langue / Language / भाषा",
+    graph: "Graph",
+    degree: "Degree d",
+    vertices: "Vertices n",
+    random: "Random",
+    switch: "Switches",
+    lps: "LPS",
+    clustering: "Clustering (colors)",
+    method: "Method",
+    "cluster-none": "None (single color)",
+    "cluster-kmeans": "K-Means (spectral)",
+    "cluster-ward": "Hierarchical — Ward",
+    "cluster-single": "Hierarchical — Single",
+    "cluster-complete": "Hierarchical — Complete",
+    "cluster-average": "Hierarchical — Average",
+    palette: "Color palette",
+    "palette-standard": "Standard (Vivid)",
+    "palette-pastel": "Pastel (Soft)",
+    "palette-neon": "Neon (Bright)",
+    "palette-contrast": "High contrast",
+    kclusters: "k (clusters)",
+    recompute: "↻ Recompute",
+    "main-view": "Main view",
+    "view-sphere": "Sphere",
+    "view-circle": "Circle",
+    "view-cluster3d": "3D clusters",
+    "view-dendrogram": "Dendrogram",
+    reposition: "↻ Reposition",
+    mcmc: "Metropolis-Hastings",
+    "beta-label": "β (inv. temperature)",
+    speed: "Steps / frame",
+    "mcmc-run": "▶ MCMC",
+    "mcmc-pause": "⏸ Pause",
+    tilt: "Tilt",
+    reset: "Reset",
+    "view-zoom": "View & Zoom",
+    zoom: "Zoom",
+    appearance: "Appearance",
+    luminance: "Sphere luminance",
+    halo: "Halo",
+    "flow-intensity": "Flow intensity",
+    "figure-params": "On-figure parameters",
+    statistics: "Statistics",
+    energy: "Energy",
+    acceptance: "Acceptance",
+    maxeig: "λ_max out of bound",
+    status: "Status",
+    storytelling: "Storytelling",
+    timecode: "⏱ Timecoding",
+    "cinema-btn": "🎬 Cinema",
+    "cinema-exit": "✕ Exit",
+    lemmas: "Lemmas & propositions",
+    display: "Display",
+    "chk-timer": "Client timer",
+    "chk-rotate": "Auto rotation",
+    "chk-maps": "2D mini-maps",
+    "chk-quantum": "Quantum oscillator",
+    "chk-cluster-legend": "Cluster legend in cinema",
+    "chk-story": "Story visible in cinema",
+    "chk-flow": "Flow particles",
+    "chk-color-mode": "Edge colors (mode)",
+    "chk-color-cluster": "Cluster colors",
+    recording: "WebM recording",
+    quality: "Quality",
+    "record-btn": "⏺ Record",
+    "record-stop-btn": "⏹ Stop & Save",
+    "rec-ready": "Ready",
+    "rec-recording": "Recording…",
+    "rec-saved": "Saved ✓",
+    "rec-stop": "Stop & Save",
+    "rec-hud": "REC",
+    "cinema-title": "Ramanujan Graphs",
+    "cinema-subtitle": "Deterministic construction · every fixed degree",
+    "stats-title": "Statistics",
+    "clusters-title": "Clusters",
+    "mm-adj": "Adjacency",
+    "mm-circle": "Circular",
+    "mm-clusters": "Clusters",
+    spectrum: "Spectrum",
+    "legend-ramanujan": "Ramanujan (bound)",
+    "legend-outside": "Out of bound",
+    "energy-chart": "Energy E(t)",
+    "tc-title": "Storytelling timecoding",
+    "tc-subtitle": "Set the duration of each step. Total duration drives automatic playback.",
+    "tc-step": "Step",
+    "tc-section": "Section",
+    "tc-duration": "Duration",
+    "tc-total": "Total duration",
+    "tc-cancel": "Cancel",
+    "tc-apply": "Apply",
+    "spectrum-ramanujan": "Ramanujan",
+    "step": "Step",
+    "of": "/",
+    "fig-d": "degree",
+    "fig-n": "vertices",
+    "fig-beta": "inverse temperature",
+    "fig-s": "Ramanujan bound",
+    "status-ramanujan": "✓ Ramanujan",
+    "status-outside": "out of bound",
+    "status-outside-plural": "out of bound"
+  },
+  hi: {
+    title: "रामानुजन · क्वांटम फ्लो",
+    "lang-label": "Langue / Language / भाषा",
+    graph: "ग्राफ़",
+    degree: "डिग्री d",
+    vertices: "शीर्ष n",
+    random: "यादृच्छिक",
+    switch: "स्विच",
+    lps: "LPS",
+    clustering: "क्लस्टरिंग (रंग)",
+    method: "विधि",
+    "cluster-none": "कोई नहीं (एकल रंग)",
+    "cluster-kmeans": "K-मीन्स (स्पेक्ट्रल)",
+    "cluster-ward": "पदानुक्रमित — Ward",
+    "cluster-single": "पदानुक्रमित — Single",
+    "cluster-complete": "पदानुक्रमित — Complete",
+    "cluster-average": "पदानुक्रमित — Average",
+    palette: "रंग पैलेट",
+    "palette-standard": "मानक (चमकीला)",
+    "palette-pastel": "पेस्टल (मुलायम)",
+    "palette-neon": "नियॉन (तेज़)",
+    "palette-contrast": "उच्च कंट्रास्ट",
+    kclusters: "k (क्लस्टर)",
+    recompute: "↻ पुनर्गणना",
+    "main-view": "मुख्य दृश्य",
+    "view-sphere": "गोला",
+    "view-circle": "वृत्त",
+    "view-cluster3d": "3D क्लस्टर",
+    "view-dendrogram": "डेंड्रोग्राम",
+    reposition: "↻ पुनःस्थापित करें",
+    mcmc: "Metropolis-Hastings",
+    "beta-label": "β (व्युत्क्रम तापमान)",
+    speed: "चरण / फ़्रेम",
+    "mcmc-run": "▶ MCMC",
+    "mcmc-pause": "⏸ रोकें",
+    tilt: "टिल्ट",
+    reset: "रीसेट",
+    "view-zoom": "दृश्य और ज़ूम",
+    zoom: "ज़ूम",
+    appearance: "रूप",
+    luminance: "गोले की चमक",
+    halo: "हैलो",
+    "flow-intensity": "प्रवाह तीव्रता",
+    "figure-params": "आकृति पर पैरामीटर",
+    statistics: "आंकड़े",
+    energy: "ऊर्जा",
+    acceptance: "स्वीकृति",
+    maxeig: "λ_max सीमा से बाहर",
+    status: "स्थिति",
+    storytelling: "कहानी",
+    timecode: "⏱ टाइमकोडिंग",
+    "cinema-btn": "🎬 सिनेमा",
+    "cinema-exit": "✕ बाहर",
+    lemmas: "लेम्मा और प्रस्ताव",
+    display: "प्रदर्शन",
+    "chk-timer": "क्लाइंट टाइमर",
+    "chk-rotate": "स्वतः घूर्णन",
+    "chk-maps": "2D मिनी-मैप",
+    "chk-quantum": "क्वांटम ऑसिलेटर",
+    "chk-cluster-legend": "सिनेमा में क्लस्टर लीजेंड",
+    "chk-story": "सिनेमा में कहानी दृश्य",
+    "chk-flow": "प्रवाह कण",
+    "chk-color-mode": "किनारों के रंग (मोड)",
+    "chk-color-cluster": "क्लस्टर रंग",
+    recording: "WebM रिकॉर्डिंग",
+    quality: "गुणवत्ता",
+    "record-btn": "⏺ रिकॉर्ड",
+    "record-stop-btn": "⏹ रोकें और सहेजें",
+    "rec-ready": "तैयार",
+    "rec-recording": "रिकॉर्ड हो रहा है…",
+    "rec-saved": "सहेजा गया ✓",
+    "rec-stop": "रोकें और सहेजें",
+    "rec-hud": "REC",
+    "cinema-title": "रामानुजन ग्राफ़",
+    "cinema-subtitle": "नियतात्मक निर्माण · प्रत्येक निश्चित डिग्री",
+    "stats-title": "आंकड़े",
+    "clusters-title": "क्लस्टर",
+    "mm-adj": "आसन्नता",
+    "mm-circle": "वृत्तीय",
+    "mm-clusters": "क्लस्टर",
+    spectrum: "स्पेक्ट्रम",
+    "legend-ramanujan": "रामानुजन (सीमा)",
+    "legend-outside": "सीमा से बाहर",
+    "energy-chart": "ऊर्जा E(t)",
+    "tc-title": "कहानी टाइमकोडिंग",
+    "tc-subtitle": "प्रत्येक चरण की अवधि निर्धारित करें। कुल अवधि स्वचालित प्लेबैक निर्धारित करती है।",
+    "tc-step": "चरण",
+    "tc-section": "अनुभाग",
+    "tc-duration": "अवधि",
+    "tc-total": "कुल अवधि",
+    "tc-cancel": "रद्द करें",
+    "tc-apply": "लागू करें",
+    "spectrum-ramanujan": "रामानुजन",
+    "step": "चरण",
+    "of": "/",
+    "fig-d": "डिग्री",
+    "fig-n": "शीर्ष",
+    "fig-beta": "व्युत्क्रम तापमान",
+    "fig-s": "रामानुजन सीमा",
+    "status-ramanujan": "✓ रामानुजन",
+    "status-outside": "सीमा से बाहर",
+    "status-outside-plural": "सीमा से बाहर"
+  }
+};
+
+let currentLang = 'fr';
+function t(key) {
+  const dict = I18N[currentLang] || I18N.fr;
+  if (dict[key] !== undefined) return dict[key];
+  return (I18N.fr[key] !== undefined) ? I18N.fr[key] : key;
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  GÉNÉRATION DE GRAPHES
@@ -1656,6 +2032,7 @@ const state = {
   loops: [],
   graphVersion: 0,
   pendingRecolor: false,
+  lang: 'fr',
 };
 
 const energyHistory = [];
@@ -2262,57 +2639,153 @@ renderer.domElement.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 // ═══════════════════════════════════════════════════════════════
-//  STORYTELLING
+//  STORYTELLING (i18n)
 // ═══════════════════════════════════════════════════════════════
-const STORY = [
-  { tag: "§1 · Introduction", title: "Le problème des graphes de Ramanujan",
-    text: "Un graphe <em>d</em>-régulier est Ramanujan si toutes ses valeurs propres non triviales restent dans l'intervalle <strong>[−2√(d−1), 2√(d−1)]</strong>. Cette borne est <em>optimale</em> au sens d'Alon–Boppana.",
-    equation: "‖ A<sub>G</sub> |<sub>𝟏<sup>⊥</sup></sub> ‖ ≤ 2√(d−1)", lemmas: [] },
-  { tag: "§1.1 · Constructions", title: "Ce que LPS et Morgenstern ne couvrent pas",
-    text: "LPS et Margulis donnent des constructions arithmétiques pour certains degrés seulement. Morgenstern atteint <em>q+1</em>. Aucune ne couvre <strong>tous les degrés fixés</strong> à <em>toutes</em> les tailles prescrites simultanément.",
-    equation: "", lemmas: [] },
-  { tag: "§1.2 · Edge switches", title: "L'opération locale de base",
-    text: "Supprimer deux arêtes {u,v} et {x,y}, insérer {u,y} et {x,v}. Valide si les 4 extrémités sont distinctes et les arêtes insérées absentes. Une collection de switches <em>disjoints</em> préserve simplicité, régularité et nombre de sommets.",
-    equation: "{u,v}, {x,y} → {u,y}, {x,v}", lemmas: [] },
-  { tag: "§1.2 · Distances signées", title: "Mesurer la distance au seuil",
-    text: "On pose <strong>x<sub>i</sub><sup>σ</sup> = s − σ λ<sub>i</sub></strong> avec s = 2√q. Ces distances peuvent être <em>légèrement négatives</em>. On maintient deux informations locales : la masse spectrale près des bords, et les blocs 2×2 typiques.",
-    equation: "x<sub>i</sub><sup>σ</sup> = 2√(d−1) − σ λ<sub>i</sub>", lemmas: [] },
-  { tag: "§1.3 · Quatre étages", title: "La construction en quatre étages",
-    text: "1. <strong>Early pairing</strong> — précisions signées positives. 2. <strong>Separation</strong> — sommets distincts. 3. <strong>Boundary completion</strong> — petites énergies de ligne. 4. <strong>Local repair</strong> — switches biaisés.",
-    equation: "", lemmas: [] },
-  { tag: "§2 · Conventions", title: "Paramètres spectraux et échelles",
-    text: "On fixe q = d−1, s = 2√q, <strong>α(h) = 1 − qh²</strong>, <strong>z(h) = h⁻¹ + qh</strong>, <strong>m<sub>h</sub> = h/(1−h²)</strong>. La précision M(h) = zI − σA<sub>e</sub> − hD doit rester positive pour σ = ±1.",
-    equation: "M(h) = z(h) I − σ A<sub>e</sub> − h D", lemmas: [] },
-  { tag: "§2.2 · Tailles d'arrêt", title: "La grille des tailles d'arrêt",
-    text: "Les stubs décroissent : <strong>dn → l₁ → l₀ → l₂ → l₃ → 0</strong>. Les deux premiers arrêts délimitent early pairing et cleanup ; l₂ sépare les phases de bord ; l₃ est le matching final arbitraire.",
-    equation: "l<sub>0</sub> ≈ n<sup>2/3 + 1.5a</sup>,  b ≈ n<sup>1/3 + 3.345a</sup>", lemmas: [] },
-  { tag: "§3 · Choix déterministe", title: "Le lemme des comptes actualisés",
-    text: "On choisit l'appariement suivant en <em>minimisant une somme pondérée</em> de statistiques non-négatives, appelées <strong>comptes</strong>. Chaque compte reçoit son propre <em>discount</em> r<sub>i</sub> = max(1, E[Z']/Z).",
-    equation: "r<sub>i</sub> = max(1, 𝔼[Z<sub>i</sub>(x′) | x] / Z<sub>i</sub>(x)),  D<sub>i</sub>′ = D<sub>i</sub> / r<sub>i</sub>", lemmas: ["lemma-3-1", "lemma-3-2", "cor-3-3"] },
-  { tag: "§4 · Configurations", title: "Le crayon de configuration",
-    text: "Chaque appariement partiel définit une matrice M(h). L'inverse W = M(h)⁻¹/m<sub>h</sub> s'identifie à une <em>série génératrice formelle</em> de chemins non-backtracking : <strong>W = Σ (σh)<sup>j</sup> Q<sub>j</sub></strong>.",
-    equation: "W = ∑<sub>j≥0</sub> (σh)<sup>j</sup> Q<sub>j</sub>,  W′ = W − W U H U<sup>T</sup> W", lemmas: ["lemma-4-1", "lemma-4-2", "lemma-4-3", "lemma-4-4", "lemma-4-5"] },
-  { tag: "§4.2 · Comptes structurels", title: "Comptes structurels et stubs séparés",
-    text: "On construit des comptes pour les <em>petits cœurs de graphe</em>. À l₁, moins de <strong>b</strong> stubs sont « mauvais ». Le cleanup les résout tous et atteint l₀ avec un stub par sommet non résolu.",
-    equation: "#{stub embeddings de H} ≤ n<sup>1−r+o(1)</sup> q<sup>s<sub>H</sub></sup>", lemmas: ["lemma-4-2"] },
-  { tag: "§5 · Early pairing", title: "Appariement précoce",
-    text: "On apparie la majorité des stubs en préservant la positivité, les bornes de trace et la comparaison d'entrée avec P. Le lemme 5.11 borne la croissance d'un moment élevé avec un coefficient <em>indépendant de l'ordre du moment</em>.",
-    equation: "|L<sub>1</sub>| ≤ n<sup>0.75a</sup>/α<sub>*</sub>,  |L<sub>0</sub>| ≤ n<sup>0.105a</sup>/α<sub>*</sub><sup>2</sup>", lemmas: ["prop-5-1","lemma-5-2","lemma-5-3","lemma-5-4","lemma-5-5","lemma-5-6","lemma-5-7","lemma-5-8","lemma-5-9","lemma-5-10","lemma-5-11"] },
-  { tag: "§6 · Cleanup", title: "Nettoyage de la frontière",
-    text: "On résout les stubs « mauvais » en <strong>b</strong> étapes, de l₁ = l₀+2b à l₀. Les étiquettes sont <em>nivelées</em> : 2 pour global, 1 pour mauvais, 0 pour propre. L'inégalité de saut borne le saut par niveau.",
-    equation: "|E<sub>ij</sub>| ≤ 2 B<sub>k</sub>,  B<sub>k</sub> = B<sub>c</sub> n<sup>4kρ</sup>", lemmas: ["prop-6-1","lemma-6-2","lemma-6-3","lemma-6-4","lemma-6-5","lemma-6-6","lemma-6-7"] },
-  { tag: "§7 · Complétion", title: "Complétion depuis une frontière séparée",
-    text: "La séparation rend chaque nouvelle paire admissible. <span class='phase-a'>Phase A</span> : les énergies de ligne décroissent. <span class='phase-b'>Phase B</span> : les entrées se concentrent. Le matching final est arbitraire.",
-    equation: "max<sub>i,j</sub> |(W<sub>fin</sub> − P̂<sub>fin</sub>)<sub>ij</sub>| ≤ C B<sub>B</sub>", lemmas: ["prop-7-1","lemma-7-2","lemma-7-3"] },
-  { tag: "§8 · Réparation", title: "Le théorème de réparation exacte",
-    text: "On suppose trois propriétés : <strong>confinement spectral</strong>, <strong>masse locale</strong>, <strong>blocs d'arête typiques</strong>. Alors on trouve M switches disjoints tels que les deux précisions signées soient strictement positives à s.",
-    equation: "1 + (1/B<sub>*</sub>) [ −(2n/J<sub>T</sub>) ∑<sub>τ</sub> ∑<sub>i∈T<sub>τ</sub></sub> z<sub>i</sub>(g)<sup>T</sup> K<sub>τ</sub> z<sub>i</sub>(j) ]", lemmas: ["lemma-8-1","lemma-8-2","thm-8-3"] },
-  { tag: "§9 · Complexité", title: "Complexité en bits et conclusion",
-    text: "Toutes les opérations sont des <em>calculs rationnels exacts</em>. Le test final est la <strong>positivité rationnelle exacte</strong> de B<sup>T</sup>(4(d−1)I − A<sub>G</sub><sup>2</sup>)B. D'où le théorème principal.",
-    equation: "B<sup>T</sup> (4q I − A<sub>G</sub><sup>2</sup>) B ≻ 0 ⟺ ∀i≥2, |λ<sub>i</sub>| < 2√q", lemmas: ["prop-9-1","thm-1-1"] }
-];
+const STORY_I18N = {
+  fr: [
+    { tag: "§1 · Introduction", title: "Le problème des graphes de Ramanujan",
+      text: "Un graphe <em>d</em>-régulier est Ramanujan si toutes ses valeurs propres non triviales restent dans l'intervalle <strong>[−2√(d−1), 2√(d−1)]</strong>. Cette borne est <em>optimale</em> au sens d'Alon–Boppana.",
+      equation: "‖ A<sub>G</sub> |<sub>𝟏<sup>⊥</sup></sub> ‖ ≤ 2√(d−1)", lemmas: [] },
+    { tag: "§1.1 · Constructions", title: "Ce que LPS et Morgenstern ne couvrent pas",
+      text: "LPS et Margulis donnent des constructions arithmétiques pour certains degrés seulement. Morgenstern atteint <em>q+1</em>. Aucune ne couvre <strong>tous les degrés fixés</strong> à <em>toutes</em> les tailles prescrites simultanément.",
+      equation: "", lemmas: [] },
+    { tag: "§1.2 · Edge switches", title: "L'opération locale de base",
+      text: "Supprimer deux arêtes {u,v} et {x,y}, insérer {u,y} et {x,v}. Valide si les 4 extrémités sont distinctes et les arêtes insérées absentes. Une collection de switches <em>disjoints</em> préserve simplicité, régularité et nombre de sommets.",
+      equation: "{u,v}, {x,y} → {u,y}, {x,v}", lemmas: [] },
+    { tag: "§1.2 · Distances signées", title: "Mesurer la distance au seuil",
+      text: "On pose <strong>x<sub>i</sub><sup>σ</sup> = s − σ λ<sub>i</sub></strong> avec s = 2√q. Ces distances peuvent être <em>légèrement négatives</em>. On maintient deux informations locales : la masse spectrale près des bords, et les blocs 2×2 typiques.",
+      equation: "x<sub>i</sub><sup>σ</sup> = 2√(d−1) − σ λ<sub>i</sub>", lemmas: [] },
+    { tag: "§1.3 · Quatre étages", title: "La construction en quatre étages",
+      text: "1. <strong>Early pairing</strong> — précisions signées positives. 2. <strong>Separation</strong> — sommets distincts. 3. <strong>Boundary completion</strong> — petites énergies de ligne. 4. <strong>Local repair</strong> — switches biaisés.",
+      equation: "", lemmas: [] },
+    { tag: "§2 · Conventions", title: "Paramètres spectraux et échelles",
+      text: "On fixe q = d−1, s = 2√q, <strong>α(h) = 1 − qh²</strong>, <strong>z(h) = h⁻¹ + qh</strong>, <strong>m<sub>h</sub> = h/(1−h²)</strong>. La précision M(h) = zI − σA<sub>e</sub> − hD doit rester positive pour σ = ±1.",
+      equation: "M(h) = z(h) I − σ A<sub>e</sub> − h D", lemmas: [] },
+    { tag: "§2.2 · Tailles d'arrêt", title: "La grille des tailles d'arrêt",
+      text: "Les stubs décroissent : <strong>dn → l₁ → l₀ → l₂ → l₃ → 0</strong>. Les deux premiers arrêts délimitent early pairing et cleanup ; l₂ sépare les phases de bord ; l₃ est le matching final arbitraire.",
+      equation: "l<sub>0</sub> ≈ n<sup>2/3 + 1.5a</sup>,  b ≈ n<sup>1/3 + 3.345a</sup>", lemmas: [] },
+    { tag: "§3 · Choix déterministe", title: "Le lemme des comptes actualisés",
+      text: "On choisit l'appariement suivant en <em>minimisant une somme pondérée</em> de statistiques non-négatives, appelées <strong>comptes</strong>. Chaque compte reçoit son propre <em>discount</em> r<sub>i</sub> = max(1, E[Z']/Z).",
+      equation: "r<sub>i</sub> = max(1, 𝔼[Z<sub>i</sub>(x′) | x] / Z<sub>i</sub>(x)),  D<sub>i</sub>′ = D<sub>i</sub> / r<sub>i</sub>", lemmas: ["lemma-3-1", "lemma-3-2", "cor-3-3"] },
+    { tag: "§4 · Configurations", title: "Le crayon de configuration",
+      text: "Chaque appariement partiel définit une matrice M(h). L'inverse W = M(h)⁻¹/m<sub>h</sub> s'identifie à une <em>série génératrice formelle</em> de chemins non-backtracking : <strong>W = Σ (σh)<sup>j</sup> Q<sub>j</sub></strong>.",
+      equation: "W = ∑<sub>j≥0</sub> (σh)<sup>j</sup> Q<sub>j</sub>,  W′ = W − W U H U<sup>T</sup> W", lemmas: ["lemma-4-1", "lemma-4-2", "lemma-4-3", "lemma-4-4", "lemma-4-5"] },
+    { tag: "§4.2 · Comptes structurels", title: "Comptes structurels et stubs séparés",
+      text: "On construit des comptes pour les <em>petits cœurs de graphe</em>. À l₁, moins de <strong>b</strong> stubs sont « mauvais ». Le cleanup les résout tous et atteint l₀ avec un stub par sommet non résolu.",
+      equation: "#{stub embeddings de H} ≤ n<sup>1−r+o(1)</sup> q<sup>s<sub>H</sub></sup>", lemmas: ["lemma-4-2"] },
+    { tag: "§5 · Early pairing", title: "Appariement précoce",
+      text: "On apparie la majorité des stubs en préservant la positivité, les bornes de trace et la comparaison d'entrée avec P. Le lemme 5.11 borne la croissance d'un moment élevé avec un coefficient <em>indépendant de l'ordre du moment</em>.",
+      equation: "|L<sub>1</sub>| ≤ n<sup>0.75a</sup>/α<sub>*</sub>,  |L<sub>0</sub>| ≤ n<sup>0.105a</sup>/α<sub>*</sub><sup>2</sup>", lemmas: ["prop-5-1","lemma-5-2","lemma-5-3","lemma-5-4","lemma-5-5","lemma-5-6","lemma-5-7","lemma-5-8","lemma-5-9","lemma-5-10","lemma-5-11"] },
+    { tag: "§6 · Cleanup", title: "Nettoyage de la frontière",
+      text: "On résout les stubs « mauvais » en <strong>b</strong> étapes, de l₁ = l₀+2b à l₀. Les étiquettes sont <em>nivelées</em> : 2 pour global, 1 pour mauvais, 0 pour propre. L'inégalité de saut borne le saut par niveau.",
+      equation: "|E<sub>ij</sub>| ≤ 2 B<sub>k</sub>,  B<sub>k</sub> = B<sub>c</sub> n<sup>4kρ</sup>", lemmas: ["prop-6-1","lemma-6-2","lemma-6-3","lemma-6-4","lemma-6-5","lemma-6-6","lemma-6-7"] },
+    { tag: "§7 · Complétion", title: "Complétion depuis une frontière séparée",
+      text: "La séparation rend chaque nouvelle paire admissible. <span class='phase-a'>Phase A</span> : les énergies de ligne décroissent. <span class='phase-b'>Phase B</span> : les entrées se concentrent. Le matching final est arbitraire.",
+      equation: "max<sub>i,j</sub> |(W<sub>fin</sub> − P̂<sub>fin</sub>)<sub>ij</sub>| ≤ C B<sub>B</sub>", lemmas: ["prop-7-1","lemma-7-2","lemma-7-3"] },
+    { tag: "§8 · Réparation", title: "Le théorème de réparation exacte",
+      text: "On suppose trois propriétés : <strong>confinement spectral</strong>, <strong>masse locale</strong>, <strong>blocs d'arête typiques</strong>. Alors on trouve M switches disjoints tels que les deux précisions signées soient strictement positives à s.",
+      equation: "1 + (1/B<sub>*</sub>) [ −(2n/J<sub>T</sub>) ∑<sub>τ</sub> ∑<sub>i∈T<sub>τ</sub></sub> z<sub>i</sub>(g)<sup>T</sup> K<sub>τ</sub> z<sub>i</sub>(j) ]", lemmas: ["lemma-8-1","lemma-8-2","thm-8-3"] },
+    { tag: "§9 · Complexité", title: "Complexité en bits et conclusion",
+      text: "Toutes les opérations sont des <em>calculs rationnels exacts</em>. Le test final est la <strong>positivité rationnelle exacte</strong> de B<sup>T</sup>(4(d−1)I − A<sub>G</sub><sup>2</sup>)B. D'où le théorème principal.",
+      equation: "B<sup>T</sup> (4q I − A<sub>G</sub><sup>2</sup>) B ≻ 0 ⟺ ∀i≥2, |λ<sub>i</sub>| < 2√q", lemmas: ["prop-9-1","thm-1-1"] }
+  ],
+  en: [
+    { tag: "§1 · Introduction", title: "The Ramanujan graph problem",
+      text: "A <em>d</em>-regular graph is Ramanujan if all its non-trivial eigenvalues stay within <strong>[−2√(d−1), 2√(d−1)]</strong>. This bound is <em>optimal</em> in the Alon–Boppana sense.",
+      equation: "‖ A<sub>G</sub> |<sub>𝟏<sup>⊥</sup></sub> ‖ ≤ 2√(d−1)", lemmas: [] },
+    { tag: "§1.1 · Constructions", title: "What LPS and Morgenstern do not cover",
+      text: "LPS and Margulis give arithmetic constructions for some degrees only. Morgenstern reaches <em>q+1</em>. None cover <strong>every fixed degree</strong> at <em>all</em> prescribed sizes simultaneously.",
+      equation: "", lemmas: [] },
+    { tag: "§1.2 · Edge switches", title: "The basic local operation",
+      text: "Remove two edges {u,v} and {x,y}, insert {u,y} and {x,v}. Valid if the 4 endpoints are distinct and inserted edges are absent. A collection of <em>disjoint</em> switches preserves simplicity, regularity and vertex count.",
+      equation: "{u,v}, {x,y} → {u,y}, {x,v}", lemmas: [] },
+    { tag: "§1.2 · Signed distances", title: "Measuring distance to the threshold",
+      text: "Set <strong>x<sub>i</sub><sup>σ</sup> = s − σ λ<sub>i</sub></strong> with s = 2√q. These distances may be <em>slightly negative</em>. Two local quantities are tracked: spectral mass near the edges, and typical 2×2 blocks.",
+      equation: "x<sub>i</sub><sup>σ</sup> = 2√(d−1) − σ λ<sub>i</sub>", lemmas: [] },
+    { tag: "§1.3 · Four stages", title: "The four-stage construction",
+      text: "1. <strong>Early pairing</strong> — positive signed precisions. 2. <strong>Separation</strong> — distinct vertices. 3. <strong>Boundary completion</strong> — small row energies. 4. <strong>Local repair</strong> — biased switches.",
+      equation: "", lemmas: [] },
+    { tag: "§2 · Conventions", title: "Spectral parameters and scales",
+      text: "Set q = d−1, s = 2√q, <strong>α(h) = 1 − qh²</strong>, <strong>z(h) = h⁻¹ + qh</strong>, <strong>m<sub>h</sub> = h/(1−h²)</strong>. The precision M(h) = zI − σA<sub>e</sub> − hD must remain positive for σ = ±1.",
+      equation: "M(h) = z(h) I − σ A<sub>e</sub> − h D", lemmas: [] },
+    { tag: "§2.2 · Stopping sizes", title: "The stopping-size grid",
+      text: "Stubs decrease: <strong>dn → l₁ → l₀ → l₂ → l₃ → 0</strong>. The first two stops delimit early pairing and cleanup; l₂ separates the boundary phases; l₃ is the final arbitrary matching.",
+      equation: "l<sub>0</sub> ≈ n<sup>2/3 + 1.5a</sup>,  b ≈ n<sup>1/3 + 3.345a</sup>", lemmas: [] },
+    { tag: "§3 · Deterministic choice", title: "The discounted-accounts lemma",
+      text: "The next matching is chosen by <em>minimizing a weighted sum</em> of non-negative statistics, called <strong>accounts</strong>. Each account gets its own <em>discount</em> r<sub>i</sub> = max(1, E[Z']/Z).",
+      equation: "r<sub>i</sub> = max(1, 𝔼[Z<sub>i</sub>(x′) | x] / Z<sub>i</sub>(x)),  D<sub>i</sub>′ = D<sub>i</sub> / r<sub>i</sub>", lemmas: ["lemma-3-1", "lemma-3-2", "cor-3-3"] },
+    { tag: "§4 · Configurations", title: "The configuration pencil",
+      text: "Each partial matching defines a matrix M(h). Its inverse W = M(h)⁻¹/m<sub>h</sub> identifies with a <em>formal generating series</em> of non-backtracking paths: <strong>W = Σ (σh)<sup>j</sup> Q<sub>j</sub></strong>.",
+      equation: "W = ∑<sub>j≥0</sub> (σh)<sup>j</sup> Q<sub>j</sub>,  W′ = W − W U H U<sup>T</sup> W", lemmas: ["lemma-4-1", "lemma-4-2", "lemma-4-3", "lemma-4-4", "lemma-4-5"] },
+    { tag: "§4.2 · Structural accounts", title: "Structural accounts and separated stubs",
+      text: "Accounts are built for <em>small graph cores</em>. At l₁, fewer than <strong>b</strong> stubs are « bad ». Cleanup resolves them all and reaches l₀ with one stub per unresolved vertex.",
+      equation: "#{stub embeddings of H} ≤ n<sup>1−r+o(1)</sup> q<sup>s<sub>H</sub></sup>", lemmas: ["lemma-4-2"] },
+    { tag: "§5 · Early pairing", title: "Early pairing",
+      text: "The majority of stubs are paired while preserving positivity, trace bounds and entry comparison with P. Lemma 5.11 bounds the growth of a high moment with a coefficient <em>independent of the moment order</em>.",
+      equation: "|L<sub>1</sub>| ≤ n<sup>0.75a</sup>/α<sub>*</sub>,  |L<sub>0</sub>| ≤ n<sup>0.105a</sup>/α<sub>*</sub><sup>2</sup>", lemmas: ["prop-5-1","lemma-5-2","lemma-5-3","lemma-5-4","lemma-5-5","lemma-5-6","lemma-5-7","lemma-5-8","lemma-5-9","lemma-5-10","lemma-5-11"] },
+    { tag: "§6 · Cleanup", title: "Boundary cleanup",
+      text: "« Bad » stubs are resolved in <strong>b</strong> steps, from l₁ = l₀+2b down to l₀. Labels are <em>leveled</em>: 2 for global, 1 for bad, 0 for clean. The jump inequality bounds the jump by level.",
+      equation: "|E<sub>ij</sub>| ≤ 2 B<sub>k</sub>,  B<sub>k</sub> = B<sub>c</sub> n<sup>4kρ</sup>", lemmas: ["prop-6-1","lemma-6-2","lemma-6-3","lemma-6-4","lemma-6-5","lemma-6-6","lemma-6-7"] },
+    { tag: "§7 · Completion", title: "Completion from a separated boundary",
+      text: "Separation makes every new pair admissible. <span class='phase-a'>Phase A</span>: row energies decrease. <span class='phase-b'>Phase B</span>: entries concentrate. The final matching is arbitrary.",
+      equation: "max<sub>i,j</sub> |(W<sub>fin</sub> − P̂<sub>fin</sub>)<sub>ij</sub>| ≤ C B<sub>B</sub>", lemmas: ["prop-7-1","lemma-7-2","lemma-7-3"] },
+    { tag: "§8 · Repair", title: "The exact repair theorem",
+      text: "Three properties are assumed: <strong>spectral confinement</strong>, <strong>local mass</strong>, <strong>typical edge blocks</strong>. Then M disjoint switches exist such that both signed precisions are strictly positive at s.",
+      equation: "1 + (1/B<sub>*</sub>) [ −(2n/J<sub>T</sub>) ∑<sub>τ</sub> ∑<sub>i∈T<sub>τ</sub></sub> z<sub>i</sub>(g)<sup>T</sup> K<sub>τ</sub> z<sub>i</sub>(j) ]", lemmas: ["lemma-8-1","lemma-8-2","thm-8-3"] },
+    { tag: "§9 · Complexity", title: "Bit complexity and conclusion",
+      text: "All operations are <em>exact rational computations</em>. The final test is the <strong>exact rational positivity</strong> of B<sup>T</sup>(4(d−1)I − A<sub>G</sub><sup>2</sup>)B. Hence the main theorem.",
+      equation: "B<sup>T</sup> (4q I − A<sub>G</sub><sup>2</sup>) B ≻ 0 ⟺ ∀i≥2, |λ<sub>i</sub>| < 2√q", lemmas: ["prop-9-1","thm-1-1"] }
+  ],
+  hi: [
+    { tag: "§1 · परिचय", title: "रामानुजन ग्राफ़ की समस्या",
+      text: "<em>d</em>-नियमित ग्राफ़ रामानुजन है यदि उसके सभी अतुच्छ आइगेनमान <strong>[−2√(d−1), 2√(d−1)]</strong> में रहते हैं। यह सीमा Alon–Boppana अर्थ में <em>इष्टतम</em> है।",
+      equation: "‖ A<sub>G</sub> |<sub>𝟏<sup>⊥</sup></sub> ‖ ≤ 2√(d−1)", lemmas: [] },
+    { tag: "§1.1 · निर्माण", title: "LPS और Morgenstern क्या कवर नहीं करते",
+      text: "LPS और Margulis केवल कुछ डिग्री के लिए अंकगणितीय निर्माण देते हैं। Morgenstern <em>q+1</em> तक पहुँचता है। कोई भी <strong>प्रत्येक निश्चित डिग्री</strong> को <em>सभी</em> निर्धारित आकारों पर एक साथ कवर नहीं करता।",
+      equation: "", lemmas: [] },
+    { tag: "§1.2 · एज स्विच", title: "मूल स्थानीय संक्रिया",
+      text: "दो किनारे {u,v} और {x,y} हटाएँ, {u,y} और {x,v} जोड़ें। वैध यदि 4 सिरे भिन्न हों और जोड़े गए किनारे अनुपस्थित हों। <em>असंयुक्त</em> स्विच का संग्रह सरलता, नियमितता और शीर्ष संख्या सुरक्षित रखता है।",
+      equation: "{u,v}, {x,y} → {u,y}, {x,v}", lemmas: [] },
+    { tag: "§1.2 · चिह्नित दूरियाँ", title: "सीमा से दूरी मापना",
+      text: "<strong>x<sub>i</sub><sup>σ</sup> = s − σ λ<sub>i</sub></strong> रखें जहाँ s = 2√q। ये दूरियाँ <em>थोड़ी ऋणात्मक</em> हो सकती हैं। दो स्थानीय सूचनाएँ बनाए रखी जाती हैं: किनारों के पास स्पेक्ट्रल द्रव्यमान, और विशिष्ट 2×2 ब्लॉक।",
+      equation: "x<sub>i</sub><sup>σ</sup> = 2√(d−1) − σ λ<sub>i</sub>", lemmas: [] },
+    { tag: "§1.3 · चार चरण", title: "चार-चरणीय निर्माण",
+      text: "1. <strong>Early pairing</strong> — धनात्मक चिह्नित परिशुद्धता। 2. <strong>Separation</strong> — भिन्न शीर्ष। 3. <strong>Boundary completion</strong> — छोटी पंक्ति ऊर्जाएँ। 4. <strong>Local repair</strong> — पक्षपाती स्विच।",
+      equation: "", lemmas: [] },
+    { tag: "§2 · परिपाटियाँ", title: "स्पेक्ट्रल पैरामीटर और मापक्रम",
+      text: "q = d−1, s = 2√q, <strong>α(h) = 1 − qh²</strong>, <strong>z(h) = h⁻¹ + qh</strong>, <strong>m<sub>h</sub> = h/(1−h²)</strong> निर्धारित करें। परिशुद्धता M(h) = zI − σA<sub>e</sub> − hD को σ = ±1 के लिए धनात्मक रहना चाहिए।",
+      equation: "M(h) = z(h) I − σ A<sub>e</sub> − h D", lemmas: [] },
+    { tag: "§2.2 · विराम आकार", title: "विराम-आकार ग्रिड",
+      text: "स्टब घटते हैं: <strong>dn → l₁ → l₀ → l₂ → l₃ → 0</strong>। पहले दो विराम early pairing और cleanup को सीमित करते हैं; l₂ सीमा चरणों को अलग करता है; l₃ अंतिम मनमाना मिलान है।",
+      equation: "l<sub>0</sub> ≈ n<sup>2/3 + 1.5a</sup>,  b ≈ n<sup>1/3 + 3.345a</sup>", lemmas: [] },
+    { tag: "§3 · नियतात्मक चयन", title: "छूट-प्राप्त खाता लेम्मा",
+      text: "अगला मिलान गैर-ऋणात्मक आँकड़ों के <em>भारित योग को न्यूनतम करके</em> चुना जाता है, जिन्हें <strong>खाते</strong> कहते हैं। प्रत्येक खाते को अपनी <em>छूट</em> r<sub>i</sub> = max(1, E[Z']/Z) मिलती है।",
+      equation: "r<sub>i</sub> = max(1, 𝔼[Z<sub>i</sub>(x′) | x] / Z<sub>i</sub>(x)),  D<sub>i</sub>′ = D<sub>i</sub> / r<sub>i</sub>", lemmas: ["lemma-3-1", "lemma-3-2", "cor-3-3"] },
+    { tag: "§4 · विन्यास", title: "विन्यास पेंसिल",
+      text: "प्रत्येक आंशिक मिलान एक मैट्रिक्स M(h) परिभाषित करता है। इसका व्युत्क्रम W = M(h)⁻¹/m<sub>h</sub> गैर-बैकट्रैकिंग पथों की <em>औपचारिक जनक श्रेणी</em> से पहचाना जाता है: <strong>W = Σ (σh)<sup>j</sup> Q<sub>j</sub></strong>।",
+      equation: "W = ∑<sub>j≥0</sub> (σh)<sup>j</sup> Q<sub>j</sub>,  W′ = W − W U H U<sup>T</sup> W", lemmas: ["lemma-4-1", "lemma-4-2", "lemma-4-3", "lemma-4-4", "lemma-4-5"] },
+    { tag: "§4.2 · संरचनात्मक खाते", title: "संरचनात्मक खाते और पृथक स्टब",
+      text: "<em>छोटे ग्राफ़ कोर</em> के लिए खाते बनाए जाते हैं। l₁ पर, <strong>b</strong> से कम स्टब « खराब » हैं। Cleanup उन सभी को हल करता है और l₀ तक पहुँचता है, प्रति अनसुलझा शीर्ष एक स्टब।",
+      equation: "#{H के stub embeddings} ≤ n<sup>1−r+o(1)</sup> q<sup>s<sub>H</sub></sup>", lemmas: ["lemma-4-2"] },
+    { tag: "§5 · Early pairing", title: "प्रारंभिक मिलान",
+      text: "अधिकांश स्टब को धनात्मकता, ट्रेस सीमा और P के साथ प्रविष्टि तुलना संरक्षित करते हुए मिलाया जाता है। Lemma 5.11 उच्च आघूर्ण की वृद्धि को <em>आघूर्ण क्रम से स्वतंत्र</em> गुणांक से सीमित करता है।",
+      equation: "|L<sub>1</sub>| ≤ n<sup>0.75a</sup>/α<sub>*</sub>,  |L<sub>0</sub>| ≤ n<sup>0.105a</sup>/α<sub>*</sub><sup>2</sup>", lemmas: ["prop-5-1","lemma-5-2","lemma-5-3","lemma-5-4","lemma-5-5","lemma-5-6","lemma-5-7","lemma-5-8","lemma-5-9","lemma-5-10","lemma-5-11"] },
+    { tag: "§6 · Cleanup", title: "सीमा सफ़ाई",
+      text: "« खराब » स्टब <strong>b</strong> चरणों में हल किए जाते हैं, l₁ = l₀+2b से l₀ तक। लेबल <em>स्तरीय</em> हैं: 2 वैश्विक, 1 खराब, 0 स्वच्छ। जंप असमानता स्तर द्वारा जंप को सीमित करती है।",
+      equation: "|E<sub>ij</sub>| ≤ 2 B<sub>k</sub>,  B<sub>k</sub> = B<sub>c</sub> n<sup>4kρ</sup>", lemmas: ["prop-6-1","lemma-6-2","lemma-6-3","lemma-6-4","lemma-6-5","lemma-6-6","lemma-6-7"] },
+    { tag: "§7 · पूर्णता", title: "पृथक सीमा से पूर्णता",
+      text: "पृथकता प्रत्येक नए युग्म को स्वीकार्य बनाती है। <span class='phase-a'>Phase A</span>: पंक्ति ऊर्जाएँ घटती हैं। <span class='phase-b'>Phase B</span>: प्रविष्टियाँ केंद्रित होती हैं। अंतिम मिलान मनमाना है।",
+      equation: "max<sub>i,j</sub> |(W<sub>fin</sub> − P̂<sub>fin</sub>)<sub>ij</sub>| ≤ C B<sub>B</sub>", lemmas: ["prop-7-1","lemma-7-2","lemma-7-3"] },
+    { tag: "§8 · मरम्मत", title: "सटीक मरम्मत प्रमेय",
+      text: "तीन गुण माने जाते हैं: <strong>स्पेक्ट्रल परिरोधन</strong>, <strong>स्थानीय द्रव्यमान</strong>, <strong>विशिष्ट एज ब्लॉक</strong>। तब M असंयुक्त स्विच मिलते हैं जिनसे दोनों चिह्नित परिशुद्धताएँ s पर पूर्णतः धनात्मक हों।",
+      equation: "1 + (1/B<sub>*</sub>) [ −(2n/J<sub>T</sub>) ∑<sub>τ</sub> ∑<sub>i∈T<sub>τ</sub></sub> z<sub>i</sub>(g)<sup>T</sup> K<sub>τ</sub> z<sub>i</sub>(j) ]", lemmas: ["lemma-8-1","lemma-8-2","thm-8-3"] },
+    { tag: "§9 · जटिलता", title: "बिट जटिलता और निष्कर्ष",
+      text: "सभी संक्रियाएँ <em>सटीक परिमेय गणनाएँ</em> हैं। अंतिम परीक्षण B<sup>T</sup>(4(d−1)I − A<sub>G</sub><sup>2</sup>)B की <strong>सटीक परिमेय धनात्मकता</strong> है। इसलिए मुख्य प्रमेय।",
+      equation: "B<sup>T</sup> (4q I − A<sub>G</sub><sup>2</sup>) B ≻ 0 ⟺ ∀i≥2, |λ<sub>i</sub>| < 2√q", lemmas: ["prop-9-1","thm-1-1"] }
+  ]
+};
 
-let storyDurations = STORY.map(() => 6);
+function getStory() { return STORY_I18N[currentLang] || STORY_I18N.fr; }
 
 const ALL_LEMMAS = {
   "lemma-3-1":{name:"Lemma 3.1 — Discounted accounts",section:"§3"},
@@ -2354,10 +2827,10 @@ const ALL_LEMMAS = {
 let activeLemmas = new Set(Object.keys(ALL_LEMMAS));
 
 const FIGURE_PARAMS = {
-  d:    { sym: 'd',    label: 'degré' },
-  n:    { sym: 'n',    label: 'sommets' },
-  beta: { sym: 'β',    label: 'température inverse' },
-  s:    { sym: '2√(d−1)', label: 'borne Ramanujan' }
+  d:    { sym: 'd' },
+  n:    { sym: 'n' },
+  beta: { sym: 'β' },
+  s:    { sym: '2√(d−1)' }
 };
 let activeFigureParams = new Set();
 
@@ -2400,13 +2873,13 @@ function updateUI() {
   document.getElementById('s-energy').textContent = E.toFixed(4);
   document.getElementById('s-maxeig').textContent = outsideMax !== null ? outsideMax.toFixed(4) : '—';
   document.getElementById('s-status').innerHTML = outside.length === 0
-    ? '<span class="badge badge-ok">✓ Ramanujan</span>'
+    ? `<span class="badge badge-ok">${t('status-ramanujan')}</span>`
     : `<span class="badge badge-bad">${outside.length}</span>`;
   const ar = state.totalSteps > 0 ? (state.acceptCount / state.totalSteps * 100).toFixed(1) + '%' : '—';
   document.getElementById('s-accept').textContent = ar;
 
   document.getElementById('v-spectrum-info').textContent =
-    outside.length ? `${outside.length} hors borne` : 'Ramanujan';
+    outside.length ? `${outside.length} ${t('status-outside')}` : t('spectrum-ramanujan');
   document.getElementById('v-energy-info').textContent = E.toFixed(4);
 
   document.getElementById('cp-d').textContent = g.d;
@@ -2419,8 +2892,8 @@ function updateUI() {
   document.getElementById('cs-maxeig').textContent = outsideMax !== null ? outsideMax.toFixed(4) : '—';
   document.getElementById('cs-maxeig').className = 'cs-val ' + (outsideMax !== null ? 'bad' : 'ok');
   document.getElementById('cs-status').innerHTML = outside.length === 0
-    ? '<span class="badge badge-ok">✓ Ramanujan</span>'
-    : `<span class="badge badge-bad">${outside.length} hors borne</span>`;
+    ? `<span class="badge badge-ok">${t('status-ramanujan')}</span>`
+    : `<span class="badge badge-bad">${outside.length} ${t('status-outside')}</span>`;
 
   document.querySelectorAll('.param-toggle').forEach(el => {
     const p = el.dataset.param;
@@ -2555,9 +3028,9 @@ function processPendingRecolor() {
   updateUI();
 }
 
-// STORYTELLING
+// STORYTELLING UI
 const dotsContainer = document.getElementById('story-cinema-dots');
-for (let i=0;i<STORY.length;i++) {
+for (let i=0;i<15;i++) {
   const d = document.createElement('div');
   d.className = 'cinema-dot';
   dotsContainer.appendChild(d);
@@ -2573,13 +3046,14 @@ const progressFill = document.getElementById('story-progress-fill');
 const btnStoryPlay = document.getElementById('btn-story-play');
 
 function renderStory() {
-  const step = STORY[state.storyIndex];
+  const story = getStory();
+  const step = story[state.storyIndex];
   const dots = dotsContainer.querySelectorAll('.cinema-dot');
   dots.forEach((d, i) => {
     d.classList.toggle('active', i === state.storyIndex);
     d.classList.toggle('passed', i < state.storyIndex);
   });
-  storyTagEl.textContent = `ÉTAPE ${state.storyIndex+1} / ${STORY.length} · ${step.tag}`;
+  storyTagEl.textContent = `${t('step').toUpperCase()} ${state.storyIndex+1} / ${story.length} · ${step.tag}`;
   storyHeadingEl.textContent = step.title;
   storyTextEl.innerHTML = step.text;
   if (step.equation && step.equation.trim()) {
@@ -2589,14 +3063,14 @@ function renderStory() {
     storyEqEl.innerHTML = '';
     storyEqEl.classList.add('hidden');
   }
-  progressText.textContent = `Étape ${state.storyIndex+1} / ${STORY.length}`;
+  progressText.textContent = `${t('step')} ${state.storyIndex+1} / ${story.length}`;
   updateLemmaHighlight();
   highlightParamsInStep(step);
   if (state.storyIndex === 12) highlightPhaseNodes();
   else clearPhaseHighlight();
   const n = state.graph ? state.graph.n : 0;
   if (n > 0) {
-    const intensity = 0.3 + (state.storyIndex / STORY.length) * 0.5;
+    const intensity = 0.3 + (state.storyIndex / story.length) * 0.5;
     for (let i=0;i<n;i++) if (Math.random() < 0.15) triggerNode(i, intensity);
   }
   requestAnimationFrame(updateCameraOffset);
@@ -2605,16 +3079,16 @@ function renderStory() {
 function highlightParamsInStep(step) {
   const fullText = (step.text || '') + ' ' + (step.equation || '');
   const paramsToHighlight = new Set();
-  if (/\bd\b|degré/.test(fullText)) paramsToHighlight.add('d');
-  if (/\bn\b|sommets/.test(fullText)) paramsToHighlight.add('n');
-  if (/β|température|inverse/.test(fullText)) paramsToHighlight.add('beta');
-  if (/2√|Ramanujan|borne|seuil/.test(fullText)) paramsToHighlight.add('s');
+  if (/\bd\b|degré|degree|डिग्री/.test(fullText)) paramsToHighlight.add('d');
+  if (/\bn\b|sommets|vertices|शीर्ष/.test(fullText)) paramsToHighlight.add('n');
+  if (/β|température|temperature|तापमान|inverse|व्युत्क्रम/.test(fullText)) paramsToHighlight.add('beta');
+  if (/2√|Ramanujan|रामानुजन|borne|bound|सीमा|seuil/.test(fullText)) paramsToHighlight.add('s');
   document.querySelectorAll('#cinema-params-bar .cine-param').forEach(el => {
     el.classList.toggle('highlighted', paramsToHighlight.has(el.dataset.param));
   });
 }
 function updateLemmaHighlight() {
-  const step = STORY[state.storyIndex];
+  const step = getStory()[state.storyIndex];
   const activeInStep = new Set(step.lemmas || []);
   document.querySelectorAll('.lemma-item').forEach(el => {
     const id = el.dataset.id;
@@ -2624,14 +3098,15 @@ function updateLemmaHighlight() {
 }
 
 function storyGoTo(idx) {
-  state.storyIndex = Math.max(0, Math.min(STORY.length - 1, idx));
+  const story = getStory();
+  state.storyIndex = Math.max(0, Math.min(story.length - 1, idx));
   state.storyElapsed = 0;
   renderStory();
 }
-function storyNext() { if (state.storyIndex < STORY.length - 1) storyGoTo(state.storyIndex + 1); else storyPause(); }
+function storyNext() { const s = getStory(); if (state.storyIndex < s.length - 1) storyGoTo(state.storyIndex + 1); else storyPause(); }
 function storyPrev() { if (state.storyIndex > 0) storyGoTo(state.storyIndex - 1); }
 function storyStart() { storyGoTo(0); }
-function storyEnd() { storyGoTo(STORY.length - 1); }
+function storyEnd() { storyGoTo(getStory().length - 1); }
 function storyPlay() { state.storyPlaying = true; btnStoryPlay.textContent = '⏸'; btnStoryPlay.classList.add('active'); }
 function storyPause() { state.storyPlaying = false; btnStoryPlay.textContent = '▶'; btnStoryPlay.classList.remove('active'); }
 function storyToggle() { if (state.storyPlaying) storyPause(); else storyPlay(); }
@@ -2642,8 +3117,9 @@ function updateStoryTiming(dt) {
   const duration = storyDurations[state.storyIndex];
   const ratio = Math.min(1, state.storyElapsed / duration);
   progressFill.style.width = (ratio * 100) + '%';
+  const story = getStory();
   if (state.storyElapsed >= duration) {
-    if (state.storyIndex < STORY.length - 1) {
+    if (state.storyIndex < story.length - 1) {
       storyGoTo(state.storyIndex + 1);
       progressFill.style.width = '0%';
     } else {
@@ -2660,7 +3136,8 @@ const timecodeTotal = document.getElementById('timecode-total');
 
 function openTimecodeModal() {
   timecodeTbody.innerHTML = '';
-  STORY.forEach((step, i) => {
+  const story = getStory();
+  story.forEach((step, i) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${i+1}</td>
@@ -2708,12 +3185,16 @@ let mediaRecorder = null, recordedChunks = [], recordStartTime = 0;
 const recHud = document.getElementById('rec-hud');
 const recTimeEl = document.getElementById('rec-time');
 const recStatusEl = document.getElementById('rec-status');
+const recStopBtn = document.getElementById('rec-stop-btn');
+const btnRecord = document.getElementById('btn-record');
+
 function updateRecTimer() {
   const elapsed = Math.floor((performance.now() - recordStartTime) / 1000);
   const m = String(Math.floor(elapsed / 60)).padStart(2,'0');
   const s = String(elapsed % 60).padStart(2,'0');
   recTimeEl.textContent = `${m}:${s}`;
 }
+
 function startRecording() {
   if (state.recording) return;
   const [w, h] = state.resolution.split('x').map(Number);
@@ -2725,7 +3206,7 @@ function startRecording() {
   camera.updateProjectionMatrix();
   const mimeTypes = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
   const mimeType = mimeTypes.find(m => MediaRecorder.isTypeSupported(m));
-  if (!mimeType) { alert('WebM non supporté'); return; }
+  if (!mimeType) { alert('WebM non supporté / not supported / समर्थित नहीं'); return; }
   const stream = renderer.domElement.captureStream(60);
   mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate });
   recordedChunks = [];
@@ -2737,13 +3218,17 @@ function startRecording() {
     a.href = url; a.download = `ramanujan-${state.resolution}-${Date.now()}.webm`; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     recordedChunks = [];
-    recStatusEl.textContent = 'Sauvegardé ✓';
+    recStatusEl.textContent = t('rec-saved');
+    recStatusEl.setAttribute('data-i18n', 'rec-saved');
   };
   mediaRecorder.start();
   recordStartTime = performance.now();
   state.recording = true;
   recHud.classList.add('show');
-  recStatusEl.textContent = 'Enregistrement…';
+  recStopBtn.classList.add('show');
+  recStatusEl.textContent = t('rec-recording');
+  recStatusEl.setAttribute('data-i18n', 'rec-recording');
+  btnRecord.textContent = t('record-stop-btn');
   document.getElementById('panel').classList.add('hidden');
   document.getElementById('mini-maps').classList.add('hidden');
   document.getElementById('quantum-panel').classList.add('hidden');
@@ -2752,20 +3237,33 @@ function startRecording() {
   timerEl.classList.remove('show');
   if (!state.cinemaMode) enterCinema();
 }
+
 function stopRecording() {
   if (!state.recording || !mediaRecorder) return;
-  mediaRecorder.stop();
+  try { mediaRecorder.stop(); } catch(e) { console.error(e); }
   state.recording = false;
   recHud.classList.remove('show');
+  recStopBtn.classList.remove('show');
+  btnRecord.textContent = t('record-btn');
+  btnRecord.setAttribute('data-i18n', 'record-btn');
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
+  updateCameraOffset();
 }
+
+recStopBtn.onclick = stopRecording;
+btnRecord.onclick = () => { if (state.recording) stopRecording(); else startRecording(); };
+
+// Échap = stopper l'enregistrement
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.recording) { e.preventDefault(); stopRecording(); }
+});
 
 // CINEMA
 function enterCinema() {
   state.cinemaMode = true;
-  document.body.classList.add('cinema-mode'); // ← AJOUT clé
+  document.body.classList.add('cinema-mode');
   document.getElementById('cinema-overlay').classList.add('show');
   storyPanelCinema.classList.remove('hidden');
   document.getElementById('panel').classList.remove('hidden');
@@ -2777,8 +3275,10 @@ function enterCinema() {
   if (clusterLegendCheckbox.checked) document.getElementById('cluster-legend').classList.add('show');
   else document.getElementById('cluster-legend').classList.remove('show');
   timerEl.classList.remove('show');
-  document.getElementById('btn-story-cinema').textContent = '✕ Quitter';
-  document.getElementById('btn-story-cinema').classList.add('active');
+  const btnCinema = document.getElementById('btn-story-cinema');
+  btnCinema.textContent = t('cinema-exit');
+  btnCinema.setAttribute('data-i18n', 'cinema-exit');
+  btnCinema.classList.add('active');
   if (document.documentElement.requestFullscreen) {
     document.documentElement.requestFullscreen().catch(()=>{});
   }
@@ -2792,7 +3292,7 @@ function enterCinema() {
 }
 function exitCinema() {
   state.cinemaMode = false;
-  document.body.classList.remove('cinema-mode'); // ← AJOUT clé
+  document.body.classList.remove('cinema-mode');
   document.getElementById('cinema-overlay').classList.remove('show');
   document.getElementById('panel').classList.remove('hidden');
   document.getElementById('cinema-stats').classList.remove('show');
@@ -2801,8 +3301,10 @@ function exitCinema() {
   if (document.getElementById('c-maps').checked) document.getElementById('mini-maps').classList.remove('hidden');
   if (document.getElementById('c-quantum').checked) document.getElementById('quantum-panel').classList.remove('hidden');
   document.getElementById('cluster-legend').classList.remove('show');
-  document.getElementById('btn-story-cinema').textContent = '🎬 Cinéma';
-  document.getElementById('btn-story-cinema').classList.remove('active');
+  const btnCinema = document.getElementById('btn-story-cinema');
+  btnCinema.textContent = t('cinema-btn');
+  btnCinema.setAttribute('data-i18n', 'cinema-btn');
+  btnCinema.classList.remove('active');
   if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
   updateCameraOffset();
 }
@@ -2845,8 +3347,71 @@ function updateCameraOffset() {
   camera.position.set(0, 0, CAMERA_BASE / currentZoom);
 }
 
-// UI EVENTS
+// ═══════════════════════════════════════════════════════════════
+//  APPLY TRANSLATIONS
+// ═══════════════════════════════════════════════════════════════
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const txt = t(key);
+    // Preserve leading icon spans in buttons (e.g. "⏺ Record")
+    if (el.tagName === 'BUTTON' && el.querySelector('span[data-i18n]')) return;
+    if (el.children.length === 0) el.textContent = txt;
+  });
+  // buttons in record state
+  if (state.recording) {
+    btnRecord.textContent = t('record-stop-btn');
+  } else {
+    btnRecord.textContent = t('record-btn');
+  }
+  // story & UI numbers
+  renderStory();
+  updateUI();
+  buildLemmaList();
+  buildParamToggles();
+  // update HTML lang
+  document.documentElement.lang = state.lang;
+  // rec status
+  if (!state.recording) recStatusEl.textContent = t('rec-ready');
+  // cinema button
+  const btnCinema = document.getElementById('btn-story-cinema');
+  btnCinema.textContent = state.cinemaMode ? t('cinema-exit') : t('cinema-btn');
+  // mcmc button
+  const btnMc = document.getElementById('btn-mc');
+  btnMc.textContent = state.mcmcRunning ? t('mcmc-pause') : t('mcmc-run');
+  // story btn play
+  btnStoryPlay.textContent = state.storyPlaying ? '⏸' : '▶';
+  // timecode modal titles re-render if open
+  if (timecodeModal.classList.contains('show')) {
+    // refresh rows
+    const story = getStory();
+    story.forEach((step, i) => {
+      const inp = timecodeTbody.querySelector(`input[data-idx="${i}"]`);
+      if (!inp) return;
+      const tr = inp.closest('tr');
+      tr.children[1].textContent = step.title;
+      tr.children[1].title = step.title;
+      tr.children[2].textContent = step.tag.split('·')[0].trim();
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI EVENTS
+// ═══════════════════════════════════════════════════════════════
 function $(id) { return document.getElementById(id); }
+
+// LANGUAGE
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.onclick = () => {
+    const lang = btn.dataset.lang;
+    if (lang === state.lang) return;
+    state.lang = lang;
+    currentLang = lang;
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+    applyTranslations();
+  };
+});
 
 $('r-degree').oninput = e => {
   state.d = +e.target.value; $('v-degree').textContent = state.d;
@@ -2919,7 +3484,7 @@ modeButtons.forEach(id => {
     $(id).classList.add('active');
     state.mode = id === 'btn-random' ? 'random' : id === 'btn-switch' ? 'switch' : 'lps';
     state.mcmcRunning = false;
-    $('btn-mc').textContent = '▶ MCMC';
+    $('btn-mc').textContent = t('mcmc-run');
     $('btn-mc').classList.remove('active');
     regenerate();
   };
@@ -2927,7 +3492,7 @@ modeButtons.forEach(id => {
 
 $('btn-mc').onclick = () => {
   state.mcmcRunning = !state.mcmcRunning;
-  $('btn-mc').textContent = state.mcmcRunning ? '⏸ Pause' : '▶ MCMC';
+  $('btn-mc').textContent = state.mcmcRunning ? t('mcmc-pause') : t('mcmc-run');
   $('btn-mc').classList.toggle('active', state.mcmcRunning);
   state.mcmcLastTick = 0;
 };
@@ -2937,7 +3502,7 @@ $('btn-tilt').onclick = () => {
 };
 $('btn-reset').onclick = () => {
   state.mcmcRunning = false;
-  $('btn-mc').textContent = '▶ MCMC';
+  $('btn-mc').textContent = t('mcmc-run');
   $('btn-mc').classList.remove('active');
   regenerate();
 };
@@ -3000,7 +3565,6 @@ $('c-color-cluster').onchange = e => {
 };
 
 $('sel-resolution').onchange = e => { state.resolution = e.target.value; };
-$('btn-record').onclick = () => { if (state.recording) stopRecording(); else startRecording(); };
 
 window.addEventListener('resize', () => {
   if (state.recording) return;
@@ -3032,12 +3596,18 @@ function buildLemmaList() {
 function buildParamToggles() {
   const list = document.getElementById('param-toggle-list');
   list.innerHTML = '';
+  const labels = {
+    d: t('fig-d'),
+    n: t('fig-n'),
+    beta: t('fig-beta'),
+    s: t('fig-s')
+  };
   Object.entries(FIGURE_PARAMS).forEach(([id, info]) => {
     const el = document.createElement('div');
     el.className = 'param-toggle';
     el.dataset.param = id;
     el.innerHTML = `
-      <div><span class="param-symbol">${info.sym}</span><span style="color:#64748b; font-size:10px; margin-left:6px;">${info.label}</span></div>
+      <div><span class="param-symbol">${info.sym}</span><span style="color:#64748b; font-size:10px; margin-left:6px;">${labels[id]}</span></div>
       <span class="param-val">—</span>
     `;
     if (activeFigureParams.has(id)) el.classList.add('active');
@@ -3049,6 +3619,20 @@ function buildParamToggles() {
     };
     list.appendChild(el);
   });
+  // also refresh values
+  if (state.graph) {
+    const g = state.graph;
+    const s = 2 * Math.sqrt(g.d - 1);
+    list.querySelectorAll('.param-toggle').forEach(el => {
+      const p = el.dataset.param;
+      let v = '—';
+      if (p === 'd') v = g.d;
+      else if (p === 'n') v = g.n;
+      else if (p === 'beta') v = state.beta.toFixed(1);
+      else if (p === 's') v = s.toFixed(2);
+      el.querySelector('.param-val').textContent = v;
+    });
+  }
 }
 
 function rebuildGraphVisual() {
@@ -3130,6 +3714,8 @@ function animate(now) {
 }
 
 // INIT
+currentLang = 'fr';
+state.lang = 'fr';
 buildLemmaList();
 buildParamToggles();
 regenerate();
