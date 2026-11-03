@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Ramanujan — Quantum Flow v16.2</title>
+<title>Ramanujan — Quantum Flow v16.3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #050810;
@@ -300,10 +300,21 @@
     backdrop-filter: blur(20px);
     box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
     opacity: 0; transform: translateY(-20px);
-    transition: opacity 0.5s, transform 0.5s;
+    transition: opacity 0.5s, transform 0.5s, top 0.4s;
     pointer-events: none; display: none;
   }
   #cinema-stats.show { opacity: 1; transform: translateY(0); display: block; }
+
+  /* ── MODE CINÉMA : stats centrées verticalement à droite ── */
+  body.cinema-mode #cinema-stats.show {
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 1;
+  }
+  body.cinema-mode #cinema-stats.show.cs-fade-in {
+    opacity: 1;
+  }
+
   .cs-title {
     font-size: 13px; font-family: 'Georgia', serif;
     font-style: italic; color: #7dd3fc;
@@ -361,16 +372,27 @@
   .sl-box.ramanujan { background: rgba(125, 211, 252, 0.6); }
   .sl-box.outside { background: rgba(239, 68, 68, 0.6); }
 
+  /* ── MINI-MAPS : position bas-droite par défaut ── */
   #mini-maps {
     position: fixed; bottom: 20px; right: 20px;
     width: 380px;
     background: rgba(10, 15, 28, 0.94);
     border: 1px solid #1e2a45; border-radius: 14px;
     padding: 14px; backdrop-filter: blur(20px);
-    z-index: 40; transition: opacity 0.4s, transform 0.4s;
+    z-index: 40; transition: opacity 0.4s, transform 0.4s, left 0.4s, top 0.4s, right 0.4s, bottom 0.4s;
     font-family: 'Segoe UI', sans-serif;
   }
   #mini-maps.hidden { opacity: 0; transform: translateY(30px); pointer-events: none; }
+
+  /* ── MODE CINÉMA : mini-maps à GAUCHE, centrées verticalement ── */
+  body.cinema-mode #mini-maps:not(.hidden) {
+    left: 380px;
+    right: auto;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+
   .mm-row { display: flex; gap: 8px; }
   .mm-cell {
     flex: 1; background: rgba(5, 10, 22, 0.8);
@@ -387,6 +409,7 @@
   #mm-circle-canvas { height: 110px; }
   #mm-cluster-canvas { height: 110px; }
 
+  /* ── QUANTUM : position bas-droite par défaut ── */
   #quantum-panel {
     position: fixed; bottom: 200px; right: 20px;
     width: 380px;
@@ -394,10 +417,19 @@
     border: 1px solid rgba(125, 211, 252, 0.25);
     border-radius: 14px; padding: 12px 14px;
     backdrop-filter: blur(20px);
-    z-index: 40; transition: opacity 0.4s;
+    z-index: 40; transition: opacity 0.4s, left 0.4s, top 0.4s, right 0.4s, bottom 0.4s, transform 0.4s;
     font-family: 'Segoe UI', sans-serif;
   }
   #quantum-panel.hidden { opacity: 0; pointer-events: none; }
+
+  /* ── MODE CINÉMA : quantum à GAUCHE, centré verticalement, AU-DESSUS des mini-maps ── */
+  body.cinema-mode #quantum-panel:not(.hidden) {
+    left: 380px;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    transform: translateY(calc(-50% - 120px));
+  }
   #quantum-canvas {
     width: 100%; height: 70px; display: block;
     border-radius: 6px; background: rgba(5, 10, 22, 0.85);
@@ -1623,16 +1655,15 @@ const state = {
   viewMode: 'sphere',
   loops: [],
   graphVersion: 0,
-  pendingRecolor: false, // flag pour différer les recolorations lourdes
+  pendingRecolor: false,
 };
 
 const energyHistory = [];
 const MAX_HISTORY = 150;
 
 // ═══════════════════════════════════════════════════════════════
-//  DÉTECTION DE BOUCLES OPTIMISÉE
+//  DÉTECTION DE BOUCLES OPTIMISÉE (triangles)
 // ═══════════════════════════════════════════════════════════════
-// Triangles uniquement, avec Sets d'adjacence précalculés → O(n·d²)
 let loopCacheKey = -1;
 let loopCacheValue = [];
 function detectLoopsCached(adj, version) {
@@ -1645,7 +1676,6 @@ function detectLoopsCached(adj, version) {
 function detectTriangles(adj) {
   const n = adj.length;
   const loops = new Set();
-  // Sets d'appartenance : O(1) au lieu de O(d)
   const sets = adj.map(nbrs => new Set(nbrs));
   for (let i=0;i<n;i++) {
     const ni = adj[i];
@@ -1689,7 +1719,6 @@ function computeClusters() {
   const k = Math.min(state.clusterK, n - 1);
   const tStart = performance.now();
   for (let e=0;e<k;e++) {
-    // Budget temps global : on abandonne les vecteurs restants si > 20ms
     if (performance.now() - tStart > 20) break;
     let v = new Float64Array(n);
     for (let i=0;i<n;i++) v[i] = clusterRnd() - 0.5;
@@ -2492,7 +2521,6 @@ function drawEnergyChart() {
   ctx.stroke(); ctx.shadowBlur = 0;
 }
 
-// CORRECTIF : un seul step max par tick + flag différé pour recolor
 function mcmcTick() {
   if (!state.mcmcRunning) return;
   const now = performance.now();
@@ -2500,7 +2528,7 @@ function mcmcTick() {
   state.mcmcLastTick = now;
   let g = state.graph, eigs = state.eigs, accepted = 0;
   const t0 = performance.now();
-  const maxSteps = Math.min(state.speed, 1); // 1 seul pas max pour ne jamais bloquer
+  const maxSteps = Math.min(state.speed, 1);
   for (let i=0;i<maxSteps;i++) {
     if (performance.now() - t0 > 30) break;
     const step = metropolisStep(g, eigs, state.beta, state.rnd, state.tilt);
@@ -2513,7 +2541,6 @@ function mcmcTick() {
     state.acceptCount += accepted; state.totalSteps += accepted;
     const E = spectralEnergy(eigs, g.d);
     energyHistory.push(E); if (energyHistory.length > MAX_HISTORY) energyHistory.shift();
-    // Marquer qu'il faut recolorier — sera fait une fois par frame dans animate
     state.pendingRecolor = true;
     updateEdgesOnly(g);
   } else {
@@ -2521,7 +2548,6 @@ function mcmcTick() {
   }
 }
 
-// Applique les recolorations lourdes différées (une fois par frame)
 function processPendingRecolor() {
   if (!state.pendingRecolor) return;
   state.pendingRecolor = false;
@@ -2739,6 +2765,7 @@ function stopRecording() {
 // CINEMA
 function enterCinema() {
   state.cinemaMode = true;
+  document.body.classList.add('cinema-mode'); // ← AJOUT clé
   document.getElementById('cinema-overlay').classList.add('show');
   storyPanelCinema.classList.remove('hidden');
   document.getElementById('panel').classList.remove('hidden');
@@ -2765,6 +2792,7 @@ function enterCinema() {
 }
 function exitCinema() {
   state.cinemaMode = false;
+  document.body.classList.remove('cinema-mode'); // ← AJOUT clé
   document.getElementById('cinema-overlay').classList.remove('show');
   document.getElementById('panel').classList.remove('hidden');
   document.getElementById('cinema-stats').classList.remove('show');
