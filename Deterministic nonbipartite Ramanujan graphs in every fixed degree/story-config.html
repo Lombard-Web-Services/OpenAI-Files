@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Ramanujan — Story Configuration</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; min-height: 100%;
+    background: #050810;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #e0e6f0;
+    overflow-x: hidden;
+  }
+
+  /* ── ARRIÈRE-PLAN ANIMÉ ── */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(125, 211, 252, 0.08), transparent 50%),
+      radial-gradient(ellipse at 80% 90%, rgba(251, 191, 36, 0.06), transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(168, 85, 247, 0.04), transparent 60%);
+    z-index: 0; pointer-events: none;
+  }
+
+  /* ── GRILLE PRINCIPALE ── */
+  .app {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    min-height: 100vh;
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+  }
+
+  /* ── PANNEAU LATÉRAL ── */
+  #sidebar {
+    background: rgba(10, 15, 28, 0.94);
+    border-right: 1px solid #1e2a45;
+    padding: 22px 20px;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px;
+    backdrop-filter: blur(20px);
+    max-height: 100vh; overflow-y: auto;
+    position: sticky; top: 0;
+  }
+  #sidebar::-webkit-scrollbar { width: 5px; }
+  #sidebar::-webkit-scrollbar-thumb { background: #1e2a45; border-radius: 3px; }
+
+  .panel-title {
+    font-size: 13px; font-weight: 700; color: #7dd3fc;
+    letter-spacing: 1.2px; text-transform: uppercase;
+    margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: #7dd3fc; box-shadow: 0 0 10px #7dd3fc;
+  }
+  .panel-sub {
+    font-family: 'Georgia', serif; font-style: italic;
+    font-size: 11px; color: #64748b; margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .section { margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid #1a2438; }
+  .section:last-child { border-bottom: none; }
+  .section-label {
+    font-size: 10px; color: #64748b; text-transform: uppercase;
+    letter-spacing: 1.3px; margin-bottom: 10px; font-weight: 600;
+  }
+
+  /* ── SÉLECTEUR DE LANGUE ── */
+  .lang-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+  .lang-btn {
+    background: #131c30; border: 1px solid #2a3a55; color: #d0d8e4;
+    padding: 10px 6px; border-radius: 8px; cursor: pointer;
+    font-size: 12px; font-weight: 500;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: all 0.2s;
+  }
+  .lang-btn:hover { background: #1d2a42; border-color: #7dd3fc; color: #fff; }
+  .lang-btn.active {
+    background: rgba(14, 165, 233, 0.18);
+    border-color: #0ea5e9; color: #7dd3fc;
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+  }
+  .lang-btn .flag { font-size: 22px; line-height: 1; }
+  .lang-btn .code { font-family: 'SF Mono', monospace; font-size: 10px; letter-spacing: 0.1em; }
+
+  /* ── NAVIGATION ÉTAPES ── */
+  .step-nav {
+    display: flex; gap: 5px; flex-wrap: wrap;
+  }
+  .step-nav button {
+    background: #131c30; border: 1px solid #2a3a55; color: #d0d8e4;
+    padding: 7px 10px; border-radius: 8px; cursor: pointer;
+    font-size: 11px; font-weight: 500;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    transition: all 0.15s;
+  }
+  .step-nav button:hover:not(:disabled) {
+    background: #1d2a42; border-color: #7dd3fc; color: #fff;
+  }
+  .step-nav button.active {
+    background: #0ea5e9; border-color: #0ea5e9; color: #fff;
+  }
+  .step-nav button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .step-nav .nav-wide { flex: 1 1 40px; }
+
+  /* ── PROGRESSION ── */
+  #progress-panel {
+    margin-top: 12px; font-size: 10px;
+    color: #64748b; text-align: center;
+    font-family: 'SF Mono', monospace;
+  }
+  #progress-bar {
+    width: 100%; height: 3px; background: #1a2438;
+    border-radius: 2px; margin-top: 6px; overflow: hidden;
+  }
+  #progress-fill {
+    height: 100%; background: linear-gradient(90deg, #7dd3fc, #fbbf24);
+    width: 0%; transition: width 0.3s ease;
+  }
+
+  /* ── LISTE DES ÉTAPES DANS LA SIDEBAR ── */
+  .step-list {
+    display: flex; flex-direction: column; gap: 3px;
+    max-height: 380px; overflow-y: auto;
+  }
+  .step-list::-webkit-scrollbar { width: 4px; }
+  .step-list::-webkit-scrollbar-thumb { background: #1e2a45; border-radius: 2px; }
+  .step-list-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border-radius: 6px;
+    background: rgba(30, 42, 69, 0.3);
+    font-size: 10.5px; color: #8b9bb8;
+    cursor: pointer; transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+  .step-list-item:hover { background: rgba(30, 42, 69, 0.6); color: #cbd5e1; }
+  .step-list-item.active {
+    background: rgba(14, 165, 233, 0.12);
+    border-color: rgba(14, 165, 233, 0.4);
+    color: #7dd3fc;
+  }
+  .step-list-item .num {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(30, 42, 69, 0.8); color: #64748b;
+    font-family: 'SF Mono', monospace; font-size: 9.5px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .step-list-item.active .num {
+    background: #0ea5e9; color: #fff;
+  }
+  .step-list-item .label { flex: 1; line-height: 1.3; }
+
+  /* ── CONTENU PRINCIPAL ── */
+  #content {
+    padding: 40px 56px 80px 56px;
+    max-width: 1100px;
+  }
+  @media (max-width: 900px) {
+    #content { padding: 24px 20px 60px 20px; }
+  }
+
+  /* ── EN-TÊTE ── */
+  .hero { margin-bottom: 32px; }
+  .hero-eyebrow {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.25em; text-transform: uppercase;
+    color: #7dd3fc;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 6px 14px; margin-bottom: 18px;
+    background: rgba(10, 20, 38, 0.8);
+    border: 1px solid rgba(125, 211, 252, 0.3);
+    text-shadow: 0 0 12px rgba(125, 211, 252, 0.4);
+  }
+  .hero-title {
+    font-size: clamp(32px, 5vw, 60px);
+    font-weight: 400; font-style: italic;
+    line-height: 1.05; letter-spacing: 0.01em;
+    background: linear-gradient(135deg, #7dd3fc 0%, #fbbf24 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+    animation: titleGlow 4s ease-in-out infinite;
+  }
+  @keyframes titleGlow {
+    0%, 100% { filter: drop-shadow(0 0 20px rgba(125,211,252,0.3)); }
+    50% { filter: drop-shadow(0 0 40px rgba(251,191,36,0.4)); }
+  }
+  .hero-sub {
+    font-family: 'Georgia', serif; font-style: italic;
+    font-size: clamp(13px, 1.3vw, 16px);
+    color: #94a3b8; letter-spacing: 0.1em;
+  }
+
+  /* ── CARTE ÉTAPE ── */
+  .step-card {
+    background: rgba(12, 22, 42, 0.85);
+    border: 1px solid rgba(125, 211, 252, 0.3);
+    padding: 32px 40px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    margin-bottom: 32px;
+    animation: cardIn 0.4s ease-out;
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (max-width: 900px) { .step-card { padding: 24px 20px; } }
+
+  /* DOTS */
+  .dots {
+    display: flex; justify-content: center; gap: 5px;
+    margin-bottom: 20px;
+  }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(148, 163, 184, 0.3); transition: all 0.3s;
+  }
+  .dot.active {
+    background: #7dd3fc; width: 24px; border-radius: 3px;
+    box-shadow: 0 0 10px rgba(125, 211, 252, 0.7);
+  }
+  .dot.passed { background: rgba(148, 163, 184, 0.6); }
+
+  /* TAG */
+  .step-tag {
+    display: inline-block;
+    padding: 7px 16px; margin-bottom: 16px;
+    background: rgba(10, 20, 38, 0.8);
+    border: 1px solid rgba(125, 211, 252, 0.3);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 11px; font-weight: 600;
+    color: #7dd3fc;
+    letter-spacing: 0.3em; text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(125, 211, 252, 0.5);
+  }
+
+  /* TITRE */
+  .step-heading {
+    font-size: clamp(24px, 3vw, 40px);
+    color: #fff; font-style: italic; font-weight: 400;
+    line-height: 1.15; margin-bottom: 18px;
+    letter-spacing: 0.01em;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+  }
+
+  /* TEXTE */
+  .step-text {
+    font-size: clamp(15px, 1.4vw, 18px);
+    color: #cbd5e1; line-height: 1.65;
+    letter-spacing: 0.01em;
+    margin-bottom: 22px;
+  }
+  .step-text strong { color: #7dd3fc; font-weight: 600; }
+  .step-text em { color: #fbbf24; font-style: italic; }
+  .step-text .phase-a { color: #4ade80; font-weight: 700; }
+  .step-text .phase-b { color: #f472b6; font-weight: 700; }
+
+  /* ÉQUATION */
+  .step-equation {
+    display: flex; justify-content: center; align-items: center;
+    padding: 18px 20px; margin-bottom: 28px;
+    background: rgba(5, 10, 22, 0.6);
+    border: 1px solid rgba(253, 230, 138, 0.2);
+    font-family: 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
+    font-size: clamp(18px, 1.9vw, 24px);
+    color: #fde68a; text-align: center;
+    font-style: italic;
+    text-shadow: 0 0 24px rgba(253, 230, 138, 0.3);
+  }
+
+  /* ── BLOC PARAMÈTRES ── */
+  .params-block { margin-top: 8px; }
+  .params-title {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 10.5px; font-weight: 700;
+    color: #64748b; letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .params-title::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, rgba(125, 211, 252, 0.25), transparent);
+  }
+
+  .param-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+
+  .param-card {
+    background: rgba(10, 20, 38, 0.6);
+    border: 1px solid rgba(42, 58, 85, 0.8);
+    padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 6px;
+    transition: all 0.2s;
+  }
+  .param-card:hover {
+    background: rgba(30, 42, 69, 0.6);
+    border-color: rgba(125, 211, 252, 0.4);
+  }
+  .param-key {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 10px; font-weight: 600;
+    color: #64748b; letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .param-value {
+    font-family: 'Georgia', serif;
+    font-size: 17px; font-style: italic;
+    color: #fbbf24; font-weight: 400;
+    line-height: 1.3;
+  }
+  .param-value .chip {
+    display: inline-block;
+    padding: 2px 8px; margin: 0 2px;
+    background: rgba(14, 165, 233, 0.15);
+    border: 1px solid rgba(14, 165, 233, 0.4);
+    font-family: 'SF Mono', monospace; font-style: normal;
+    font-size: 11px; font-weight: 600;
+    color: #7dd3fc;
+    letter-spacing: 0.05em;
+  }
+  .param-value .chip-gold {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.4);
+    color: #fbbf24;
+  }
+  .param-value .arrow {
+    color: #64748b; font-style: normal;
+    margin: 0 4px; font-family: 'Segoe UI', sans-serif;
+  }
+  .param-why {
+    font-family: 'Georgia', serif; font-style: italic;
+    font-size: 11.5px; color: #94a3b8;
+    line-height: 1.45;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(42, 58, 85, 0.8);
+  }
+
+  /* ── ACTIONS ── */
+  .actions-bar {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-top: 24px; padding-top: 20px;
+    border-top: 1px solid rgba(42, 58, 85, 0.6);
+  }
+  .btn {
+    background: #131c30; border: 1px solid #2a3a55; color: #d0d8e4;
+    padding: 10px 18px; border-radius: 8px; cursor: pointer;
+    font-size: 12px; font-weight: 500;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn:hover { background: #1d2a42; border-color: #7dd3fc; color: #fff; }
+  .btn-primary {
+    background: #0ea5e9; border-color: #0ea5e9; color: #fff;
+  }
+  .btn-primary:hover { background: #0284c7; border-color: #0284c7; }
+  .btn-gold {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.5);
+    color: #fbbf24;
+  }
+  .btn-gold:hover { background: rgba(251, 191, 36, 0.25); color: #fff; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: rgba(14, 165, 233, 0.95); color: #fff;
+    padding: 12px 24px; border-radius: 10px;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px; font-weight: 500;
+    box-shadow: 0 8px 32px rgba(14, 165, 233, 0.4);
+    opacity: 0; pointer-events: none;
+    transition: all 0.3s ease;
+    z-index: 1000;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── PIED DE PAGE ── */
+  .footer {
+    text-align: center; padding: 40px 20px 60px;
+    font-family: 'Georgia', serif; font-style: italic;
+    font-size: 12px; color: #475569;
+    letter-spacing: 0.05em;
+  }
+  .footer strong { color: #7dd3fc; font-weight: 400; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside id="sidebar">
+    <div class="panel-title">Story Configuration</div>
+    <div class="panel-sub">Guide interactif — 15 étapes du storytelling de la démo Ramanujan</div>
+
+    <div class="section">
+      <div class="section-label">Langue · Language · भाषा</div>
+      <div class="lang-grid">
+        <button class="lang-btn active" data-lang="fr">
+          <span class="flag">🇫🇷</span>
+          <span class="code">FR</span>
+        </button>
+        <button class="lang-btn" data-lang="en">
+          <span class="flag">🇬🇧</span>
+          <span class="code">EN</span>
+        </button>
+        <button class="lang-btn" data-lang="hi">
+          <span class="flag">🇮🇳</span>
+          <span class="code">HI</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Navigation</div>
+      <div class="step-nav">
+        <button id="nav-start">⏮</button>
+        <button id="nav-prev" class="nav-wide">←</button>
+        <button id="nav-next" class="nav-wide">→</button>
+        <button id="nav-end">⏭</button>
+      </div>
+      <div id="progress-panel">
+        <span id="progress-label">Étape 1 / 15</span>
+        <div id="progress-bar"><div id="progress-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Étapes</div>
+      <div class="step-list" id="step-list"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Actions</div>
+      <button class="btn btn-gold" id="btn-copy-json" style="width:100%;">
+        📋 Copier JSON complet
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══ CONTENU ═══ -->
+  <main id="content">
+    <div class="hero">
+      <div class="hero-eyebrow" id="hero-eyebrow">Graphes de Ramanujan · Guide</div>
+      <h1 class="hero-title" id="hero-title">Storytelling en 15 étapes</h1>
+      <div class="hero-sub" id="hero-sub">Construction déterministe · tous degrés fixés</div>
+    </div>
+
+    <div id="step-card-slot"></div>
+
+    <div class="actions-bar">
+      <button class="btn" id="act-prev">← Étape précédente</button>
+      <button class="btn btn-primary" id="act-next">Étape suivante →</button>
+      <button class="btn" id="act-copy-current">📋 Copier cette étape (JSON)</button>
+    </div>
+
+    <div class="footer">
+      <strong>Ramanujan — Quantum Flow</strong> · Story Configuration · 15 étapes · FR / EN / HI
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast">Copié dans le presse-papier ✓</div>
+
+<script type="module">
+// ═══════════════════════════════════════════════════════════════
+//  CONFIGURATION DES 15 ÉTAPES — FR / EN / HI
+//  Chaque étape contient :
+//   - tag : la section (ex: "§1 · Introduction")
+//   - title : le titre de l'étape
+//   - text : le texte narratif (avec HTML : <em>, <strong>, .phase-a, .phase-b)
+//   - equation : l'équation en HTML (ou "")
+//   - lemmas : les ids des lemmes associés
+//   - params : liste { key, value, why } pour les réglages manuels
+// ═══════════════════════════════════════════════════════════════
+const STORY = {
+  fr: [
+    {
+      tag: "§1 · Introduction",
+      title: "Le problème des graphes de Ramanujan",
+      text: "Un graphe <em>d</em>-régulier est Ramanujan si toutes ses valeurs propres non triviales restent dans l'intervalle <strong>[−2√(d−1), 2√(d−1)]</strong>. Cette borne est <em>optimale</em> au sens d'Alon–Boppana.",
+      equation: "‖ A<sub>G</sub> |<sub>𝟏<sup>⊥</sup></sub> ‖ ≤ 2√(d−1)",
+      lemmas: [],
+      params: [
+        { key: "Mode", value: 'Aléatoire', why: "Un graphe non-Ramanujan : les eigs sortent de la borne." },
+        { key: "Degré d", value: '4', why: "Petit degré, borne s = 2√3 ≈ 3.46 visible." },
+        { key: "Sommets n", value: '60', why: "Taille modérée pour voir les valeurs propres." },
+        { key: "β", value: '20', why: "MCMC prêt mais inactif." },
+        { key: "Vue", value: 'Sphère', why: "Vue de référence." },
+        { key: "Clustering", value: 'kmeans · k = 6', why: "Montre la structure." },
+        { key: "MCMC", value: '⏹ Arrêté', why: "On montre le problème initial, pas la solution." }
+      ]
+    },
+    {
+      tag: "§1.1 · Constructions",
+      title: "Ce que LPS et Morgenstern ne couvrent pas",
+      text: "LPS et Margulis donnent des constructions arithmétiques pour certains degrés seulement. Morgenstern atteint <em>q+1</em>. Aucune ne couvre <strong>tous les degrés fixés</strong> à <em>toutes</em> les tailles prescrites simultanément.",
+      equation: "",
+      lemmas: [],
+      params: [
+        { key: "Mode", value: 'LPS', why: "Tu montres la construction arithmétique." },
+        { key: "Degré d", value: '4 → 6 → 8', why: "En LPS, d doit valoir p+1 avec p premier : 4 (p=3), 6 (p=5), 8 (p=7)…" },
+        { key: "Astuce", value: 'Démo', why: "Bouge d de 4 à 6 puis 8 : pour d=5 ou 7 (p non premier), le mode retombe sur random. C'est le propos de l'étape." }
+      ]
+    },
+    {
+      tag: "§1.2 · Edge switches",
+      title: "L'opération locale de base",
+      text: "Supprimer deux arêtes {u,v} et {x,y}, insérer {u,y} et {x,v}. Valide si les 4 extrémités sont distinctes et les arêtes insérées absentes. Une collection de switches <em>disjoints</em> préserve simplicité, régularité et nombre de sommets.",
+      equation: "{u,v}, {x,y} → {u,y}, {x,v}",
+      lemmas: [],
+      params: [
+        { key: "Mode", value: 'Switches', why: "Le graphe a été modifié par 40 switches locaux." },
+        { key: "Degré d", value: '4', why: "—" },
+        { key: "Sommets n", value: '60', why: "—" },
+        { key: "MCMC", value: '⏹ Arrêté', why: "On illustre l'opération, pas le résultat." }
+      ]
+    },
+    {
+      tag: "§1.2 · Distances signées",
+      title: "Mesurer la distance au seuil",
+      text: "On pose <strong>x<sub>i</sub><sup>σ</sup> = s − σ λ<sub>i</sub></strong> avec s = 2√q. Ces distances peuvent être <em>légèrement négatives</em>. On maintient deux informations locales : la masse spectrale près des bords, et les blocs 2×2 typiques.",
+      equation: "x<sub>i</sub><sup>σ</sup> = 2√(d−1) − σ λ<sub>i</sub>",
+      lemmas: [],
+      params: [
+        { key: "Mode", value: 'Aléatoire', why: "—" },
+        { key: "Degré d", value: '4', why: "s = 3.46." },
+        { key: "β", value: '20', why: "—" },
+        { key: "MCMC", value: '⏹ Arrêté', why: "On observe les distances avant de les minimiser." },
+        { key: "Panneau", value: 'Statistiques', why: "λ_max hors borne = distance au seuil à réduire. Spectre montre où sont les eigs vs pointillés rouges ±s." }
+      ]
+    },
+    {
+      tag: "§1.3 · Quatre étages",
+      title: "La construction en quatre étages",
+      text: "1. <strong>Early pairing</strong> — précisions signées positives. 2. <strong>Separation</strong> — sommets distincts. 3. <strong>Boundary completion</strong> — petites énergies de ligne. 4. <strong>Local repair</strong> — switches biaisés.",
+      equation: "",
+      lemmas: [],
+      params: [
+        { key: "Mode", value: 'Aléatoire', why: "On reste sur l'idée générale." },
+        { key: "Degré d", value: '4', why: "—" },
+        { key: "Sommets n", value: '60', why: "—" },
+        { key: "Note", value: 'Conceptuel', why: "Les 4 étages ne sont pas visibles sur la figure 3D. Laisser tourner la sphère." }
+      ]
+    },
+    {
+      tag: "§2 · Conventions",
+      title: "Paramètres spectraux et échelles",
+      text: "On fixe q = d−1, s = 2√q, <strong>α(h) = 1 − qh²</strong>, <strong>z(h) = h⁻¹ + qh</strong>, <strong>m<sub>h</sub> = h/(1−h²)</strong>. La précision M(h) = zI − σA<sub>e</sub> − hD doit rester positive pour σ = ±1.",
+      equation: "M(h) = z(h) I − σ A<sub>e</sub> − h D",
+      lemmas: [],
+      params: [
+        { key: "Degré d", value: '4 ↔ 6', why: "Pour montrer que q = d−1 change." },
+        { key: "β", value: '20', why: "—" },
+        { key: "Vue", value: 'Sphère', why: "—" },
+        { key: "Astuce", value: 'Paramètres sur la figure', why: "Active la case 2√(d−1) dans « Paramètres sur la figure » pour la voir s'afficher sur la sphère." }
+      ]
+    },
+    {
+      tag: "§2.2 · Tailles d'arrêt",
+      title: "La grille des tailles d'arrêt",
+      text: "Les stubs décroissent : <strong>dn → l₁ → l₀ → l₂ → l₃ → 0</strong>. Les deux premiers arrêts délimitent early pairing et cleanup ; l₂ sépare les phases de bord ; l₃ est le matching final arbitraire.",
+      equation: "l<sub>0</sub> ≈ n<sup>2/3 + 1.5a</sup>,  b ≈ n<sup>1/3 + 3.345a</sup>",
+      lemmas: [],
+      params: [
+        { key: "Sommets n", value: '60 → 120 → 200', why: "Le paramètre clé : l₁, l₀, b dépendent de n." },
+        { key: "Degré d", value: '4', why: "—" },
+        { key: "Astuce", value: 'Slider n', why: "Bouge n lentement : les tailles d'arrêt l₀ ≈ n^(2/3+…) changent, la densité évolue." }
+      ]
+    },
+    {
+      tag: "§3 · Choix déterministe",
+      title: "Le lemme des comptes actualisés",
+      text: "On choisit l'appariement suivant en <em>minimisant une somme pondérée</em> de statistiques non-négatives, appelées <strong>comptes</strong>. Chaque compte reçoit son propre <em>discount</em> r<sub>i</sub> = max(1, E[Z']/Z).",
+      equation: "r<sub>i</sub> = max(1, 𝔼[Z<sub>i</sub>(x′) | x] / Z<sub>i</sub>(x)),  D<sub>i</sub>′ = D<sub>i</sub> / r<sub>i</sub>",
+      lemmas: ["lemma-3-1", "lemma-3-2", "cor-3-3"],
+      params: [
+        { key: "Mode", value: 'Aléatoire', why: "—" },
+        { key: "Clustering", value: 'kmeans · k = 6', why: "Les comptes sont liés aux clusters." },
+        { key: "Vue", value: '⭐ Clusters 3D', why: "Le paramètre le plus important de l'étape." },
+        { key: "Astuce", value: 'k = 2 → 12', why: "En Clusters 3D, tu vois les 6 groupes séparés dans l'espace. Change k pour la granularité." }
+      ]
+    },
+    {
+      tag: "§4 · Configurations",
+      title: "Le crayon de configuration",
+      text: "Chaque appariement partiel définit une matrice M(h). L'inverse W = M(h)⁻¹/m<sub>h</sub> s'identifie à une <em>série génératrice formelle</em> de chemins non-backtracking : <strong>W = Σ (σh)<sup>j</sup> Q<sub>j</sub></strong>.",
+      equation: "W = ∑<sub>j≥0</sub> (σh)<sup>j</sup> Q<sub>j</sub>,  W′ = W − W U H U<sup>T</sup> W",
+      lemmas: ["lemma-4-1", "lemma-4-2", "lemma-4-3", "lemma-4-4", "lemma-4-5"],
+      params: [
+        { key: "Vue", value: 'Clusters 3D', why: "On voit les appariements partiels." },
+        { key: "Clustering", value: 'kmeans · k = 6', why: "—" },
+        { key: "Palette", value: 'Standard', why: "—" }
+      ]
+    },
+    {
+      tag: "§4.2 · Comptes structurels",
+      title: "Comptes structurels et stubs séparés",
+      text: "On construit des comptes pour les <em>petits cœurs de graphe</em>. À l₁, moins de <strong>b</strong> stubs sont « mauvais ». Le cleanup les résout tous et atteint l₀ avec un stub par sommet non résolu.",
+      equation: "#{stub embeddings de H} ≤ n<sup>1−r+o(1)</sup> q<sup>s<sub>H</sub></sup>",
+      lemmas: ["lemma-4-2"],
+      params: [
+        { key: "Sommets n", value: '120', why: "Plus grand = les structures apparaissent." },
+        { key: "Clustering", value: 'kmeans · k = 8', why: "Plus de clusters = plus de petits cœurs." },
+        { key: "Vue", value: 'Clusters 3D', why: "—" },
+        { key: "Astuce", value: 'k = 6 → 12', why: "Tu vois apparaître les « petits cœurs de graphe »." }
+      ]
+    },
+    {
+      tag: "§5 · Early pairing",
+      title: "Appariement précoce",
+      text: "On apparie la majorité des stubs en préservant la positivité, les bornes de trace et la comparaison d'entrée avec P. Le lemme 5.11 borne la croissance d'un moment élevé avec un coefficient <em>indépendant de l'ordre du moment</em>.",
+      equation: "|L<sub>1</sub>| ≤ n<sup>0.75a</sup>/α<sub>*</sub>,  |L<sub>0</sub>| ≤ n<sup>0.105a</sup>/α<sub>*</sub><sup>2</sup>",
+      lemmas: ["prop-5-1","lemma-5-2","lemma-5-3","lemma-5-4","lemma-5-5","lemma-5-6","lemma-5-7","lemma-5-8","lemma-5-9","lemma-5-10","lemma-5-11"],
+      params: [
+        { key: "β", value: '5 · basse', why: "À β bas, MCMC accepte beaucoup → phase « précoce »." },
+        { key: "Vitesse MCMC", value: '1 ou 2', why: "Pas trop rapide pour observer." },
+        { key: "MCMC", value: '▶ Démarré', why: "On lance la recherche !" },
+        { key: "Vue", value: 'Sphère', why: "—" },
+        { key: "Astuce", value: 'Énergie E(t)', why: "Le graphique montre les fluctuations : early pairing accepte beaucoup." }
+      ]
+    },
+    {
+      tag: "§6 · Cleanup",
+      title: "Nettoyage de la frontière",
+      text: "On résout les stubs « mauvais » en <strong>b</strong> étapes, de l₁ = l₀+2b à l₀. Les étiquettes sont <em>nivelées</em> : 2 pour global, 1 pour mauvais, 0 pour propre. L'inégalité de saut borne le saut par niveau.",
+      equation: "|E<sub>ij</sub>| ≤ 2 B<sub>k</sub>,  B<sub>k</sub> = B<sub>c</sub> n<sup>4kρ</sup>",
+      lemmas: ["prop-6-1","lemma-6-2","lemma-6-3","lemma-6-4","lemma-6-5","lemma-6-6","lemma-6-7"],
+      params: [
+        { key: "β", value: '50 · haute', why: "Température basse → seuls les bons moves passent." },
+        { key: "Vitesse", value: '2 – 3', why: "Plus d'itérations = nettoyage visible." },
+        { key: "MCMC", value: '▶ Actif', why: "On laisse tourner 10–20 secondes." },
+        { key: "Vue", value: 'Sphère', why: "—" },
+        { key: "Astuce", value: 'β 5 → 50', why: "Tu vois l'énergie descendre (ligne jaune). C'est le cleanup." }
+      ]
+    },
+    {
+      tag: "§7 · Complétion",
+      title: "Complétion depuis une frontière séparée",
+      text: "La séparation rend chaque nouvelle paire admissible. <span class='phase-a'>Phase A</span> : les énergies de ligne décroissent. <span class='phase-b'>Phase B</span> : les entrées se concentrent. Le matching final est arbitraire.",
+      equation: "max<sub>i,j</sub> |(W<sub>fin</sub> − P̂<sub>fin</sub>)<sub>ij</sub>| ≤ C B<sub>B</sub>",
+      lemmas: ["prop-7-1","lemma-7-2","lemma-7-3"],
+      params: [
+        { key: "Vue", value: '⭐ Cercle', why: "Le cercle montre l'ordre → la « frontière séparée »." },
+        { key: "MCMC", value: '▶ Actif', why: "On laisse finir la complétion." },
+        { key: "β", value: '80 – 100', why: "Très haute → seuls les moves quasi-parfaits passent." },
+        { key: "Clustering", value: 'none', why: "Pour voir la symétrie pure." },
+        { key: "Astuce", value: 'Arêtes vertes', why: "Les arêtes entre sommets du même cluster deviennent vertes (boucles courtes). Phase A/B du texte." }
+      ]
+    },
+    {
+      tag: "§8 · Réparation",
+      title: "Le théorème de réparation exacte",
+      text: "On suppose trois propriétés : <strong>confinement spectral</strong>, <strong>masse locale</strong>, <strong>blocs d'arête typiques</strong>. Alors on trouve M switches disjoints tels que les deux précisions signées soient strictement positives à s.",
+      equation: "1 + (1/B<sub>*</sub>) [ −(2n/J<sub>T</sub>) ∑<sub>τ</sub> ∑<sub>i∈T<sub>τ</sub></sub> z<sub>i</sub>(g)<sup>T</sup> K<sub>τ</sub> z<sub>i</sub>(j) ]",
+      lemmas: ["lemma-8-1","lemma-8-2","thm-8-3"],
+      params: [
+        { key: "MCMC", value: '▶ Actif', why: "On est en fin de réparation." },
+        { key: "β", value: '100 · max', why: "Seuls les switches utiles passent." },
+        { key: "Vitesse", value: '3 – 4', why: "Accélération : on veut finir la réparation." },
+        { key: "Vue", value: 'Sphère', why: "—" },
+        { key: "Astuce", value: '✓ Ramanujan', why: "Laisse tourner jusqu'au badge vert. Le Spectre montre toutes les barres en cyan." }
+      ]
+    },
+    {
+      tag: "§9 · Complexité",
+      title: "Complexité en bits et conclusion",
+      text: "Toutes les opérations sont des <em>calculs rationnels exacts</em>. Le test final est la <strong>positivité rationnelle exacte</strong> de B<sup>T</sup>(4(d−1)I − A<sub>G</sub><sup>2</sup>)B. D'où le théorème principal.",
+      equation: "B<sup>T</sup> (4q I − A<sub>G</sub><sup>2</sup>) B ≻ 0 ⟺ ∀i≥2, |λ<sub>i</sub>| < 2√q",
+      lemmas: ["prop-9-1","thm-1-1"],
+      params: [
+        { key: "Statut", value: '✓ Ramanujan (vert)', why: "On célèbre le résultat." },
+        { key: "MCMC", value: '⏹ Arrêté', why: "On gèle le résultat." },
+        { key: "Clustering", value: 'kmeans · k = 6', why: "Pour une belle figure finale." },
+        { key: "Palette", value: 'Néon ou Standard', why: "Vif pour la clôture." },
+        { key: "Vue", value: 'Sphère', why: "Vue de référence finale." },
+        { key: "Optionnel", value: '🎬 Cinéma', why: "Pour présenter en grand." }
+      ]
+    }
+  ],
+  en: [
+    {
+      tag: "§1 · Introduction",
+      title: "The Ramanujan graph problem",
+      text: "A <em>d</em>-regular graph is Ramanujan if all its non-trivial eigenvalues stay within <strong>[−2√(d−1), 2√(d−1)]</strong>. This bound is <em>optimal</em> in the Alon–Boppana sense.",
+      equation: "‖ A<sub>G</sub> |<sub>𝟏<sup>⊥</sup></sub> ‖ ≤ 2√(d−1)",
+      lemmas: [],
+      params: [
+        { key: "Mode", value: 'Random', why: "A non-Ramanujan graph: eigs fall outside the bound." },
+        { key: "Degree d", value: '4', why: "Small degree, bound s = 2√3 ≈ 3.46 visible." },
+        { key: "Vertices n", value: '60', why: "Moderate size to see eigenvalues." },
+        { key: "β", value: '20', why: "MCMC ready but idle." },
+        { key: "View", value: 'Sphere', why: "Reference view." },
+        { key: "Clustering", value: 'kmeans · k = 6', why: "Shows the structure." },
+        { key: "MCMC", value: '⏹ Stopped', why: "Show the initial problem, not the solution." }
+      ]
+    },
+    {
+      tag: "§1.1 · Constructions",
+      title: "What LPS and Morgenstern do not cover",
+      text: "LPS and Margulis give arithmetic constructions for some degrees only. Morgenstern reaches <em>q+1</em>. None cover <strong>every fixed degree</strong> at <em>all</em> prescribed sizes simultaneously.",
+      equation: "",
+      lemmas: [],
+      params: [
+        { key: "Mode", value: 'LPS', why: "You show the arithmetic construction." },
+        { key: "Degree d", value: '4 → 6 → 8', why: "In LPS, d must equal p+1 with p prime: 4 (p=3), 6 (p=5), 8 (p=7)…" },
+        { key: "Tip", value: 'Demo', why: "Move d from 4 to 6 then 8: for d=5 or 7 (p non-prime), mode falls back to random. That's the point." }
+      ]
+    },
+    {
+      tag: "§1.2 · Edge switches",
+      title: "The basic local operation",
+      text: "Remove two edges {u,v} and {x,y}, insert {u,y} and {x,v}. Valid if the 4 endpoints are distinct and inserted edges are absent. A collection of <em>disjoint</em> switches preserves simplicity, regularity and vertex count.",
+      equation: "{u,v}, {x,y} → {u,y}, {x,v}",
+      lemmas: [],
+      params: [
+        { key: "Mode", value: 'Switches', why: "The graph has been modified by 40 local switches." },
+        { key: "Degree d", value: '4', why: "—" },
+        { key: "Vertices n", value: '60', why: "—" },
+        { key: "MCMC", value: '⏹ Stopped', why: "Illustrate the operation, not the result." }
+      ]
+    },
+    {
+      tag: "§1.2 · Signed distances",
+      title: "Measuring distance to the threshold",
+      text: "Set <strong>x<sub>i</sub><sup>σ</sup> = s − σ λ<sub>i</sub></strong> with s = 2√q. These distances may be <em>slightly negative</em>. Two local quantities are tracked: spectral mass near the edges, and typical 2×2 blocks.",
+      equation: "x<sub>i</sub><sup>σ</sup> = 2√(d−1) − σ λ<sub>i</sub>",
+      lemmas: [],
+      params: [
+        { key: "Mode", value: 'Random', why: "—" },
+        { key: "Degree d", value: '4', why: "s = 3.46." },
+        { key: "β", value: '20', why: "—" },
+        { key: "MCMC", value: '⏹ Stopped', why: "Observe distances before minimizing them." },
+        { key: "Panel", value: 'Statistics', why: "λ_max out of bound = distance to threshold. Spectrum shows eigs vs red dashed lines ±s." }
+      ]
+    },
+    {
+      tag: "§1.3 · Four stages",
+      title: "The four-stage construction",
+      text: "1. <strong>Early pairing</strong> — positive signed precisions. 2. <strong>Separation</strong> — distinct vertices. 3. <strong>Boundary completion</strong> — small row energies. 4. <strong>Local repair</strong> — biased switches.",
+      equation: "",
+      lemmas: [],
+      params: [
+        { key: "Mode", value: 'Random', why: "Stay on the general idea." },
+        { key: "Degree d", value: '4', why: "—" },
+        { key: "Vertices n", value: '60', why: "—" },
+        { key: "Note", value: 'Conceptual', why: "The 4 stages are not visible on the 3D figure. Let the sphere rotate." }
+      ]
+    },
+    {
+      tag: "§2 · Conventions",
+      title: "Spectral parameters and scales",
+      text: "Set q = d−1, s = 2√q, <strong>α(h) = 1 − qh²</strong>, <strong>z(h) = h⁻¹ + qh</strong>, <strong>m<sub>h</sub> = h/(1−h²)</strong>. The precision M(h) = zI − σA<sub>e</sub> − hD must remain positive for σ = ±1.",
+      equation: "M(h) = z(h) I − σ A<sub>e</sub> − h D",
+      lemmas: [],
+      params: [
+        { key: "Degree d", value: '4 ↔ 6', why: "Show that q = d−1 changes." },
+        { key: "β", value: '20', why: "—" },
+        { key: "View", value: 'Sphere', why: "—" },
+        { key: "Tip", value: 'On-figure params', why: "Enable the 2√(d−1) checkbox in « On-figure parameters » to display it on the sphere." }
+      ]
+    },
+    {
+      tag: "§2.2 · Stopping sizes",
+      title: "The stopping-size grid",
+      text: "Stubs decrease: <strong>dn → l₁ → l₀ → l₂ → l₃ → 0</strong>. The first two stops delimit early pairing and cleanup; l₂ separates the boundary phases; l₃ is the final arbitrary matching.",
+      equation: "l<sub>0</sub> ≈ n<sup>2/3 + 1.5a</sup>,  b ≈ n<sup>1/3 + 3.345a</sup>",
+      lemmas: [],
+      params: [
+        { key: "Vertices n", value: '60 → 120 → 200', why: "Key parameter: l₁, l₀, b depend on n." },
+        { key: "Degree d", value: '4', why: "—" },
+        { key: "Tip", value: 'Slider n', why: "Move n slowly: stopping sizes l₀ ≈ n^(2/3+…) change, density evolves." }
+      ]
+    },
+    {
+      tag: "§3 · Deterministic choice",
+      title: "The discounted-accounts lemma",
+      text: "The next matching is chosen by <em>minimizing a weighted sum</em> of non-negative statistics, called <strong>accounts</strong>. Each account gets its own <em>discount</em> r<sub>i</sub> = max(1, E[Z']/Z).",
+      equation: "r<sub>i</sub> = max(1, 𝔼[Z<sub>i</sub>(x′) | x] / Z<sub>i</sub>(x)),  D<sub>i</sub>′ = D<sub>i</sub> / r<sub>i</sub>",
+      lemmas: ["lemma-3-1", "lemma-3-2", "cor-3-3"],
+      params: [
+        { key: "Mode", value: 'Random', why: "—" },
+        { key: "Clustering", value: 'kmeans · k = 6', why: "Accounts are tied to clusters." },
+        { key: "View", value: '⭐ 3D clusters', why: "The most important parameter of this step." },
+        { key: "Tip", value: 'k = 2 → 12', why: "In 3D clusters, you see 6 groups separated in space. Change k for granularity." }
+      ]
+    },
+    {
+      tag: "§4 · Configurations",
+      title: "The configuration pencil",
+      text: "Each partial matching defines a matrix M(h). Its inverse W = M(h)⁻¹/m<sub>h</sub> identifies with a <em>formal generating series</em> of non-backtracking paths: <strong>W = Σ (σh)<sup>j</sup> Q<sub>j</sub></strong>.",
+      equation: "W = ∑<sub>j≥0</sub> (σh)<sup>j</sup> Q<sub>j</sub>,  W′ = W − W U H U<sup>T</sup> W",
+      lemmas: ["lemma-4-1", "lemma-4-2", "lemma-4-3", "lemma-4-4", "lemma-4-5"],
+      params: [
+        { key: "View", value: '3D clusters', why: "See partial matchings." },
+        { key: "Clustering", value: 'kmeans · k = 6', why: "—" },
+        { key: "Palette", value: 'Standard', why: "—" }
+      ]
+    },
+    {
+      tag: "§4.2 · Structural accounts",
+      title: "Structural accounts and separated stubs",
+      text: "Accounts are built for <em>small graph cores</em>. At l₁, fewer than <strong>b</strong> stubs are « bad ». Cleanup resolves them all and reaches l₀ with one stub per unresolved vertex.",
+      equation: "#{stub embeddings of H} ≤ n<sup>1−r+o(1)</sup> q<sup>s<sub>H</sub></sup>",
+      lemmas: ["lemma-4-2"],
+      params: [
+        { key: "Vertices n", value: '120', why: "Larger = structures appear." },
+        { key: "Clustering", value: 'kmeans · k = 8', why: "More clusters = more small cores." },
+        { key: "View", value: '3D clusters', why: "—" },
+        { key: "Tip", value: 'k = 6 → 12', why: "You see « small graph cores » appear." }
+      ]
+    },
+    {
+      tag: "§5 · Early pairing",
+      title: "Early pairing",
+      text: "The majority of stubs are paired while preserving positivity, trace bounds and entry comparison with P. Lemma 5.11 bounds the growth of a high moment with a coefficient <em>independent of the moment order</em>.",
+      equation: "|L<sub>1</sub>| ≤ n<sup>0.75a</sup>/α<sub>*</sub>,  |L<sub>0</sub>| ≤ n<sup>0.105a</sup>/α<sub>*</sub><sup>2</sup>",
+      lemmas: ["prop-5-1","lemma-5-2","lemma-5-3","lemma-5-4","lemma-5-5","lemma-5-6","lemma-5-7","lemma-5-8","lemma-5-9","lemma-5-10","lemma-5-11"],
+      params: [
+        { key: "β", value: '5 · low', why: "Low β → MCMC accepts a lot → early phase." },
+        { key: "MCMC speed", value: '1 or 2', why: "Not too fast to observe." },
+        { key: "MCMC", value: '▶ Started', why: "Launch the search!" },
+        { key: "View", value: 'Sphere', why: "—" },
+        { key: "Tip", value: 'Energy E(t)', why: "The chart shows fluctuations: early pairing accepts a lot." }
+      ]
+    },
+    {
+      tag: "§6 · Cleanup",
+      title: "Boundary cleanup",
+      text: "« Bad » stubs are resolved in <strong>b</strong> steps, from l₁ = l₀+2b down to l₀. Labels are <em>leveled</em>: 2 for global, 1 for bad, 0 for clean. The jump inequality bounds the jump by level.",
+      equation: "|E<sub>ij</sub>| ≤ 2 B<sub>k</sub>,  B<sub>k</sub> = B<sub>c</sub> n<sup>4kρ</sup>",
+      lemmas: ["prop-6-1","lemma-6-2","lemma-6-3","lemma-6-4","lemma-6-5","lemma-6-6","lemma-6-7"],
+      params: [
+        { key: "β", value: '50 · high', why: "Low temperature → only good moves pass." },
+        { key: "Speed", value: '2 – 3', why: "More iterations = visible cleanup." },
+        { key: "MCMC", value: '▶ Active', why: "Let it run 10–20 seconds." },
+        { key: "View", value: 'Sphere', why: "—" },
+        { key: "Tip", value: 'β 5 → 50', why: "You see energy drop (yellow line). That's cleanup." }
+      ]
+    },
+    {
+      tag: "§7 · Completion",
+      title: "Completion from a separated boundary",
+      text: "Separation makes every new pair admissible. <span class='phase-a'>Phase A</span>: row energies decrease. <span class='phase-b'>Phase B</span>: entries concentrate. The final matching is arbitrary.",
+      equation: "max<sub>i,j</sub> |(W<sub>fin</sub> − P̂<sub>fin</sub>)<sub>ij</sub>| ≤ C B<sub>B</sub>",
+      lemmas: ["prop-7-1","lemma-7-2","lemma-7-3"],
+      params: [
+        { key: "View", value: '⭐ Circle', why: "The circle shows order → the « separated boundary »." },
+        { key: "MCMC", value: '▶ Active', why: "Let the completion finish." },
+        { key: "β", value: '80 – 100', why: "Very high → only near-perfect moves pass." },
+        { key: "Clustering", value: 'none', why: "To see pure symmetry." },
+        { key: "Tip", value: 'Green edges', why: "Edges between same-cluster vertices turn green (short loops). Phase A/B of the text." }
+      ]
+    },
+    {
+      tag: "§8 · Repair",
+      title: "The exact repair theorem",
+      text: "Three properties are assumed: <strong>spectral confinement</strong>, <strong>local mass</strong>, <strong>typical edge blocks</strong>. Then M disjoint switches exist such that both signed precisions are strictly positive at s.",
+      equation: "1 + (1/B<sub>*</sub>) [ −(2n/J<sub>T</sub>) ∑<sub>τ</sub> ∑<sub>i∈T<sub>τ</sub></sub> z<sub>i</sub>(g)<sup>T</sup> K<sub>τ</sub> z<sub>i</sub>(j) ]",
+      lemmas: ["lemma-8-1","lemma-8-2","thm-8-3"],
+      params: [
+        { key: "MCMC", value: '▶ Active', why: "End of repair." },
+        { key: "β", value: '100 · max', why: "Only useful switches pass." },
+        { key: "Speed", value: '3 – 4', why: "Acceleration: finish the repair." },
+        { key: "View", value: 'Sphere', why: "—" },
+        { key: "Tip", value: '✓ Ramanujan', why: "Run until green badge. Spectrum shows all bars in cyan." }
+      ]
+    },
+    {
+      tag: "§9 · Complexity",
+      title: "Bit complexity and conclusion",
+      text: "All operations are <em>exact rational computations</em>. The final test is the <strong>exact rational positivity</strong> of B<sup>T</sup>(4(d−1)I − A<sub>G</sub><sup>2</sup>)B. Hence the main theorem.",
+      equation: "B<sup>T</sup> (4q I − A<sub>G</sub><sup>2</sup>) B ≻ 0 ⟺ ∀i≥2, |λ<sub>i</sub>| < 2√q",
+      lemmas: ["prop-9-1","thm-1-1"],
+      params: [
+        { key: "Status", value: '✓ Ramanujan (green)', why: "Celebrate the result." },
+        { key: "MCMC", value: '⏹ Stopped', why: "Freeze the result." },
+        { key: "Clustering", value: 'kmeans · k = 6', why: "For a beautiful final figure." },
+        { key: "Palette", value: 'Neon or Standard', why: "Vivid for the finale." },
+        { key: "View", value: 'Sphere', why: "Final reference view." },
+        { key: "Optional", value: '🎬 Cinema', why: "To present large." }
+      ]
+    }
+  ],
+  hi: [
+    {
+      tag: "§1 · परिचय",
+      title: "रामानुजन ग्राफ़ की समस्या",
+      text: "<em>d</em>-नियमित ग्राफ़ रामानुजन है यदि उसके सभी अतुच्छ आइगेनमान <strong>[−2√(d−1), 2√(d−1)]</strong> में रहते हैं। यह सीमा Alon–Boppana अर्थ में <em>इष्टतम</em> है।",
+      equation: "‖ A<sub>G</sub> |<sub>𝟏<sup>⊥</sup></sub> ‖ ≤ 2√(d−1)",
+      lemmas: [],
+      params: [
+        { key: "मोड", value: 'यादृच्छिक', why: "गैर-रामानुजन ग्राफ़: आइगेनमान सीमा से बाहर।" },
+        { key: "डिग्री d", value: '4', why: "छोटी डिग्री, सीमा s = 2√3 ≈ 3.46 दिखती है।" },
+        { key: "शीर्ष n", value: '60', why: "आइगेनमान देखने के लिए मध्यम आकार।" },
+        { key: "β", value: '20', why: "MCMC तैयार पर निष्क्रिय।" },
+        { key: "दृश्य", value: 'गोला', why: "संदर्भ दृश्य।" },
+        { key: "क्लस्टरिंग", value: 'kmeans · k = 6', why: "संरचना दिखाता है।" },
+        { key: "MCMC", value: '⏹ रुका', why: "प्रारंभिक समस्या दिखाएँ, समाधान नहीं।" }
+      ]
+    },
+    {
+      tag: "§1.1 · निर्माण",
+      title: "LPS और Morgenstern क्या कवर नहीं करते",
+      text: "LPS और Margulis केवल कुछ डिग्री के लिए अंकगणितीय निर्माण देते हैं। Morgenstern <em>q+1</em> तक पहुँचता है। कोई भी <strong>प्रत्येक निश्चित डिग्री</strong> को <em>सभी</em> निर्धारित आकारों पर एक साथ कवर नहीं करता।",
+      equation: "",
+      lemmas: [],
+      params: [
+        { key: "मोड", value: 'LPS', why: "तुम अंकगणितीय निर्माण दिखाते हो।" },
+        { key: "डिग्री d", value: '4 → 6 → 8', why: "LPS में d = p+1 जहाँ p अभाज्य: 4 (p=3), 6 (p=5), 8 (p=7)…" },
+        { key: "सुझाव", value: 'डेमो', why: "d को 4 से 6 फिर 8 करें: d=5 या 7 (p अभाज्य नहीं) पर मोड random पर वापस। यही बात है।" }
+      ]
+    },
+    {
+      tag: "§1.2 · एज स्विच",
+      title: "मूल स्थानीय संक्रिया",
+      text: "दो किनारे {u,v} और {x,y} हटाएँ, {u,y} और {x,v} जोड़ें। वैध यदि 4 सिरे भिन्न हों और जोड़े गए किनारे अनुपस्थित हों। <em>असंयुक्त</em> स्विच का संग्रह सरलता, नियमितता और शीर्ष संख्या सुरक्षित रखता है।",
+      equation: "{u,v}, {x,y} → {u,y}, {x,v}",
+      lemmas: [],
+      params: [
+        { key: "मोड", value: 'स्विच', why: "ग्राफ़ 40 स्थानीय स्विच द्वारा बदला गया है।" },
+        { key: "डिग्री d", value: '4', why: "—" },
+        { key: "शीर्ष n", value: '60', why: "—" },
+        { key: "MCMC", value: '⏹ रुका', why: "संक्रिया दिखाएँ, परिणाम नहीं।" }
+      ]
+    },
+    {
+      tag: "§1.2 · चिह्नित दूरियाँ",
+      title: "सीमा से दूरी मापना",
+      text: "<strong>x<sub>i</sub><sup>σ</sup> = s − σ λ<sub>i</sub></strong> रखें जहाँ s = 2√q। ये दूरियाँ <em>थोड़ी ऋणात्मक</em> हो सकती हैं। दो स्थानीय सूचनाएँ बनाए रखी जाती हैं: किनारों के पास स्पेक्ट्रल द्रव्यमान, और विशिष्ट 2×2 ब्लॉक।",
+      equation: "x<sub>i</sub><sup>σ</sup> = 2√(d−1) − σ λ<sub>i</sub>",
+      lemmas: [],
+      params: [
+        { key: "मोड", value: 'यादृच्छिक', why: "—" },
+        { key: "डिग्री d", value: '4', why: "s = 3.46।" },
+        { key: "β", value: '20', why: "—" },
+        { key: "MCMC", value: '⏹ रुका', why: "दूरियाँ देखें, फिर घटाएँ।" },
+        { key: "पैनल", value: 'आंकड़े', why: "λ_max सीमा से बाहर = घटाने योग्य दूरी। स्पेक्ट्रम आइगेनमान बनाम लाल बिंदीदार रेखाएँ ±s दिखाता है।" }
+      ]
+    },
+    {
+      tag: "§1.3 · चार चरण",
+      title: "चार-चरणीय निर्माण",
+      text: "1. <strong>Early pairing</strong> — धनात्मक चिह्नित परिशुद्धता। 2. <strong>Separation</strong> — भिन्न शीर्ष। 3. <strong>Boundary completion</strong> — छोटी पंक्ति ऊर्जाएँ। 4. <strong>Local repair</strong> — पक्षपाती स्विच।",
+      equation: "",
+      lemmas: [],
+      params: [
+        { key: "मोड", value: 'यादृच्छिक', why: "सामान्य विचार पर बने रहें।" },
+        { key: "डिग्री d", value: '4', why: "—" },
+        { key: "शीर्ष n", value: '60', why: "—" },
+        { key: "नोट", value: 'वैचारिक', why: "4 चरण 3D आकृति पर दिखाई नहीं देते। गोला घूमने दें।" }
+      ]
+    },
+    {
+      tag: "§2 · परिपाटियाँ",
+      title: "स्पेक्ट्रल पैरामीटर और मापक्रम",
+      text: "q = d−1, s = 2√q, <strong>α(h) = 1 − qh²</strong>, <strong>z(h) = h⁻¹ + qh</strong>, <strong>m<sub>h</sub> = h/(1−h²)</strong> निर्धारित करें। परिशुद्धता M(h) = zI − σA<sub>e</sub> − hD को σ = ±1 के लिए धनात्मक रहना चाहिए।",
+      equation: "M(h) = z(h) I − σ A<sub>e</sub> − h D",
+      lemmas: [],
+      params: [
+        { key: "डिग्री d", value: '4 ↔ 6', why: "दिखाएँ कि q = d−1 बदलता है।" },
+        { key: "β", value: '20', why: "—" },
+        { key: "दृश्य", value: 'गोला', why: "—" },
+        { key: "सुझाव", value: 'आकृति पैरामीटर', why: "« आकृति पैरामीटर » में 2√(d−1) चेकबॉक्स सक्षम करें ताकि वह गोले पर दिखे।" }
+      ]
+    },
+    {
+      tag: "§2.2 · विराम आकार",
+      title: "विराम-आकार ग्रिड",
+      text: "स्टब घटते हैं: <strong>dn → l₁ → l₀ → l₂ → l₃ → 0</strong>। पहले दो विराम early pairing और cleanup को सीमित करते हैं; l₂ सीमा चरणों को अलग करता है; l₃ अंतिम मनमाना मिलान है।",
+      equation: "l<sub>0</sub> ≈ n<sup>2/3 + 1.5a</sup>,  b ≈ n<sup>1/3 + 3.345a</sup>",
+      lemmas: [],
+      params: [
+        { key: "शीर्ष n", value: '60 → 120 → 200', why: "मुख्य पैरामीटर: l₁, l₀, b n पर निर्भर।" },
+        { key: "डिग्री d", value: '4', why: "—" },
+        { key: "सुझाव", value: 'स्लाइडर n', why: "n धीरे-धीरे बदलें: विराम आकार l₀ ≈ n^(2/3+…) बदलते हैं, घनत्व विकसित होता है।" }
+      ]
+    },
+    {
+      tag: "§3 · नियतात्मक चयन",
+      title: "छूट-प्राप्त खाता लेम्मा",
+      text: "अगला मिलान गैर-ऋणात्मक आँकड़ों के <em>भारित योग को न्यूनतम करके</em> चुना जाता है, जिन्हें <strong>खाते</strong> कहते हैं। प्रत्येक खाते को अपनी <em>छूट</em> r<sub>i</sub> = max(1, E[Z']/Z) मिलती है।",
+      equation: "r<sub>i</sub> = max(1, 𝔼[Z<sub>i</sub>(x′) | x] / Z<sub>i</sub>(x)),  D<sub>i</sub>′ = D<sub>i</sub> / r<sub>i</sub>",
+      lemmas: ["lemma-3-1", "lemma-3-2", "cor-3-3"],
+      params: [
+        { key: "मोड", value: 'यादृच्छिक', why: "—" },
+        { key: "क्लस्टरिंग", value: 'kmeans · k = 6', why: "खाते क्लस्टर से जुड़े हैं।" },
+        { key: "दृश्य", value: '⭐ 3D क्लस्टर', why: "इस चरण का सबसे महत्वपूर्ण पैरामीटर।" },
+        { key: "सुझाव", value: 'k = 2 → 12', why: "3D क्लस्टर में 6 समूह अंतरिक्ष में अलग दिखते हैं। k बदलें।" }
+      ]
+    },
+    {
+      tag: "§4 · विन्यास",
+      title: "विन्यास पेंसिल",
+      text: "प्रत्येक आंशिक मिलान एक मैट्रिक्स M(h) परिभाषित करता है। इसका व्युत्क्रम W = M(h)⁻¹/m<sub>h</sub> गैर-बैकट्रैकिंग पथों की <em>औपचारिक जनक श्रेणी</em> से पहचाना जाता है: <strong>W = Σ (σh)<sup>j</sup> Q<sub>j</sub></strong>।",
+      equation: "W = ∑<sub>j≥0</sub> (σh)<sup>j</sup> Q<sub>j</sub>,  W′ = W − W U H U<sup>T</sup> W",
+      lemmas: ["lemma-4-1", "lemma-4-2", "lemma-4-3", "lemma-4-4", "lemma-4-5"],
+      params: [
+        { key: "दृश्य", value: '3D क्लस्टर', why: "आंशिक मिलान दिखते हैं।" },
+        { key: "क्लस्टरिंग", value: 'kmeans · k = 6', why: "—" },
+        { key: "पैलेट", value: 'मानक', why: "—" }
+      ]
+    },
+    {
+      tag: "§4.2 · संरचनात्मक खाते",
+      title: "संरचनात्मक खाते और पृथक स्टब",
+      text: "<em>छोटे ग्राफ़ कोर</em> के लिए खाते बनाए जाते हैं। l₁ पर, <strong>b</strong> से कम स्टब « खराब » हैं। Cleanup उन सभी को हल करता है और l₀ तक पहुँचता है, प्रति अनसुलझा शीर्ष एक स्टब।",
+      equation: "#{H के stub embeddings} ≤ n<sup>1−r+o(1)</sup> q<sup>s<sub>H</sub></sup>",
+      lemmas: ["lemma-4-2"],
+      params: [
+        { key: "शीर्ष n", value: '120', why: "बड़ा = संरचनाएँ दिखती हैं।" },
+        { key: "क्लस्टरिंग", value: 'kmeans · k = 8', why: "अधिक क्लस्टर = अधिक छोटे कोर।" },
+        { key: "दृश्य", value: '3D क्लस्टर', why: "—" },
+        { key: "सुझाव", value: 'k = 6 → 12', why: "« छोटे ग्राफ़ कोर » उभरते दिखेंगे।" }
+      ]
+    },
+    {
+      tag: "§5 · Early pairing",
+      title: "प्रारंभिक मिलान",
+      text: "अधिकांश स्टब को धनात्मकता, ट्रेस सीमा और P के साथ प्रविष्टि तुलना संरक्षित करते हुए मिलाया जाता है। Lemma 5.11 उच्च आघूर्ण की वृद्धि को <em>आघूर्ण क्रम से स्वतंत्र</em> गुणांक से सीमित करता है।",
+      equation: "|L<sub>1</sub>| ≤ n<sup>0.75a</sup>/α<sub>*</sub>,  |L<sub>0</sub>| ≤ n<sup>0.105a</sup>/α<sub>*</sub><sup>2</sup>",
+      lemmas: ["prop-5-1","lemma-5-2","lemma-5-3","lemma-5-4","lemma-5-5","lemma-5-6","lemma-5-7","lemma-5-8","lemma-5-9","lemma-5-10","lemma-5-11"],
+      params: [
+        { key: "β", value: '5 · कम', why: "कम β → MCMC बहुत स्वीकार करता है → प्रारंभिक चरण।" },
+        { key: "MCMC गति", value: '1 या 2', why: "देखने के लिए बहुत तेज़ नहीं।" },
+        { key: "MCMC", value: '▶ शुरू', why: "खोज शुरू करें!" },
+        { key: "दृश्य", value: 'गोला', why: "—" },
+        { key: "सुझाव", value: 'ऊर्जा E(t)', why: "चार्ट उतार-चढ़ाव दिखाता है: early pairing बहुत स्वीकार करता है।" }
+      ]
+    },
+    {
+      tag: "§6 · Cleanup",
+      title: "सीमा सफ़ाई",
+      text: "« खराब » स्टब <strong>b</strong> चरणों में हल किए जाते हैं, l₁ = l₀+2b से l₀ तक। लेबल <em>स्तरीय</em> हैं: 2 वैश्विक, 1 खराब, 0 स्वच्छ। जंप असमानता स्तर द्वारा जंप को सीमित करती है।",
+      equation: "|E<sub>ij</sub>| ≤ 2 B<sub>k</sub>,  B<sub>k</sub> = B<sub>c</sub> n<sup>4kρ</sup>",
+      lemmas: ["prop-6-1","lemma-6-2","lemma-6-3","lemma-6-4","lemma-6-5","lemma-6-6","lemma-6-7"],
+      params: [
+        { key: "β", value: '50 · उच्च', why: "कम तापमान → केवल अच्छे मूव्स पास।" },
+        { key: "गति", value: '2 – 3', why: "अधिक पुनरावृत्तियाँ = दिखने वाली सफ़ाई।" },
+        { key: "MCMC", value: '▶ सक्रिय', why: "10–20 सेकंड चलने दें।" },
+        { key: "दृश्य", value: 'गोला', why: "—" },
+        { key: "सुझाव", value: 'β 5 → 50', why: "ऊर्जा गिरती दिखेगी (पीली रेखा)। यही cleanup है।" }
+      ]
+    },
+    {
+      tag: "§7 · पूर्णता",
+      title: "पृथक सीमा से पूर्णता",
+      text: "पृथकता प्रत्येक नए युग्म को स्वीकार्य बनाती है। <span class='phase-a'>Phase A</span>: पंक्ति ऊर्जाएँ घटती हैं। <span class='phase-b'>Phase B</span>: प्रविष्टियाँ केंद्रित होती हैं। अंतिम मिलान मनमाना है।",
+      equation: "max<sub>i,j</sub> |(W<sub>fin</sub> − P̂<sub>fin</sub>)<sub>ij</sub>| ≤ C B<sub>B</sub>",
+      lemmas: ["prop-7-1","lemma-7-2","lemma-7-3"],
+      params: [
+        { key: "दृश्य", value: '⭐ वृत्त', why: "वृत्त क्रम दिखाता है → « पृथक सीमा »।" },
+        { key: "MCMC", value: '▶ सक्रिय', why: "पूर्णता पूरी होने दें।" },
+        { key: "β", value: '80 – 100', why: "बहुत उच्च → केवल लगभग-परिपूर्ण मूव्स पास।" },
+        { key: "क्लस्टरिंग", value: 'कोई नहीं', why: "शुद्ध समरूपता देखने के लिए।" },
+        { key: "सुझाव", value: 'हरे किनारे', why: "एक ही क्लस्टर के शीर्षों के बीच किनारे हरे (छोटे लूप) हो जाते हैं। Phase A/B।" }
+      ]
+    },
+    {
+      tag: "§8 · मरम्मत",
+      title: "सटीक मरम्मत प्रमेय",
+      text: "तीन गुण माने जाते हैं: <strong>स्पेक्ट्रल परिरोधन</strong>, <strong>स्थानीय द्रव्यमान</strong>, <strong>विशिष्ट एज ब्लॉक</strong>। तब M असंयुक्त स्विच मिलते हैं जिनसे दोनों चिह्नित परिशुद्धताएँ s पर पूर्णतः धनात्मक हों।",
+      equation: "1 + (1/B<sub>*</sub>) [ −(2n/J<sub>T</sub>) ∑<sub>τ</sub> ∑<sub>i∈T<sub>τ</sub></sub> z<sub>i</sub>(g)<sup>T</sup> K<sub>τ</sub> z<sub>i</sub>(j) ]",
+      lemmas: ["lemma-8-1","lemma-8-2","thm-8-3"],
+      params: [
+        { key: "MCMC", value: '▶ सक्रिय', why: "मरम्मत के अंत में।" },
+        { key: "β", value: '100 · अधिकतम', why: "केवल उपयोगी स्विच पास।" },
+        { key: "गति", value: '3 – 4', why: "त्वरण: मरम्मत पूरी करें।" },
+        { key: "दृश्य", value: 'गोला', why: "—" },
+        { key: "सुझाव", value: '✓ रामानुजन', why: "हरा बैज आने तक चलाएँ। स्पेक्ट्रम सभी बार सियान में।" }
+      ]
+    },
+    {
+      tag: "§9 · जटिलता",
+      title: "बिट जटिलता और निष्कर्ष",
+      text: "सभी संक्रियाएँ <em>सटीक परिमेय गणनाएँ</em> हैं। अंतिम परीक्षण B<sup>T</sup>(4(d−1)I − A<sub>G</sub><sup>2</sup>)B की <strong>सटीक परिमेय धनात्मकता</strong> है। इसलिए मुख्य प्रमेय।",
+      equation: "B<sup>T</sup> (4q I − A<sub>G</sub><sup>2</sup>) B ≻ 0 ⟺ ∀i≥2, |λ<sub>i</sub>| < 2√q",
+      lemmas: ["prop-9-1","thm-1-1"],
+      params: [
+        { key: "स्थिति", value: '✓ रामानुजन (हरा)', why: "परिणाम का जश्न।" },
+        { key: "MCMC", value: '⏹ रुका', why: "परिणाम स्थिर करें।" },
+        { key: "क्लस्टरिंग", value: 'kmeans · k = 6', why: "सुंदर अंतिम आकृति के लिए।" },
+        { key: "पैलेट", value: 'नियॉन या मानक', why: "समापन के लिए चमकीला।" },
+        { key: "दृश्य", value: 'गोला', why: "अंतिम संदर्भ दृश्य।" },
+        { key: "वैकल्पिक", value: '🎬 सिनेमा', why: "बड़े में प्रस्तुत करने के लिए।" }
+      ]
+    }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  HERO + UI STRINGS
+// ═══════════════════════════════════════════════════════════════
+const UI = {
+  fr: {
+    eyebrow: "Graphes de Ramanujan · Guide",
+    title: "Storytelling en 15 étapes",
+    sub: "Construction déterministe · tous degrés fixés",
+    step: "Étape",
+    paramsTitle: "Paramètres à régler manuellement",
+    copyAll: "📋 Copier JSON complet",
+    copyCurrent: "📋 Copier cette étape (JSON)",
+    toast: "Copié dans le presse-papier ✓",
+    prev: "← Étape précédente",
+    next: "Étape suivante →"
+  },
+  en: {
+    eyebrow: "Ramanujan Graphs · Guide",
+    title: "Storytelling in 15 steps",
+    sub: "Deterministic construction · every fixed degree",
+    step: "Step",
+    paramsTitle: "Parameters to set manually",
+    copyAll: "📋 Copy full JSON",
+    copyCurrent: "📋 Copy this step (JSON)",
+    toast: "Copied to clipboard ✓",
+    prev: "← Previous step",
+    next: "Next step →"
+  },
+  hi: {
+    eyebrow: "रामानुजन ग्राफ़ · मार्गदर्शिका",
+    title: "15 चरणों में कहानी",
+    sub: "नियतात्मक निर्माण · प्रत्येक निश्चित डिग्री",
+    step: "चरण",
+    paramsTitle: "मैन्युअली सेट करने योग्य पैरामीटर",
+    copyAll: "📋 पूरा JSON कॉपी करें",
+    copyCurrent: "📋 यह चरण कॉपी करें (JSON)",
+    toast: "क्लिपबोर्ड पर कॉपी किया ✓",
+    prev: "← पिछला चरण",
+    next: "अगला चरण →"
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+const state = {
+  lang: 'fr',
+  stepIndex: 0
+};
+
+function currentStory() { return STORY[state.lang] || STORY.fr; }
+function ui(key) { return (UI[state.lang] || UI.fr)[key] || key; }
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════════
+function renderAll() {
+  renderHeader();
+  renderProgress();
+  renderStepList();
+  renderStepCard();
+  updateNavButtons();
+}
+
+function renderHeader() {
+  document.getElementById('hero-eyebrow').textContent = ui('eyebrow');
+  document.getElementById('hero-title').textContent = ui('title');
+  document.getElementById('hero-sub').textContent = ui('sub');
+  document.getElementById('btn-copy-json').textContent = ui('copyAll');
+  document.getElementById('act-copy-current').textContent = ui('copyCurrent');
+  document.getElementById('act-prev').textContent = ui('prev');
+  document.getElementById('act-next').textContent = ui('next');
+}
+
+function renderProgress() {
+  const story = currentStory();
+  document.getElementById('progress-label').textContent =
+    `${ui('step')} ${state.stepIndex + 1} / ${story.length}`;
+  document.getElementById('progress-fill').style.width =
+    `${((state.stepIndex + 1) / story.length) * 100}%`;
+}
+
+function renderStepList() {
+  const story = currentStory();
+  const list = document.getElementById('step-list');
+  list.innerHTML = '';
+  story.forEach((s, i) => {
+    const item = document.createElement('div');
+    item.className = 'step-list-item' + (i === state.stepIndex ? ' active' : '');
+    item.innerHTML = `<div class="num">${i + 1}</div><div class="label">${s.title}</div>`;
+    item.onclick = () => goToStep(i);
+    list.appendChild(item);
+  });
+}
+
+function renderStepCard() {
+  const story = currentStory();
+  const step = story[state.stepIndex];
+  const slot = document.getElementById('step-card-slot');
+
+  // dots
+  let dots = '<div class="dots">';
+  story.forEach((_, i) => {
+    const cls = i === state.stepIndex ? 'active' : (i < state.stepIndex ? 'passed' : '');
+    dots += `<div class="dot ${cls}"></div>`;
+  });
+  dots += '</div>';
+
+  // params
+  let paramsHtml = '';
+  if (step.params && step.params.length) {
+    paramsHtml = `<div class="params-block">
+      <div class="params-title">${ui('paramsTitle')}</div>
+      <div class="param-grid">
+        ${step.params.map(p => `
+          <div class="param-card">
+            <div class="param-key">${p.key}</div>
+            <div class="param-value">${formatValue(p.value)}</div>
+            ${p.why ? `<div class="param-why">${p.why}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }
+
+  slot.innerHTML = `
+    <div class="step-card">
+      ${dots}
+      <div class="step-tag">${step.tag}</div>
+      <h2 class="step-heading">${step.title}</h2>
+      <div class="step-text">${step.text}</div>
+      ${step.equation ? `<div class="step-equation">${step.equation}</div>` : ''}
+      ${paramsHtml}
+    </div>
+  `;
+}
+
+// Convertit "60 → 120 → 200" en chips stylés
+function formatValue(v) {
+  if (typeof v !== 'string') return v;
+  // détecte les flèches et transforme en chips
+  if (v.includes('→')) {
+    return v.split('→').map(s => `<span class="chip">${s.trim()}</span>`).join('<span class="arrow">→</span>');
+  }
+  return v;
+}
+
+function updateNavButtons() {
+  const story = currentStory();
+  document.getElementById('nav-start').disabled = state.stepIndex === 0;
+  document.getElementById('nav-prev').disabled = state.stepIndex === 0;
+  document.getElementById('nav-next').disabled = state.stepIndex === story.length - 1;
+  document.getElementById('nav-end').disabled = state.stepIndex === story.length - 1;
+  document.getElementById('act-prev').disabled = state.stepIndex === 0;
+  document.getElementById('act-next').disabled = state.stepIndex === story.length - 1;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function goToStep(i) {
+  const story = currentStory();
+  state.stepIndex = Math.max(0, Math.min(story.length - 1, i));
+  renderAll();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.getElementById('nav-start').onclick = () => goToStep(0);
+document.getElementById('nav-prev').onclick = () => goToStep(state.stepIndex - 1);
+document.getElementById('nav-next').onclick = () => goToStep(state.stepIndex + 1);
+document.getElementById('nav-end').onclick = () => goToStep(currentStory().length - 1);
+document.getElementById('act-prev').onclick = () => goToStep(state.stepIndex - 1);
+document.getElementById('act-next').onclick = () => goToStep(state.stepIndex + 1);
+
+// ═══════════════════════════════════════════════════════════════
+//  LANGUE
+// ═══════════════════════════════════════════════════════════════
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.onclick = () => {
+    const lang = btn.dataset.lang;
+    if (lang === state.lang) return;
+    state.lang = lang;
+    document.querySelectorAll('.lang-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.lang === lang);
+    });
+    document.documentElement.lang = lang;
+    renderAll();
+  };
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  COPIE JSON
+// ═══════════════════════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._timeout);
+  showToast._timeout = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+document.getElementById('btn-copy-json').onclick = async () => {
+  // Génère le JSON au format attendu par la démo (STORY_I18N)
+  const demoFormat = {};
+  for (const lang of ['fr', 'en', 'hi']) {
+    demoFormat[lang] = STORY[lang].map(step => ({
+      tag: step.tag,
+      title: step.title,
+      text: step.text,
+      equation: step.equation,
+      lemmas: step.lemmas
+    }));
+  }
+  const json = JSON.stringify(demoFormat, null, 2);
+  try {
+    await navigator.clipboard.writeText(json);
+    showToast(ui('toast'));
+  } catch (e) {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = json;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(ui('toast'));
+  }
+};
+
+document.getElementById('act-copy-current').onclick = async () => {
+  const step = currentStory()[state.stepIndex];
+  const demoFormat = {
+    tag: step.tag,
+    title: step.title,
+    text: step.text,
+    equation: step.equation,
+    lemmas: step.lemmas,
+    params: step.params
+  };
+  const json = JSON.stringify(demoFormat, null, 2);
+  try {
+    await navigator.clipboard.writeText(json);
+    showToast(ui('toast'));
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = json;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(ui('toast'));
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  RACCOURCIS CLAVIER
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('keydown', e => {
+  if (e.target.matches('input, textarea, select')) return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); goToStep(state.stepIndex - 1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); goToStep(state.stepIndex + 1); }
+  else if (e.key === 'Home') { e.preventDefault(); goToStep(0); }
+  else if (e.key === 'End') { e.preventDefault(); goToStep(currentStory().length - 1); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+renderAll();
+</script>
+</body>
+</html>
