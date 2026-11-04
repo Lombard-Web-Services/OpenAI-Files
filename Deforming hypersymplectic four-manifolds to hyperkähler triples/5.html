@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Hyperkähler 4-Manifold · Univariant Morphing</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+<style>
+  :root { --bg: #05070b; --ink: #e6edf3; --accent: #58a6ff; --panel: rgba(10, 15, 25, 0.85); }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  
+  #ui { position: absolute; top: 20px; left: 20px; z-index: 10; display: flex; flex-direction: column; gap: 15px; }
+  .panel { background: var(--panel); backdrop-filter: blur(12px); border: 1px solid #2a3648; border-radius: 12px; padding: 15px; width: 340px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .panel h3 { margin: 0 0 10px; font-size: 0.8rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+  
+  select { width: 100%; background: #1a2332; color: #fff; border: 1px solid #2a3648; padding: 10px; border-radius: 6px; font-size: 0.85rem; outline: none; cursor: pointer; }
+  select:hover { border-color: var(--accent); }
+  .btn { background: #1a2332; color: #fff; border: 1px solid #2a3648; padding: 8px 12px; margin-top: 8px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 0.8rem; transition: 0.2s; }
+  .btn:hover { background: #2a3b54; border-color: var(--accent); }
+  
+  .slider-container { margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; display: none; }
+  .slider-container label { display: block; font-size: 0.75rem; color: #8b949e; margin-bottom: 5px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+
+  /* Mode Cinéma */
+  #cinemaUI { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; display: none; flex-direction: column; justify-content: space-between; padding: 40px; box-sizing: border-box; }
+  #cinemaUI h1 { margin: 0; font-size: 2.2rem; background: linear-gradient(135deg, #fff, #ff9f43); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
+  #cinemaUI .subtitle { text-align: center; color: #8b949e; font-size: 0.9rem; letter-spacing: 3px; margin-top: 5px; text-transform: uppercase; }
+  .cinema-legend { display: flex; justify-content: space-between; width: 100%; margin-top: 15vh; font-size: 0.85rem; }
+  .cinema-col { background: rgba(0,0,0,0.6); padding: 15px; border-radius: 10px; border-left: 3px solid #ff9f43; backdrop-filter: blur(8px); }
+  .cinema-col h4 { margin: 0 0 8px; color: #ff9f43; font-size: 0.75rem; text-transform: uppercase; }
+  .cinema-col ul { list-style: none; padding: 0; margin: 0; }
+  .cinema-col li { margin-bottom: 6px; color: #dbe7f3; }
+  #cinemaFormula { align-self: center; background: rgba(0,0,0,0.8); padding: 15px 30px; border-radius: 15px; border: 1px solid rgba(88,166,255,0.4); font-family: 'Cambria Math', Georgia, serif; font-size: 1.2rem; color: #58a6ff; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  #cinemaFormula .lbl { display: block; font-family: 'Segoe UI', sans-serif; font-size: 0.75rem; color: #8b949e; letter-spacing: 2px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <div class="panel">
+    <h3>Simulation Eguchi-Hanson</h3>
+    <select id="modeSelect" onchange="handleModeChange()">
+      <option value="forms">3 Formes (I, J, K séparées)</option>
+      <option value="x4" selected>Four Manifold X⁴ (Base)</option>
+      <option value="morphing">Morphing Univarié (I→J→K→X⁴)</option>
+      <option value="transport">Transport Parallèle (Géodésiques)</option>
+      <option value="hyper">Variété Hyperkähler Finale</option>
+    </select>
+    
+    <div class="slider-container" id="morphSliderContainer">
+      <label>Morphing Quaternionique (t)</label>
+      <input type="range" id="morphSlider" min="0" max="1" step="0.01" value="0">
+      <div style="font-size:0.7rem; color:#8b949e; margin-top:5px; text-align:center;" id="morphLabel">I</div>
+    </div>
+
+    <button class="btn" onclick="toggleCinema()">Mode Cinéma</button>
+    <button class="btn" onclick="toggleWireframe()">Mode Wireframe</button>
+  </div>
+</div>
+
+<div id="cinemaUI">
+  <div>
+    <h1 id="cineTitle">Variété Hyperkähler</h1>
+    <div class="subtitle" id="cineSubtitle">Eguchi-Hanson ALE</div>
+  </div>
+  
+  <div class="cinema-legend">
+    <div class="cinema-col">
+      <h4>Géométrie</h4>
+      <ul>
+        <li id="legendGeo1">Espace ALE non-compact</li>
+        <li id="legendGeo2">Métrique d'Eguchi-Hanson</li>
+        <li id="legendGeo3">Ricci(g) = 0</li>
+      </ul>
+    </div>
+    <div class="cinema-col" style="border-left-color: #4ecdc4;">
+      <h4>Structures Complexes</h4>
+      <ul>
+        <li id="legendTP1">I, J, K (Quaternions)</li>
+        <li id="legendTP2">∇ω_I = ∇ω_J = ∇ω_K = 0</li>
+        <li id="legendTP3">Transport Parallèle</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="cinemaFormula">
+    <span class="lbl" id="cineFormLbl">Métrique</span>
+    <div id="cineFormBody">ds² = f(r)dr² + r²(σ₁² + σ₂²) + r²f(r)σ₃²</div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============================================================
+   SETUP SCÈNE
+   ============================================================ */
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x020305, 0.015);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 6, 14);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;
+controls.minDistance = 4;
+controls.maxDistance = 25;
+
+// Zoom par paliers
+let lastZoomTime = 0;
+const ZOOM_STEP = 1.2;
+renderer.domElement.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const now = Date.now();
+  if (now - lastZoomTime < 100) return;
+  lastZoomTime = now;
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  let dist = camera.position.distanceTo(controls.target);
+  dist += e.deltaY > 0 ? ZOOM_STEP : -ZOOM_STEP;
+  dist = Math.max(controls.minDistance, Math.min(controls.maxDistance, dist));
+  camera.position.copy(controls.target).add(dir.multiplyScalar(dist));
+}, { passive: false });
+
+// Lumières
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+const keyLight = new THREE.DirectionalLight(0xffedd5, 2.5);
+keyLight.position.set(10, 15, 10);
+keyLight.castShadow = true;
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0x58a6ff, 1.5);
+rimLight.position.set(-10, -5, -10);
+scene.add(rimLight);
+
+/* ============================================================
+   GÉOMÉTRIE PHYSIQUE (Calculée sur CPU - Optimisée)
+   ============================================================ */
+const A_PARAM = 2.0;
+const R_MIN = A_PARAM + 0.05;
+const R_MAX = 7.0;
+
+// Résolution réduite pour garantir un chargement instantané (< 400ms)
+const stepsR = 32;
+const stepsTheta = 32;
+const stepsPhi = 32;
+
+const geometry = new THREE.BufferGeometry();
+const positions = new Float32Array((stepsR + 1) * (stepsTheta + 1) * (stepsPhi + 1) * 3);
+const colors = new Float32Array((stepsR + 1) * (stepsTheta + 1) * (stepsPhi + 1) * 3);
+const indices = [];
+
+let vIdx = 0;
+// Boucle de génération optimisée (utilise des calculs locaux rapides)
+for (let i = 0; i <= stepsR; i++) {
+  const r = R_MIN + (i / stepsR) * (R_MAX - R_MIN);
+  const f = 1.0 - Math.pow(A_PARAM / r, 4);
+  
+  // Heatmap basée sur la courbure scalaire
+  const curvature = 12.0 * Math.pow(A_PARAM, 4) / Math.pow(r, 6);
+  const tC = Math.min(1.0, curvature / 1.5);
+  const cr = tC, cg = 0.1, cb = 1.0 - tC;
+
+  for (let j = 0; j <= stepsTheta; j++) {
+    const theta = (j / stepsTheta) * Math.PI;
+    for (let k = 0; k <= stepsPhi; k++) {
+      const phi = (k / stepsPhi) * Math.PI * 2;
+      
+      // Coordonnées Hopf
+      const x = r * Math.sin(theta) * Math.cos(phi);
+      const y = r * Math.cos(theta);
+      const z = r * Math.sin(theta) * Math.sin(phi) * Math.sqrt(Math.max(0.01, f));
+      
+      positions[vIdx*3] = x;
+      positions[vIdx*3+1] = y;
+      positions[vIdx*3+2] = z;
+      
+      colors[vIdx*3] = cr;
+      colors[vIdx*3+1] = cg;
+      colors[vIdx*3+2] = cb;
+      
+      vIdx++;
+    }
+  }
+}
+
+// Indices (optimisé)
+const strideTheta = stepsPhi + 1;
+const strideR = (stepsTheta + 1) * strideTheta;
+for (let i = 0; i < stepsR; i++) {
+  for (let j = 0; j < stepsTheta; j++) {
+    for (let k = 0; k < stepsPhi; k++) {
+      const a = i * strideR + j * strideTheta + k;
+      const b = a + 1;
+      const c = a + strideTheta;
+      const d = c + 1;
+      const e = a + strideR;
+      const f = e + 1;
+      const g = e + strideTheta;
+      const h = g + 1;
+      
+      indices.push(a, c, b, b, c, d);
+      indices.push(e, f, g, f, h, g);
+      indices.push(a, b, e, b, f, e);
+      indices.push(c, g, d, d, g, h);
+    }
+  }
+}
+
+geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+geometry.setIndex(indices);
+geometry.computeVertexNormals();
+
+const originalPositions = new Float32Array(positions);
+
+/* ============================================================
+   MATÉRIAUX ET MESHES
+   ============================================================ */
+const manifoldMaterial = new THREE.MeshStandardMaterial({
+  vertexColors: true,
+  metalness: 0.6,
+  roughness: 0.25,
+  side: THREE.DoubleSide,
+  flatShading: false,
+});
+
+const wireMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  wireframe: true,
+  transparent: true,
+  opacity: 0.05,
+});
+
+const manifoldMesh = new THREE.Mesh(geometry, manifoldMaterial);
+const manifoldWire = new THREE.Mesh(geometry, wireMaterial);
+manifoldMesh.castShadow = true;
+manifoldMesh.receiveShadow = true;
+scene.add(manifoldMesh);
+scene.add(manifoldWire);
+
+/* ============================================================
+   STRUCTURES I, J, K
+   ============================================================ */
+const fieldsGroup = new THREE.Group();
+scene.add(fieldsGroup);
+
+function createQuaternionicField(colorHex, axis) {
+  const points = [];
+  const N = 200;
+  const radius = A_PARAM + 0.5;
+  
+  for (let i = 0; i <= N; i++) {
+    const t = (i / N) * Math.PI * 4;
+    let x, y, z;
+    if (axis === 'I') {
+      x = t * 0.1; y = radius * Math.cos(t); z = radius * Math.sin(t);
+    } else if (axis === 'J') {
+      x = radius * Math.cos(t); y = t * 0.1; z = radius * Math.sin(t);
+    } else {
+      x = radius * Math.cos(t); y = radius * Math.sin(t); z = t * 0.1;
+    }
+    points.push(new THREE.Vector3(x, y, z));
+  }
+  const curve = new THREE.CatmullRomCurve3(points);
+  const tubeGeo = new THREE.TubeGeometry(curve, 100, 0.04, 8, false);
+  const mat = new THREE.MeshStandardMaterial({
+    color: colorHex, emissive: colorHex, emissiveIntensity: 0.8,
+    metalness: 0.5, roughness: 0.2
+  });
+  return new THREE.Mesh(tubeGeo, mat);
+}
+
+const fieldI = createQuaternionicField(0xff3333, 'I');
+const fieldJ = createQuaternionicField(0x33ff33, 'J');
+const fieldK = createQuaternionicField(0x3333ff, 'K');
+
+fieldsGroup.add(fieldI, fieldJ, fieldK);
+fieldsGroup.visible = false;
+
+/* ============================================================
+   TRANSPORT PARALLÈLE
+   ============================================================ */
+const particleCount = 1500;
+const pGeo = new THREE.BufferGeometry();
+const pPos = new Float32Array(particleCount * 3);
+const pVel = [];
+const pLife = new Float32Array(particleCount);
+
+for (let i = 0; i < particleCount; i++) {
+  pPos[i*3] = 0; pPos[i*3+1] = 0; pPos[i*3+2] = 0;
+  const v = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(0.5);
+  pVel.push(v);
+  pLife[i] = Math.random();
+}
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+const pMat = new THREE.PointsMaterial({
+  size: 0.1, color: 0xffaa00, transparent: true, opacity: 0.9,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+const particles = new THREE.Points(pGeo, pMat);
+scene.add(particles);
+particles.visible = false;
+
+function updateGeodesicPhysics(dt) {
+  const positions = pGeo.attributes.position.array;
+  for (let i = 0; i < particleCount; i++) {
+    pLife[i] -= dt * 0.1;
+    if (pLife[i] <= 0) {
+      pLife[i] = 1.0;
+      positions[i*3] = 0; positions[i*3+1] = 0; positions[i*3+2] = 0;
+      pVel[i].set(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(0.5 + Math.random());
+    }
+    const x = positions[i*3], y = positions[i*3+1], z = positions[i*3+2];
+    const r = Math.sqrt(x*x + y*y + z*z) + 1e-5;
+    const df_dr = 4.0 * Math.pow(A_PARAM, 4) / Math.pow(r, 5);
+    pVel[i].x -= df_dr * (x / r) * dt * 0.02;
+    pVel[i].y -= df_dr * (y / r) * dt * 0.02;
+    pVel[i].z -= df_dr * (z / r) * dt * 0.02;
+    
+    positions[i*3] += pVel[i].x * dt * 5;
+    positions[i*3+1] += pVel[i].y * dt * 5;
+    positions[i*3+2] += pVel[i].z * dt * 5;
+  }
+  pGeo.attributes.position.needsUpdate = true;
+}
+
+/* ============================================================
+   UI & CONTRÔLES
+   ============================================================ */
+window.currentMode = 'x4';
+const slider = document.getElementById('morphSlider');
+const sliderContainer = document.getElementById('morphSliderContainer');
+const morphLabel = document.getElementById('morphLabel');
+
+slider.addEventListener('input', (e) => {
+  const t = parseFloat(e.target.value);
+  
+  if (t < 0.33) morphLabel.textContent = "Morphing I → J";
+  else if (t < 0.66) morphLabel.textContent = "Morphing J → K";
+  else morphLabel.textContent = "Morphing K → X⁴";
+
+  const pos = geometry.attributes.position.array;
+  
+  for (let i = 0; i < pos.length / 3; i++) {
+    const ox = originalPositions[i*3];
+    const oy = originalPositions[i*3+1];
+    const oz = originalPositions[i*3+2];
+    
+    const wave1 = Math.sin(ox * 2 + t * Math.PI * 2) * 0.2 * (1-t);
+    const wave2 = Math.cos(oy * 2 + t * Math.PI * 2) * 0.2 * (1-t);
+    const wave3 = Math.sin(oz * 2 + t * Math.PI * 2) * 0.2 * (1-t);
+    
+    pos[i*3] = ox + wave1;
+    pos[i*3+1] = oy + wave2;
+    pos[i*3+2] = oz + wave3;
+  }
+  
+  geometry.attributes.position.needsUpdate = true;
+  geometry.computeVertexNormals();
+});
+
+window.handleModeChange = function() {
+  const val = document.getElementById('modeSelect').value;
+  window.currentMode = val;
+  
+  manifoldMesh.visible = true;
+  manifoldWire.visible = true;
+  fieldsGroup.visible = false;
+  particles.visible = false;
+  sliderContainer.style.display = 'none';
+  
+  const title = document.getElementById('cineTitle');
+  const subtitle = document.getElementById('cineSubtitle');
+  const formLbl = document.getElementById('cineFormLbl');
+  const formBody = document.getElementById('cineFormBody');
+
+  if (val === 'forms') {
+    manifoldMesh.visible = false;
+    manifoldWire.visible = false;
+    fieldsGroup.visible = true;
+    title.textContent = '3 Formes'; subtitle.textContent = 'Structures Quaternioniques I, J, K';
+    formLbl.textContent = 'Relations'; formBody.textContent = 'IJ = K, JK = I, KI = J';
+  } else if (val === 'x4') {
+    title.textContent = 'Four Manifold X⁴'; subtitle.textContent = 'Base Eguchi-Hanson';
+    formLbl.textContent = 'Métrique'; formBody.textContent = 'ds² = f(r)dr² + r²(σ₁² + σ₂²) + r²f(r)σ₃²';
+  } else if (val === 'morphing') {
+    sliderContainer.style.display = 'block';
+    title.textContent = 'Morphing Univarié'; subtitle.textContent = 'Application des 3 formes sur X⁴';
+    formLbl.textContent = 'Équation'; formBody.textContent = 'ω_total = t·ω_I + (1-t)·ω_J + ...';
+  } else if (val === 'transport') {
+    particles.visible = true;
+    title.textContent = 'Transport Parallèle'; subtitle.textContent = 'Géodésiques de la métrique';
+    formLbl.textContent = 'Déviation'; formBody.textContent = 'd²x/dt² = -Γ(x, v)';
+  } else if (val === 'hyper') {
+    title.textContent = 'Hyperkähler'; subtitle.textContent = 'Structure Parallèle Parfaite';
+    formLbl.textContent = 'Condition'; formBody.textContent = '∇ω_I = ∇ω_J = ∇ω_K = 0';
+  }
+};
+
+window.toggleCinema = function() {
+  const ui = document.getElementById('ui');
+  const cinemaUI = document.getElementById('cinemaUI');
+  const isCinema = cinemaUI.style.display === 'flex';
+  cinemaUI.style.display = isCinema ? 'none' : 'flex';
+  ui.style.display = isCinema ? 'flex' : 'none';
+  controls.autoRotate = !isCinema;
+};
+
+window.toggleWireframe = function() {
+  manifoldWire.material.opacity = manifoldWire.material.opacity > 0.5 ? 0.05 : 0.8;
+};
+
+/* ============================================================
+   BOUCLE D'ANIMATION
+   ============================================================ */
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  const time = clock.getElapsedTime();
+
+  if (!controls.autoRotate) {
+    manifoldMesh.rotation.y += dt * 0.1;
+    manifoldWire.rotation.y += dt * 0.1;
+    fieldsGroup.rotation.y += dt * 0.1;
+  }
+
+  if (fieldsGroup.visible) {
+    fieldI.rotation.x += dt * 0.5;
+    fieldJ.rotation.y += dt * 0.5;
+    fieldK.rotation.z += dt * 0.5;
+  }
+
+  if (particles.visible) {
+    updateGeodesicPhysics(dt);
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// Init
+handleModeChange();
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
