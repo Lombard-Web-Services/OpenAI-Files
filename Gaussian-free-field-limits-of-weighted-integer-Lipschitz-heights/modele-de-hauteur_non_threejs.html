@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<!-- Par Thibaut LOMBARD -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Modèle de hauteur Lipschitz · patch triangle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --fg:#e6edf3; --muted:#9da7b3;
+    --acc:#7ee787; --acc2:#79c0ff; --warn:#f0883e; --vio:#d2a8ff; --crit:#ff7b72;
+    --serif:'Cormorant Garamond',Georgia,serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
+    font:14px/1.55 system-ui,sans-serif}
+  #wrap{display:flex;height:100vh}
+  #panel{width:340px;flex-shrink:0;padding:14px;background:var(--panel);
+    overflow-y:auto;border-right:1px solid #21262d;transition:margin-left .35s ease}
+  body.record #panel{margin-left:-340px}
+  #panel h1{font-family:var(--serif);font-size:20px;font-weight:600;
+    color:var(--acc);margin-bottom:4px}
+  #panel h2{font-family:var(--serif);font-size:12px;font-weight:600;
+    color:var(--acc2);text-transform:uppercase;letter-spacing:.14em;
+    margin:16px 0 6px;padding-bottom:4px;border-bottom:1px solid #21262d}
+  #panel label{display:block;font-family:var(--mono);font-size:11px;
+    color:var(--muted);margin:8px 0 3px}
+  #panel input[type=range]{width:100%;accent-color:var(--acc2);height:20px;cursor:pointer}
+  #panel input[type=color]{width:100%;height:28px;background:#21262d;border:1px solid #30363d;
+    border-radius:6px;padding:2px;cursor:pointer}
+  #panel .val{color:var(--acc2);font-family:var(--mono);font-variant-numeric:tabular-nums}
+  #panel select,#panel button{width:100%;margin-top:5px;padding:7px;
+    background:#21262d;color:var(--fg);border:1px solid #30363d;
+    border-radius:6px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:.15s}
+  #panel select:hover,#panel button:hover{background:#30363d;border-color:var(--acc2)}
+  #panel .eq{background:#0d1117;border:1px solid #30363d;border-radius:6px;
+    padding:8px 10px;margin:5px 0;font-family:var(--mono);font-size:10.5px;
+    color:#c9d1d9;line-height:1.65;overflow-x:auto}
+  #panel .eq b{color:var(--acc2);font-family:var(--serif);font-size:12px}
+  #panel .sub{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-bottom:6px}
+  .sw{display:inline-block;width:10px;height:10px;margin-right:6px;
+    vertical-align:middle;border-radius:2px}
+
+  #stage{flex:1;position:relative;background:#0e1116;overflow:hidden;min-width:0}
+  #stage canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+  #stage canvas:active{cursor:grabbing}
+
+  #hud{position:absolute;top:12px;left:12px;font-family:var(--mono);font-size:11px;
+    color:var(--muted);background:rgba(5,7,11,.82);padding:8px 12px;border-radius:6px;
+    pointer-events:none;white-space:pre;border:1px solid #21262d;z-index:2}
+  body.video #hud,
+  body.record #hud{display:none}
+
+  #legendClient{position:absolute;bottom:12px;right:12px;font-family:var(--mono);
+    font-size:11px;color:var(--muted);background:rgba(5,7,11,.82);padding:8px 12px;
+    border-radius:6px;border:1px solid #21262d;z-index:2;line-height:1.7}
+  body.video #legendClient,
+  body.record #legendClient{display:none}
+
+  #keysHint{position:absolute;bottom:12px;left:12px;font-family:var(--mono);
+    font-size:10.5px;color:var(--muted);background:rgba(5,7,11,.82);
+    padding:6px 10px;border-radius:6px;border:1px solid #21262d;z-index:2;
+    line-height:1.6}
+  body.video #keysHint,
+  body.record #keysHint{display:none}
+
+  #cinemaOverlay{position:absolute;inset:0;pointer-events:none;z-index:3;
+    display:none;flex-direction:column;justify-content:space-between;
+    padding:24px 0 28px 0}
+  body.video #cinemaOverlay{display:flex}
+  #cinemaOverlay .top{text-align:center}
+  #cinemaOverlay .title{font-family:var(--serif);font-size:54px;font-weight:300;
+    color:#e6edf3;letter-spacing:.04em;line-height:1.05;
+    text-shadow:0 2px 28px rgba(0,0,0,.95)}
+  #cinemaOverlay .subtitle{font-family:var(--mono);font-size:13px;
+    letter-spacing:.3em;color:var(--acc2);margin-top:10px;text-transform:uppercase}
+  #cinemaOverlay .params{margin:20px auto 0;display:inline-block;
+    background:rgba(5,7,11,.78);border:1px solid #30363d;
+    padding:10px 24px;border-radius:6px;
+    font-family:var(--mono);font-size:13px;color:#c9d1d9;line-height:1.9}
+  #cinemaOverlay .params .k{color:var(--acc2);margin-right:6px}
+  #cinemaOverlay .bottom{text-align:center;font-family:var(--serif);color:#e6edf3}
+  #cinemaOverlay .bottom .fig{font-size:28px;font-weight:300;margin-bottom:8px}
+  #cinemaOverlay .bottom .eq{font-family:var(--mono);font-size:14px;color:#c9d1d9;
+    background:rgba(5,7,11,.7);border:1px solid #30363d;display:inline-block;
+    padding:8px 20px;border-radius:6px;margin-bottom:14px}
+  #cinemaOverlay .bottom .legend{font-family:var(--mono);font-size:11.5px;color:var(--muted);
+    line-height:1.7}
+  #cinemaOverlay .bottom .legend .sw{margin-right:6px}
+
+  #cinemaTimer{position:absolute;top:28px;right:28px;font-family:var(--mono);
+    font-size:14px;color:var(--muted);background:rgba(5,7,11,.7);padding:6px 12px;
+    border-radius:6px;border:1px solid #21262d;z-index:4;display:none}
+  body.video #cinemaTimer{display:block}
+
+  #videoBtn, #recordBtn{position:absolute;top:12px;right:12px;padding:7px 14px;
+    background:rgba(5,7,11,.85);color:var(--fg);border:1px solid #30363d;
+    border-radius:6px;font-family:var(--mono);font-size:12px;cursor:pointer;
+    transition:.15s;z-index:10}
+  #videoBtn:hover, #recordBtn:hover{background:#161b22;border-color:var(--acc2)}
+  body.video #videoBtn,
+  body.record #videoBtn,
+  body.record #recordBtn{top:auto;bottom:28px;right:28px;opacity:.85}
+  body.video #videoBtn:hover,
+  body.record #videoBtn:hover{opacity:1}
+  body.video #recordBtn{display:none}
+  #recordBtn{right:130px}
+
+  #recBar{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
+    display:flex;gap:8px;align-items:center;z-index:10;
+    background:rgba(5,7,11,.85);padding:8px 12px;border-radius:8px;
+    border:1px solid #21262d;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  body.record #recBar{display:flex}
+  body:not(.record) #recBar{display:none}
+  #recBar select,#recBar button{padding:5px 8px;background:#161b22;color:var(--fg);
+    border:1px solid #30363d;border-radius:4px;font-family:var(--mono);font-size:11px;cursor:pointer}
+  #recBar button#recBtn{background:rgba(200,30,30,.85);color:#fff;border-color:#ff5555;font-weight:600}
+  #recBar button#recBtn.recording{background:#ff3333;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  #recInfo{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:11px;color:var(--crit);
+    background:rgba(5,7,11,.85);padding:4px 10px;border-radius:4px;
+    display:none;z-index:10}
+  body.record #recInfo{display:block}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="panel">
+    <h1>Modèle de hauteur Lipschitz</h1>
+    <div class="sub">GFF · boucles O(2) · patch triangle/hexagone</div>
+
+    <h2>1 · Modèle</h2>
+    <label>Poids <i>x</i> ∈ [1/√2, 1] : <span class="val" id="vx"></span></label>
+    <input type="range" id="x" min="0.7071" max="1" step="0.001" value="0.85">
+    <label>Taille du réseau <i>N</i> (rayon) : <span class="val" id="vN"></span></label>
+    <input type="range" id="N" min="4" max="12" step="1" value="7">
+    <label>Balayages Metropolis : <span class="val" id="vS"></span></label>
+    <input type="range" id="S" min="5" max="60" step="5" value="25">
+    <button id="regen">⟳ Régénérer la hauteur</button>
+
+    <h2>2 · Forme du patch</h2>
+    <label>Patch (forme globale)</label>
+    <select id="patchShape">
+      <option value="triangle" selected>Triangle</option>
+      <option value="hex">Hexagone</option>
+      <option value="all">Tout (grille complète)</option>
+    </select>
+    <label>Rayon du patch (fraction de N) : <span class="val" id="vPatchR"></span></label>
+    <input type="range" id="patchR" min="0.3" max="1" step="0.02" value="0.85">
+
+    <h2>3 · Forme de la maille</h2>
+    <label>Maille</label>
+    <select id="cellShape">
+      <option value="hex" selected>Hexagone</option>
+      <option value="circle">Cercle</option>
+      <option value="square">Carré</option>
+      <option value="triangle">Triangle</option>
+      <option value="diamond">Diamant</option>
+    </select>
+    <label>Taille de la maille : <span class="val" id="vCell"></span></label>
+    <input type="range" id="cellSize" min="0.4" max="1.2" step="0.05" value="0.9">
+    <label>Hauteur (facteur) : <span class="val" id="vCol"></span></label>
+    <input type="range" id="colHeight" min="0.2" max="2" step="0.1" value="1">
+
+    <h2>4 · Couleurs</h2>
+    <label>Hauteur positive</label>
+    <input type="color" id="colPos" value="#79c0ff">
+    <label>Hauteur négative</label>
+    <input type="color" id="colNeg" value="#ff7b72">
+    <label>Arête occupée</label>
+    <input type="color" id="colEdge" value="#f0883e">
+    <label>Boucle</label>
+    <input type="color" id="colLoop" value="#7ee787">
+    <label>Fond (couleur 1)</label>
+    <input type="color" id="colBg1" value="#0e1116">
+    <label>Fond (couleur 2)</label>
+    <input type="color" id="colBg2" value="#161b22">
+    <label>Type de fond</label>
+    <select id="bgType">
+      <option value="gradient">Dégradé vertical</option>
+      <option value="radial">Dégradé radial</option>
+      <option value="solid">Uni (couleur 1)</option>
+    </select>
+
+    <h2>5 · Caméra</h2>
+    <label>Zoom (crans molette) : <span class="val" id="vd"></span></label>
+    <input type="range" id="d" min="1" max="20" step="1" value="12">
+    <label>Élévation : <span class="val" id="vel"></span></label>
+    <input type="range" id="el" min="10" max="80" step="1" value="35">
+    <label>Azimut : <span class="val" id="vaz"></span></label>
+    <input type="range" id="az" min="0" max="360" step="1" value="30">
+    <label>Vitesse de rotation : <span class="val" id="vrot"></span></label>
+    <input type="range" id="rotSpeed" min="0" max="2" step="0.05" value="0.4">
+    <button id="toggleRot">▶ Reprendre rotation</button>
+    <button id="resetCam">↺ Réinitialiser caméra</button>
+
+    <h2>6 · Affichage</h2>
+    <button id="toggleLoops">Boucles : ON</button>
+    <button id="toggleEdges">Arêtes : ON</button>
+
+    <h2>7 · Équations</h2>
+    <div class="eq"><b>Mesure :</b><br>P_{δ,x}(h) = x^{N_δ(h)}/Z_{δ,x}<br>N_δ(h) = Σ 1{h(u)≠h(v)}</div>
+    <div class="eq"><b>Boucles :</b><br>poids = 2^{#loops} · x^{#edges}</div>
+    <div class="eq"><b>GFF :</b><br>G_D = (−Δ_D)^{−1}<br>G(z,w) ~ (2π)^{−1} log(1/|z−w|)</div>
+    <div class="eq"><b>Thm 1.2 :</b><br>h_δ/σ(x) ⇒ Φ_D</div>
+  </div>
+  <div id="stage">
+    <div id="hud"></div>
+    <div id="legendClient"></div>
+    <div id="keysHint">glisser : orbite · molette : zoom par crans · Espace : pause rotation</div>
+
+    <div id="cinemaOverlay">
+      <div class="top">
+        <div class="title">Lipschitz entier · GFF</div>
+        <div class="subtitle" id="cSub">Grille hexagonale · boucles O(2)</div>
+        <div class="params">
+          <div><span class="k">N</span> <span id="cN">7</span> &nbsp;·&nbsp;
+               <span class="k">x</span> <span id="cX">0.850</span> &nbsp;·&nbsp;
+               <span class="k">patch</span> <span id="cPatch">triangle</span> &nbsp;·&nbsp;
+               <span class="k">maille</span> <span id="cCell">hexagone</span> &nbsp;·&nbsp;
+               <span class="k">N_δ(h)</span> <span id="cNp">0</span></div>
+        </div>
+      </div>
+      <div class="bottom">
+        <div class="fig">Grille hexagonale · hauteur Lipschitz</div>
+        <div class="eq">P_{δ,x}(h) = x^{N_δ(h)}/Z_{δ,x}</div>
+        <div class="legend" id="cLeg"></div>
+      </div>
+    </div>
+    <div id="cinemaTimer">00:00</div>
+
+    <button id="videoBtn">▶ Mode cinéma</button>
+    <button id="recordBtn">● Mode enregistrement</button>
+
+    <div id="recBar">
+      <label style="margin:0">Résolution</label>
+      <select id="recRes">
+        <option value="720">720p</option>
+        <option value="1080" selected>1080p</option>
+        <option value="1440">1440p</option>
+        <option value="2160">4K</option>
+      </select>
+      <label style="margin:0">fps</label>
+      <select id="recFps">
+        <option value="24">24</option>
+        <option value="30" selected>30</option>
+        <option value="60">60</option>
+      </select>
+      <button id="recBtn">● Enregistrer</button>
+      <button id="quitRecord" style="background:#21262d">✕ Quitter</button>
+    </div>
+    <div id="recInfo"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ============================================================
+// État global
+// ============================================================
+const state = {
+  x: 0.85, N: 7, sweeps: 25,
+  patchShape: 'triangle', patchR: 0.85,
+  cellShape: 'hex', cellSize: 0.9, colHeight: 1,
+  d: 12, el: 35, az: 30,
+  autoRot: false, rotSpeed: 0.4,
+  showLoops: true, showEdges: true,
+  mode: 'client',
+  colors: {
+    pos: '#79c0ff', neg: '#ff7b72',
+    edge: '#f0883e', loop: '#7ee787',
+    bg1: '#0e1116', bg2: '#161b22',
+    bgType: 'gradient',
+  },
+};
+
+let faces = [], contour = [], centerX = 0, centerY = 0;
+
+// ============================================================
+// Grille hexagonale régulière
+// ============================================================
+const SQ3 = Math.sqrt(3);
+function axialToXY(q, r, size) {
+  return [ (q + r/2) * size, r * (SQ3/2) * size ];
+}
+const NB = [[1,0],[-1,0],[0,1],[0,-1],[1,-1],[-1,1]];
+const key = (q,r) => q + "," + r;
+
+function buildHexGrid(N, size, patchShape, patchR) {
+  const R0 = N;
+  const all = [];
+  for (let q = -R0; q <= R0; q++) {
+    for (let r = -R0; r <= R0; r++) {
+      if (Math.abs(q + r) > R0) continue;
+      const [cx, cy] = axialToXY(q, r, size);
+      all.push({ q, r, cx, cy, h: 0, nbrs: [], boundary: false });
+    }
+  }
+
+  const R = patchR * R0 * size;
+  const kept = [];
+
+  for (const f of all) {
+    // Déclaration explicite de x et y pour chaque face (évite le ReferenceError)
+    const x = f.cx;
+    const y = f.cy;
+    let inside = false;
+    switch (patchShape) {
+      case 'triangle': {
+        // Triangle équilatéral POINTE EN BAS
+        // Sommets : (0, R) [bas], (-R*√3/2, -R/2) [haut gauche], (R*√3/2, -R/2) [haut droit]
+        // Côté horizontal en haut : y = -R/2
+        // Pointe en bas : (0, R)
+        // Côtés obliques : y = R - √3 * |x|
+        const top = -R / 2;
+        const bottom = R;
+        const slope = SQ3;
+        inside = (y >= top) && (y <= bottom) && (y <= bottom - slope * Math.abs(x));
+        break;
+      }
+      case 'hex': {
+        const qx = Math.abs(x), qy = Math.abs(y);
+        inside = Math.max(qx * 0.866 + qy * 0.5, qy) <= R;
+        break;
+      }
+      case 'all':
+        inside = true;
+        break;
+      default: inside = true;
+    }
+    if (inside) kept.push(f);
+  }
+
+  const map = new Map();
+  for (const f of kept) map.set(key(f.q, f.r), f);
+  for (const f of kept) {
+    f.nbrs = [];
+    for (const [dq, dr] of NB) {
+      const g = map.get(key(f.q+dq, f.r+dr));
+      if (g) f.nbrs.push(g);
+    }
+    f.boundary = (f.nbrs.length < 6);
+  }
+
+  let sx = 0, sy = 0;
+  for (const f of kept) { sx += f.cx; sy += f.cy; }
+  centerX = kept.length ? sx / kept.length : 0;
+  centerY = kept.length ? sy / kept.length : 0;
+  for (const f of kept) { f.cx -= centerX; f.cy -= centerY; }
+
+  return kept;
+}
+
+// ============================================================
+// Metropolis (efficace)
+// ============================================================
+function sampleHeight(fs, x, sweeps) {
+  for (const f of fs) f.h = 0;
+  const interior = fs.filter(f => !f.boundary);
+  if (!interior.length) return;
+  const logx = Math.log(x);
+  const budget = Math.min(sweeps * interior.length * 4, 200000);
+  let steps = 0;
+  const t0 = performance.now();
+  while (steps < budget && performance.now() - t0 < 200) {
+    const f = interior[(Math.random() * interior.length) | 0];
+    const nh = f.h + (Math.random() < 0.5 ? -1 : 1);
+    let ok = true;
+    for (const g of f.nbrs) if (Math.abs(nh - g.h) > 1) { ok = false; break; }
+    if (ok) {
+      let dN = 0;
+      for (const g of f.nbrs) {
+        dN += (nh !== g.h ? 1 : 0) - (f.h !== g.h ? 1 : 0);
+      }
+      if (Math.log(Math.random()) < dN * logx) f.h = nh;
+    }
+    steps++;
+  }
+}
+
+// ============================================================
+// Contours O(2) — méthode ORIGINALE (segments entre centres)
+// ============================================================
+function buildContourEdges(fs) {
+  const seen = new Set(), segs = [];
+  for (const f of fs) {
+    for (const g of f.nbrs) {
+      const k = [key(f.q,f.r), key(g.q,g.r)].sort().join("|");
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (f.h === g.h) continue;
+      segs.push({
+        x1: f.cx, y1: f.cy, z1: f.h,
+        x2: g.cx, y2: g.cy, z2: g.h
+      });
+    }
+  }
+  return segs;
+}
+
+// ============================================================
+// Canvas + projection
+// ============================================================
+const stage = document.getElementById("stage");
+const canvas = document.createElement("canvas");
+canvas.style.display = "block";
+canvas.style.width = "100%";
+canvas.style.height = "100%";
+stage.insertBefore(canvas, stage.firstChild);
+const ctx = canvas.getContext("2d");
+
+function resize() {
+  const r = stage.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(r.width * dpr);
+  canvas.height = Math.floor(r.height * dpr);
+  canvas.style.width = r.width + "px";
+  canvas.style.height = r.height + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function makeCamera(W, H, az, el, scale) {
+  const a = az * Math.PI / 180, e = el * Math.PI / 180;
+  const ca = Math.cos(a), sa = Math.sin(a);
+  const ce = Math.cos(e), se = Math.sin(e);
+  const cx = W/2, cy = H/2;
+  const dist = 20;
+  return function proj(x, y, z) {
+    let X = x - centerX, Y = y - centerY, Z = z;
+    let Xr =  X*ca + Y*sa;
+    let Yr = -X*sa + Y*ca;
+    let Yp = Yr*ce - Z*se;
+    let Zp = Yr*se + Z*ce;
+    let p = 1 / (1 + Zp/dist);
+    p = Math.max(0.2, Math.min(5, p));
+    return [cx + Xr*scale*p, cy - Yp*scale*p, Zp];
+  };
+}
+
+// ============================================================
+// Formes de maille
+// ============================================================
+function cellPoints(shape, size, cx, cy) {
+  const R = size / SQ3;
+  if (shape === 'hex') {
+    const pts = [];
+    for (let k = 0; k < 6; k++) {
+      const ang = Math.PI/6 + k*Math.PI/3;
+      pts.push([cx + R*Math.cos(ang), cy + R*Math.sin(ang)]);
+    }
+    return pts;
+  }
+  if (shape === 'circle') {
+    const N = 16, pts = [];
+    for (let k = 0; k < N; k++) {
+      const ang = k * 2*Math.PI/N;
+      pts.push([cx + R*Math.cos(ang), cy + R*Math.sin(ang)]);
+    }
+    return pts;
+  }
+  if (shape === 'square') {
+    const r = R * 0.9;
+    return [[cx-r, cy-r], [cx+r, cy-r], [cx+r, cy+r], [cx-r, cy+r]];
+  }
+  if (shape === 'triangle') {
+    const pts = [];
+    for (let k = 0; k < 3; k++) {
+      const ang = -Math.PI/2 + k*2*Math.PI/3;
+      pts.push([cx + R*Math.cos(ang), cy + R*Math.sin(ang)]);
+    }
+    return pts;
+  }
+  if (shape === 'diamond') {
+    const r = R * 1.1;
+    return [[cx, cy-r], [cx+r, cy], [cx, cy+r], [cx-r, cy]];
+  }
+  const pts = [];
+  for (let k = 0; k < 6; k++) {
+    const ang = Math.PI/6 + k*Math.PI/3;
+    pts.push([cx + R*Math.cos(ang), cy + R*Math.sin(ang)]);
+  }
+  return pts;
+}
+
+// ============================================================
+// Rendu
+// ============================================================
+function render() {
+  const W = stage.clientWidth, H = stage.clientHeight;
+  if (W === 0 || H === 0) return;
+  ctx.clearRect(0, 0, W, H);
+
+  if (state.colors.bgType === 'gradient') {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, state.colors.bg1);
+    g.addColorStop(1, state.colors.bg2);
+    ctx.fillStyle = g;
+  } else if (state.colors.bgType === 'radial') {
+    const g = ctx.createRadialGradient(W*0.3, H*0.2, 0, W*0.5, H*0.5, Math.max(W,H)*0.8);
+    g.addColorStop(0, state.colors.bg1);
+    g.addColorStop(1, state.colors.bg2);
+    ctx.fillStyle = g;
+  } else {
+    ctx.fillStyle = state.colors.bg1;
+  }
+  ctx.fillRect(0, 0, W, H);
+
+  const scale = state.d * 12;
+  const proj = makeCamera(W, H, state.az, state.el, scale);
+
+  const objs = [];
+  for (const f of faces) {
+    const pts = cellPoints(state.cellShape, state.cellSize, f.cx, f.cy);
+    const zc = proj(f.cx, f.cy, 0)[2];
+    objs.push({
+      zc,
+      draw: () => {
+        const p = pts.map(([x,y]) => proj(x,y,0));
+        ctx.beginPath();
+        ctx.moveTo(p[0][0], p[0][1]);
+        for (let k = 1; k < p.length; k++) ctx.lineTo(p[k][0], p[k][1]);
+        ctx.closePath();
+        ctx.strokeStyle = "rgba(255,255,255,0.06)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    });
+  }
+  for (const f of faces) {
+    const zc = proj(f.cx, f.cy, f.h * state.colHeight * 0.5)[2];
+    objs.push({
+      zc,
+      draw: () => drawColumn(proj, f)
+    });
+  }
+  objs.sort((a, b) => b.zc - a.zc);
+  for (const o of objs) o.draw();
+
+  // Arêtes occupées — méthode ORIGINALE
+  if (state.showEdges) {
+    for (const seg of contour) {
+      const z1 = seg.z1 * state.colHeight + 0.25;
+      const z2 = seg.z2 * state.colHeight + 0.25;
+      const A = proj(seg.x1, seg.y1, z1);
+      const B = proj(seg.x2, seg.y2, z2);
+      const maxR = Math.max(W, H) * 3;
+      if (Math.abs(A[0]) > maxR || Math.abs(A[1]) > maxR) continue;
+      if (Math.abs(B[0]) > maxR || Math.abs(B[1]) > maxR) continue;
+      ctx.beginPath();
+      ctx.moveTo(A[0], A[1]);
+      ctx.lineTo(B[0], B[1]);
+      ctx.strokeStyle = state.colors.edge;
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
+  }
+
+  // Marqueurs boucle
+  if (state.showLoops) {
+    for (const seg of contour) {
+      const mx = (seg.x1 + seg.x2) / 2;
+      const my = (seg.y1 + seg.y2) / 2;
+      const mz = Math.max(seg.z1, seg.z2) * state.colHeight + 0.35;
+      const P = proj(mx, my, mz);
+      const maxR = Math.max(W, H) * 3;
+      if (Math.abs(P[0]) > maxR || Math.abs(P[1]) > maxR) continue;
+      ctx.beginPath();
+      ctx.arc(P[0], P[1], 3, 0, Math.PI * 2);
+      ctx.fillStyle = state.colors.loop;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+  }
+
+  const mean = faces.reduce((s, f) => s + f.h, 0) / Math.max(1, faces.length);
+  const nPairs = contour.length;
+  const hudEl = document.getElementById("hud");
+  if (hudEl) {
+    hudEl.textContent =
+      `x = ${state.x.toFixed(3)}   N = ${state.N}\n` +
+      `patch = ${state.patchShape}   maille = ${state.cellShape}\n` +
+      `h moyen = ${mean.toFixed(2)}   N_δ(h) = ${nPairs}\n` +
+      `zoom = ${state.d}   az = ${Math.round(state.az)}°   el = ${Math.round(state.el)}°`;
+  }
+  updateCinemaText(mean, nPairs);
+  updateLegend();
+}
+
+function drawColumn(proj, f) {
+  const h = f.h * state.colHeight;
+  const pts = cellPoints(state.cellShape, state.cellSize, f.cx, f.cy);
+  const top = pts.map(([x,y]) => proj(x,y,h));
+  const bot = pts.map(([x,y]) => proj(x,y,0));
+  const isPos = h >= 0;
+  for (let k = 0; k < pts.length; k++) {
+    const k2 = (k+1) % pts.length;
+    ctx.beginPath();
+    ctx.moveTo(bot[k][0], bot[k][1]);
+    ctx.lineTo(bot[k2][0], bot[k2][1]);
+    ctx.lineTo(top[k2][0], top[k2][1]);
+    ctx.lineTo(top[k][0], top[k][1]);
+    ctx.closePath();
+    const shade = 0.35 + 0.15 * ((k % 3) - 1);
+    ctx.fillStyle = hexToRgba(isPos ? state.colors.pos : state.colors.neg, 0.55 + 0.1 * shade);
+    ctx.fill();
+  }
+  ctx.beginPath();
+  ctx.moveTo(top[0][0], top[0][1]);
+  for (let k = 1; k < top.length; k++) ctx.lineTo(top[k][0], top[k][1]);
+  ctx.closePath();
+  ctx.fillStyle = hexToRgba(isPos ? state.colors.pos : state.colors.neg, 0.95);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ============================================================
+// Overlay cinéma
+// ============================================================
+const cellLabel = { hex:'hexagone', circle:'cercle', square:'carré', triangle:'triangle', diamond:'diamant' };
+const patchLabel = { triangle:'triangle', hex:'hexagone', all:'tout' };
+
+function updateCinemaText(mean, nPairs) {
+  document.getElementById('cN').textContent = state.N;
+  document.getElementById('cX').textContent = state.x.toFixed(3);
+  document.getElementById('cPatch').textContent = patchLabel[state.patchShape] || state.patchShape;
+  document.getElementById('cCell').textContent = cellLabel[state.cellShape] || state.cellShape;
+  document.getElementById('cNp').textContent = nPairs ?? 0;
+}
+
+function updateLegend() {
+  const leg = document.getElementById('cLeg');
+  if (leg) {
+    leg.innerHTML =
+      `<span class="sw" style="background:${state.colors.pos}"></span>h &gt; 0 &nbsp;&nbsp;` +
+      `<span class="sw" style="background:${state.colors.neg}"></span>h &lt; 0 &nbsp;&nbsp;` +
+      `<span class="sw" style="background:${state.colors.edge}"></span>arête occupée &nbsp;&nbsp;` +
+      `<span class="sw" style="background:${state.colors.loop}"></span>boucle`;
+  }
+  const legC = document.getElementById('legendClient');
+  if (legC) {
+    legC.innerHTML =
+      `<div><span class="sw" style="background:${state.colors.pos}"></span>h &gt; 0</div>` +
+      `<div><span class="sw" style="background:${state.colors.neg}"></span>h &lt; 0</div>` +
+      `<div><span class="sw" style="background:${state.colors.edge}"></span>arête occupée</div>` +
+      `<div><span class="sw" style="background:${state.colors.loop}"></span>boucle</div>`;
+  }
+}
+
+// ============================================================
+// Régénération
+// ============================================================
+function regenerate() {
+  faces = buildHexGrid(state.N, state.cellSize, state.patchShape, state.patchR);
+  sampleHeight(faces, state.x, state.sweeps);
+  contour = buildContourEdges(faces);
+  resize();
+  render();
+}
+
+// ============================================================
+// Modes cinéma / enregistrement
+// ============================================================
+const cinemaTimerEl = document.getElementById("cinemaTimer");
+let videoStart = 0, videoRAF = null;
+
+function setMode(mode) {
+  state.mode = mode;
+  document.body.classList.toggle('video', mode === 'video');
+  document.body.classList.toggle('record', mode === 'record');
+  document.getElementById('videoBtn').textContent =
+    mode === 'video' ? '✕ Quitter cinéma' : '▶ Mode cinéma';
+  document.getElementById('recordBtn').textContent =
+    mode === 'record' ? '✕ Quitter enregistrement' : '● Mode enregistrement';
+  if (mode === 'video') {
+    videoStart = performance.now();
+    if (!videoRAF) videoRAF = requestAnimationFrame(updateTimer);
+  } else {
+    if (videoRAF) { cancelAnimationFrame(videoRAF); videoRAF = null; }
+    cinemaTimerEl.textContent = '00:00';
+  }
+  if (mode === 'client') stopRecording();
+  setTimeout(() => { resize(); render(); }, 380);
+}
+
+function updateTimer() {
+  if (state.mode !== 'video') return;
+  const t = (performance.now() - videoStart)/1000;
+  const mm = String(Math.floor(t/60)).padStart(2,'0');
+  const ss = String(Math.floor(t%60)).padStart(2,'0');
+  cinemaTimerEl.textContent = `${mm}:${ss}`;
+  videoRAF = requestAnimationFrame(updateTimer);
+}
+
+document.getElementById('videoBtn').onclick = () => {
+  setMode(state.mode === 'video' ? 'client' : 'video');
+};
+document.getElementById('recordBtn').onclick = () => {
+  setMode(state.mode === 'record' ? 'client' : 'record');
+};
+document.getElementById('quitRecord').onclick = () => setMode('client');
+
+// ============================================================
+// Enregistrement WebM
+// ============================================================
+let mediaRecorder = null, recordedChunks = [], recStart = 0, recRAF = null;
+const recBtn = document.getElementById('recBtn');
+const recInfo = document.getElementById('recInfo');
+
+function startRecording() {
+  const resSelect = document.getElementById('recRes').value;
+  const fps = parseInt(document.getElementById('recFps').value, 10);
+  const heights = { '720': 720, '1080': 1080, '1440': 1440, '2160': 2160 };
+  const H = heights[resSelect] || 1080;
+  const W = Math.round(H * 16/9);
+
+  const recCanvas = document.createElement('canvas');
+  recCanvas.width = W; recCanvas.height = H;
+  const recCtx = recCanvas.getContext('2d');
+
+  const stream = recCanvas.captureStream(fps);
+  recordedChunks = [];
+  const options = { mimeType: 'video/webm;codecs=vp9' };
+  if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+    options.mimeType = 'video/webm;codecs=vp8';
+  }
+  mediaRecorder = new MediaRecorder(stream, options);
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lipschitz-${state.patchShape}-${state.cellShape}-${Date.now()}.webm`;
+    a.click();
+    URL.revokeObjectURL(url);
+    recInfo.textContent = '✓ Vidéo téléchargée';
+    setTimeout(() => { recInfo.textContent = ''; }, 3000);
+  };
+  mediaRecorder.start();
+
+  function recLoop() {
+    if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+    recCtx.fillStyle = "#0a0e14";
+    recCtx.fillRect(0, 0, W, H);
+    recCtx.drawImage(canvas, 0, 0, W, H);
+    drawOverlay(recCtx, W, H);
+    const t = (performance.now() - recStart)/1000;
+    const mm = String(Math.floor(t/60)).padStart(2,'0');
+    const ss = String(Math.floor(t%60)).padStart(2,'0');
+    recInfo.textContent = `● ${mm}:${ss} · ${W}×${H} · ${fps}fps`;
+    recRAF = requestAnimationFrame(recLoop);
+  }
+  recStart = performance.now();
+  recLoop();
+  recBtn.textContent = '■ Arrêter';
+  recBtn.classList.add('recording');
+}
+
+function drawOverlay(ctx, W, H) {
+  const scale = H / 1080;
+  const mean = faces.reduce((s, f) => s + f.h, 0) / Math.max(1, faces.length);
+  const nPairs = contour.length;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#e6edf3';
+  ctx.font = `300 ${54*scale}px 'Cormorant Garamond', serif`;
+  ctx.fillText('Lipschitz entier · GFF', W/2, 24*scale);
+
+  ctx.fillStyle = '#79c0ff';
+  ctx.font = `${13*scale}px 'JetBrains Mono', monospace`;
+  ctx.fillText('GRILLE HEXAGONALE · BOUCLES O(2)', W/2, 96*scale);
+
+  const paramBoxW = 820*scale, paramBoxH = 40*scale, paramY = 130*scale;
+  ctx.fillStyle = 'rgba(5,7,11,.78)';
+  ctx.fillRect(W/2 - paramBoxW/2, paramY, paramBoxW, paramBoxH);
+  ctx.strokeStyle = '#30363d';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(W/2 - paramBoxW/2, paramY, paramBoxW, paramBoxH);
+  ctx.fillStyle = '#c9d1d9';
+  ctx.font = `${13*scale}px 'JetBrains Mono', monospace`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(
+    `N = ${state.N}   ·   x = ${state.x.toFixed(3)}   ·   patch = ${patchLabel[state.patchShape]}   ·   maille = ${cellLabel[state.cellShape]}   ·   N_δ(h) = ${nPairs}`,
+    W/2, paramY + paramBoxH/2);
+
+  const baseY = H - 180*scale;
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#e6edf3';
+  ctx.font = `300 ${26*scale}px 'Cormorant Garamond', serif`;
+  ctx.fillText('Grille hexagonale · hauteur Lipschitz', W/2, baseY);
+
+  const eqY = baseY + 40*scale;
+  const eqW = 520*scale, eqH = 34*scale;
+  ctx.fillStyle = 'rgba(5,7,11,.78)';
+  ctx.fillRect(W/2 - eqW/2, eqY, eqW, eqH);
+  ctx.strokeStyle = '#30363d';
+  ctx.strokeRect(W/2 - eqW/2, eqY, eqW, eqH);
+  ctx.fillStyle = '#c9d1d9';
+  ctx.font = `${14*scale}px 'JetBrains Mono', monospace`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText('P_{δ,x}(h) = x^{N_δ(h)} / Z_{δ,x}', W/2, eqY + eqH/2);
+
+  const legY = eqY + eqH + 20*scale;
+  ctx.textBaseline = 'top';
+  const items = [
+    { color: state.colors.pos, label: 'h > 0' },
+    { color: state.colors.neg, label: 'h < 0' },
+    { color: state.colors.edge, label: 'arête occupée' },
+    { color: state.colors.loop, label: 'boucle' },
+  ];
+  ctx.font = `${12*scale}px 'JetBrains Mono', monospace`;
+  let totalW = 0;
+  for (const it of items) totalW += 24*scale + ctx.measureText(it.label).width + 20*scale;
+  let x0 = W/2 - totalW/2;
+  for (const it of items) {
+    ctx.fillStyle = it.color;
+    ctx.fillRect(x0, legY + 2*scale, 12*scale, 12*scale);
+    ctx.fillStyle = '#9da7b3';
+    ctx.textBaseline = 'top';
+    ctx.fillText(it.label, x0 + 18*scale, legY);
+    x0 += 24*scale + ctx.measureText(it.label).width + 20*scale;
+  }
+
+  const t = (performance.now() - recStart)/1000;
+  const mm = String(Math.floor(t/60)).padStart(2,'0');
+  const ss = String(Math.floor(t%60)).padStart(2,'0');
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(5,7,11,.7)';
+  const tw = 70*scale, th = 26*scale, tx = W - 28*scale - tw, ty = 28*scale;
+  ctx.fillRect(tx, ty, tw, th);
+  ctx.strokeStyle = '#21262d';
+  ctx.strokeRect(tx, ty, tw, th);
+  ctx.fillStyle = '#8b949e';
+  ctx.font = `${14*scale}px 'JetBrains Mono', monospace`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${mm}:${ss}`, W - 28*scale - tw/2, ty + th/2);
+  ctx.textAlign = 'center';
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+  if (recRAF) { cancelAnimationFrame(recRAF); recRAF = null; }
+  recBtn.textContent = '● Enregistrer';
+  recBtn.classList.remove('recording');
+  recInfo.textContent = '';
+}
+recBtn.onclick = () => {
+  if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
+  else startRecording();
+};
+
+// ============================================================
+// UI
+// ============================================================
+const $ = id => document.getElementById(id);
+function syncUI() {
+  $('vx').textContent = state.x.toFixed(4);
+  $('vN').textContent = state.N;
+  $('vS').textContent = state.sweeps;
+  $('vPatchR').textContent = state.patchR.toFixed(2);
+  $('vCell').textContent = state.cellSize.toFixed(2);
+  $('vCol').textContent = state.colHeight.toFixed(1);
+  $('vd').textContent = state.d;
+  $('vel').textContent = state.el + '°';
+  $('vaz').textContent = state.az + '°';
+  $('vrot').textContent = state.rotSpeed.toFixed(2);
+}
+
+$('x').oninput = e => {
+  state.x = parseFloat(e.target.value); syncUI();
+  sampleHeight(faces, state.x, 15);
+  contour = buildContourEdges(faces);
+  render();
+};
+$('N').oninput = e => { state.N = +e.target.value; syncUI(); regenerate(); };
+$('S').oninput = e => { state.sweeps = +e.target.value; syncUI(); regenerate(); };
+$('patchShape').onchange = e => { state.patchShape = e.target.value; regenerate(); };
+$('patchR').oninput = e => { state.patchR = +e.target.value; syncUI(); regenerate(); };
+$('cellShape').onchange = e => { state.cellShape = e.target.value; render(); };
+$('cellSize').oninput = e => { state.cellSize = +e.target.value; syncUI(); regenerate(); };
+$('colHeight').oninput = e => { state.colHeight = +e.target.value; syncUI(); render(); };
+$('d').oninput = e => { state.d = +e.target.value; syncUI(); render(); };
+$('el').oninput = e => { state.el = +e.target.value; syncUI(); render(); };
+$('az').oninput = e => { state.az = +e.target.value; syncUI(); render(); };
+$('rotSpeed').oninput = e => { state.rotSpeed = +e.target.value; syncUI(); };
+$('regen').onclick = regenerate;
+$('toggleLoops').onclick = () => {
+  state.showLoops = !state.showLoops;
+  $('toggleLoops').textContent = 'Boucles : ' + (state.showLoops ? 'ON' : 'OFF');
+  render();
+};
+$('toggleEdges').onclick = () => {
+  state.showEdges = !state.showEdges;
+  $('toggleEdges').textContent = 'Arêtes : ' + (state.showEdges ? 'ON' : 'OFF');
+  render();
+};
+$('toggleRot').onclick = () => {
+  state.autoRot = !state.autoRot;
+  $('toggleRot').textContent = (state.autoRot ? '⏸' : '▶') + ' Rotation';
+};
+$('resetCam').onclick = () => {
+  state.d = 12; state.el = 35; state.az = 30;
+  $('d').value = 12; $('el').value = 35; $('az').value = 30;
+  syncUI(); render();
+};
+
+function bindColor(id, key) {
+  const el = $(id);
+  el.oninput = e => { state.colors[key] = e.target.value; render(); };
+}
+bindColor('colPos', 'pos');
+bindColor('colNeg', 'neg');
+bindColor('colEdge', 'edge');
+bindColor('colLoop', 'loop');
+bindColor('colBg1', 'bg1');
+bindColor('colBg2', 'bg2');
+$('bgType').onchange = e => { state.colors.bgType = e.target.value; render(); };
+
+let drag = null;
+canvas.addEventListener('pointerdown', e => {
+  drag = { x: e.clientX, y: e.clientY };
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag = { x: e.clientX, y: e.clientY };
+  state.az = (state.az + dx*0.5 + 360) % 360;
+  state.el = Math.max(10, Math.min(80, state.el + dy*0.4));
+  $('az').value = state.az; $('el').value = state.el;
+  syncUI(); render();
+});
+canvas.addEventListener('pointerup', () => { drag = null; });
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const dir = Math.sign(e.deltaY);
+  state.d = Math.max(1, Math.min(20, state.d - dir));
+  $('d').value = state.d;
+  syncUI(); render();
+}, { passive: false });
+
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') {
+    state.autoRot = !state.autoRot;
+    $('toggleRot').textContent = (state.autoRot ? '⏸' : '▶') + ' Rotation';
+    e.preventDefault();
+  }
+});
+
+window.addEventListener('resize', () => { resize(); render(); });
+document.getElementById('panel').addEventListener('transitionend', () => { resize(); render(); });
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (state.autoRot) {
+    state.az = (state.az + state.rotSpeed) % 360;
+    $('az').value = state.az;
+    $('vaz').textContent = Math.round(state.az) + '°';
+    render();
+  }
+}
+
+syncUI();
+regenerate();
+updateLegend();
+animate();
+</script>
+</body>
+</html>
