@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Hypersymplectic 4-manifold → Hyperkähler · Mode Cinéma</title>
+<title>Hypersymplectic 4-manifold → Hyperkähler · Storytelling & Cohomologie</title>
 <script type="importmap">
 { "imports": {
   "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -10,6 +10,9 @@
 }}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 <style>
   :root{
     --bg:#05070b; --panel:#0e131b; --panel2:#131a26; --ink:#e6edf3; --muted:#8b949e;
@@ -19,7 +22,6 @@
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden}
   body{min-height:100vh}
 
-  /* ===== MODE NORMAL ===== */
   #normalMode{max-width:1320px;margin:0 auto;padding:16px 14px 44px}
   header{text-align:center;margin-bottom:12px}
   h1{font-size:clamp(1rem,2.1vw,1.45rem);margin:0 0 4px;letter-spacing:.2px}
@@ -94,7 +96,6 @@
   .step-nav button:hover:not(:disabled){background:#22304a}
   .step-nav button:disabled{opacity:.35;cursor:not-allowed}
 
-  /* ===== BOUTON MODE CINÉMA ===== */
   #cinemaBtn{position:fixed;top:14px;right:14px;z-index:50;
     background:linear-gradient(135deg,#1f6feb,#58a6ff);color:#fff;border:none;
     padding:8px 16px;border-radius:22px;cursor:pointer;font-size:.78rem;font-weight:600;
@@ -104,66 +105,109 @@
   /* ===== MODE CINÉMA ===== */
   #cinemaMode{position:fixed;inset:0;background:#000;display:none;z-index:100;overflow:hidden}
   #cinemaMode.on{display:block}
-  #cinemaCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  
+  /* Canvas 3D : occupe l'espace à gauche du panneau droit */
+  #cinemaCanvas{position:absolute;top:0;left:0;bottom:0;width:calc(100% - 320px);height:100%;display:block}
 
-  /* Overlay pour halos lumineux "studio" */
   #cinemaMode .vignette{position:absolute;inset:0;pointer-events:none;
-    background:radial-gradient(circle at 50% 45%, transparent 30%, rgba(0,0,0,.6) 100%)}
+    background:radial-gradient(circle at 40% 45%, transparent 20%, rgba(0,0,0,.7) 100%)}
 
   /* Titre */
-  #cineTitle{position:absolute;top:6vh;left:50%;transform:translateX(-50%);
-    text-align:center;pointer-events:none;z-index:5}
-  #cineTitle h2{margin:0;font-size:clamp(1.2rem,3.2vw,2.4rem);font-weight:700;letter-spacing:.5px;
-    background:linear-gradient(135deg,#fff,#58a6ff);-webkit-background-clip:text;background-clip:text;
+  #cineTitle{position:absolute;top:4vh;left:calc(50% - 160px);transform:translateX(-50%);
+    text-align:center;pointer-events:none;z-index:5;width:100%;padding:0 60px}
+  #cineTitle h2{margin:0;font-family:'Times New Roman', Times, serif;
+    font-size:clamp(2.4rem,5.5vw,4.2rem);font-weight:400;letter-spacing:1px;
+    background:linear-gradient(135deg,#fff,#a0c4ff);-webkit-background-clip:text;background-clip:text;
     -webkit-text-fill-color:transparent;
     text-shadow:0 4px 30px rgba(88,166,255,.35)}
-  #cineTitle .step{color:var(--muted);font-size:.8rem;letter-spacing:3px;text-transform:uppercase;
-    margin-bottom:8px;opacity:.85}
+  #cineTitle .step{color:var(--muted);font-size:1rem;letter-spacing:5px;text-transform:uppercase;
+    margin-bottom:10px;opacity:.85; font-family:'Segoe UI', sans-serif;}
 
-  /* Formules en bas */
-  #cineFormula{position:absolute;bottom:5vh;left:50%;transform:translateX(-50%);
-    max-width:min(820px,88vw);text-align:center;pointer-events:none;z-index:5;
-    background:rgba(13,27,46,.55);backdrop-filter:blur(10px);
-    border:1px solid rgba(88,166,255,.25);border-radius:12px;
-    padding:12px 22px;font-family:'Cambria Math','Latin Modern Math',Georgia,serif;
-    font-size:clamp(.85rem,1.35vw,1.05rem);color:#dbe7f3;line-height:1.55;
-    box-shadow:0 8px 30px rgba(0,0,0,.5)}
-  #cineFormula .lbl{display:block;color:var(--accent);font-size:.7rem;letter-spacing:2px;
-    text-transform:uppercase;margin-bottom:6px;font-family:'Segoe UI',sans-serif;font-weight:600}
+  /* Équations juste sous le titre */
+  #cineFormula{position:absolute;top:16vh;left:calc(50% - 160px);transform:translateX(-50%);
+    max-width:min(900px,65vw);text-align:center;pointer-events:none;z-index:5;
+    background:transparent; border:none; padding:0;
+    font-size:clamp(1.2rem,2.2vw,1.8rem);color:#dbe7f3;line-height:1.5;
+    text-shadow:0 2px 10px rgba(0,0,0,.8)}
+  
+  .katex-display { margin: 0 !important; }
+  .katex { font-size: 1.4em; color: #dbe7f3; text-shadow: 0 2px 10px rgba(0,0,0,.8); }
 
-  /* Légendes latérales */
+  /* Description (Storytelling) TOUT EN BAS */
+  #cineDesc{position:absolute;bottom:3vh;left:calc(50% - 160px);transform:translateX(-50%);
+    max-width:min(900px,65vw);text-align:center;pointer-events:none;z-index:5;
+    color:#e6edf3;font-family:'Times New Roman', Times, serif;
+    font-size:clamp(1.2rem,1.8vw,1.5rem);line-height:1.5;
+    text-shadow:0 2px 12px rgba(0,0,0,.9);
+    background:rgba(5,7,11,0.7); padding:14px 28px; border-radius:12px; backdrop-filter:blur(4px);
+    border:1px solid rgba(88,166,255,0.1);}
+
+  /* Légendes latérales (Gauche et Droite) - Centrées verticalement */
   .side-legend{position:absolute;top:50%;transform:translateY(-50%);
-    width:min(220px,20vw);z-index:5;pointer-events:none;
-    font-size:.72rem;line-height:1.5}
-  #cineLeft{left:2.5vw}
-  #cineRight{right:2.5vw}
-  .side-legend h4{margin:0 0 8px;font-size:.72rem;color:var(--accent);
-    text-transform:uppercase;letter-spacing:2px;font-weight:600}
-  .side-legend ul{list-style:none;padding:0;margin:0}
-  .side-legend li{display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;
-    color:#c9d7e6;font-size:.72rem;line-height:1.4}
-  .side-legend li .dot{width:9px;height:9px;border-radius:2px;flex:none;margin-top:4px;
+    z-index:5;pointer-events:none;width:260px; display:flex; flex-direction:column; gap:16px;}
+  #cineLeft{left:2vw;}
+  #cineRight{right:calc(320px + 2vw);}
+
+  .cine-legend-col{background:rgba(13,19,27,.85);backdrop-filter:blur(10px);
+    border:1px solid rgba(88,166,255,.2);border-radius:12px;padding:14px 16px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.5);}
+  .cine-legend-col h4{margin:0 0 10px;font-size:.85rem;color:var(--accent);
+    text-transform:uppercase;letter-spacing:2px;font-weight:700;font-family:'Segoe UI',sans-serif;}
+  .cine-legend-col ul{list-style:none;padding:0;margin:0}
+  .cine-legend-col li{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;
+    color:#e6edf3;font-size:1rem;line-height:1.4;font-family:'Times New Roman', serif;}
+  .cine-legend-col li .dot{width:10px;height:10px;border-radius:2px;flex:none;margin-top:5px;
     box-shadow:0 0 8px currentColor}
-  .side-legend li .num{color:var(--muted);font-variant-numeric:tabular-nums;font-size:.66rem;
-    min-width:16px;font-family:'SF Mono',monospace}
 
-  /* Panneau paramètres gauche */
-  #cinePanel{position:absolute;top:14px;left:14px;z-index:5;
-    background:rgba(13,19,27,.72);backdrop-filter:blur(10px);
-    border:1px solid rgba(88,166,255,.2);border-radius:12px;
-    padding:12px 14px;min-width:190px;font-size:.72rem}
-  #cinePanel h5{margin:0 0 10px;font-size:.66rem;color:var(--accent);
-    text-transform:uppercase;letter-spacing:2px;font-weight:600}
+  /* Encart Cohomologie */
+  #cineCohomologyCard{display:none}
+  #cineCohomologyCard.on{display:block}
+  #cineCohomologyCanvas{width:100% !important;height:120px !important;display:block;
+    background:rgba(5,7,11,.5);border-radius:6px}
+  .cohom-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:.75rem;color:#c9d7e6}
+  .cohom-legend span{display:flex;align-items:center;gap:4px}
+  .cohom-legend i{width:8px;height:8px;border-radius:2px;display:inline-block}
+
+  /* Charts (au dessus de la description) */
+  #cineCharts{position:absolute;bottom:15vh;left:calc(50% - 160px);transform:translateX(-50%);
+    display:flex;gap:20px;z-index:5;pointer-events:none}
+  .cine-chart-card{background:rgba(13,19,27,.8);backdrop-filter:blur(10px);
+    border:1px solid rgba(88,166,255,.2);border-radius:12px;padding:12px 14px;
+    width:min(320px,28vw); box-shadow:0 10px 30px rgba(0,0,0,0.4);}
+  .cine-chart-card .tag{font-size:.75rem;color:var(--accent);text-transform:uppercase;
+    letter-spacing:1.5px;margin-bottom:8px;font-weight:700;text-align:center;font-family:'Segoe UI',sans-serif;}
+  .cine-chart-card canvas{height:120px !important;width:100% !important}
+
+  /* Panneau de droite */
+  #cinePanel{position:absolute;top:0;right:0;bottom:0;width:320px;z-index:6;
+    background:rgba(10,15,22,.95);backdrop-filter:blur(14px);
+    border-left:1px solid rgba(88,166,255,.2);
+    padding:20px 18px;overflow-y:auto;font-size:.8rem}
+  #cinePanel h5{margin:0 0 12px;font-size:.7rem;color:var(--accent);
+    text-transform:uppercase;letter-spacing:2px;font-weight:700}
   #cinePanel .row{display:flex;align-items:center;justify-content:space-between;
-    margin-bottom:8px;gap:8px;color:var(--muted)}
+    margin-bottom:10px;gap:8px;color:var(--muted)}
   #cinePanel .row span:first-child{flex:1}
-  #cinePanel .row span:last-child{color:var(--ink);font-family:'SF Mono',monospace;font-size:.7rem}
-  #cinePanel input[type=range]{width:100%;accent-color:#58a6ff;cursor:pointer}
-  #cinePanel .toggle{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--ink);margin-top:4px}
+  #cinePanel .row span:last-child{color:var(--ink);font-family:'SF Mono',monospace;font-size:.72rem}
+  #cinePanel input[type=range]{width:100%;accent-color:#58a6ff;cursor:pointer;margin-bottom:12px}
+  #cinePanel .toggle{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--ink);margin:8px 0}
   #cinePanel .toggle input{accent-color:#58a6ff;cursor:pointer}
+  #cinePanel hr{border:none;border-top:1px solid #1e2836;margin:16px 0}
+  #cinePanel button{width:100%;background:#1a2332;color:var(--ink);border:1px solid #2a3648;
+    padding:9px 12px;border-radius:8px;cursor:pointer;font-size:.8rem;margin-bottom:8px;
+    transition:.2s}
+  #cinePanel button:hover{background:#22304a}
+  #cinePanel button.rec{background:#5c1a1a;border-color:#ff6b6b;color:#ffb3b3}
+  #cinePanel button.rec.on{background:#ff6b6b;color:#fff;animation:pulse 1.2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+  #recStatus{font-size:.72rem;color:var(--muted);text-align:center;margin-top:6px}
 
-  /* Navigation cinéma */
-  #cineNav{position:absolute;bottom:2.5vh;right:2.5vw;z-index:5;display:flex;gap:8px}
+  /* Drapeaux Langue */
+  .lang-switch {display: flex; gap: 8px; margin-top: 10px; margin-bottom: 20px;}
+  .lang-btn {flex: 1; background: #1a2332; border: 1px solid #2a3648; color: var(--muted); padding: 6px; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: 0.2s;}
+  .lang-btn.active {background: var(--accent); color: #fff; border-color: transparent;}
+  
+  #cineNav{position:absolute;bottom:2.5vh;right:350px;z-index:7;display:flex;gap:8px}
   #cineNav button{background:rgba(13,19,27,.75);backdrop-filter:blur(8px);
     color:var(--ink);border:1px solid rgba(88,166,255,.3);
     width:42px;height:42px;border-radius:50%;cursor:pointer;font-size:1rem;
@@ -172,25 +216,29 @@
     transform:scale(1.08)}
   #cineNav button:disabled{opacity:.35;cursor:not-allowed}
 
-  /* Dots progression */
-  #cineDots{position:absolute;bottom:3.5vh;left:50%;transform:translateX(-50%);
-    display:flex;gap:6px;z-index:5}
-  #cineDots .d{width:6px;height:6px;border-radius:50%;background:rgba(139,148,158,.4);
+  #cineDots{position:absolute;bottom:1.5vh;left:calc(50% - 160px);transform:translateX(-50%);
+    display:flex;gap:8px;z-index:5}
+  #cineDots .d{width:8px;height:8px;border-radius:50%;background:rgba(139,148,158,.4);
     cursor:pointer;transition:.2s}
-  #cineDots .d.on{background:var(--accent);width:20px;border-radius:3px;
+  #cineDots .d.on{background:var(--accent);width:24px;border-radius:4px;
     box-shadow:0 0 10px var(--accent)}
 
-  /* Sortie */
-  #cineExit{position:absolute;top:14px;right:14px;z-index:6;
+  #cineExit{position:absolute;top:14px;right:334px;z-index:7;
     background:rgba(13,19,27,.75);backdrop-filter:blur(8px);
     color:var(--ink);border:1px solid rgba(255,107,107,.4);
-    padding:7px 14px;border-radius:20px;cursor:pointer;font-size:.74rem}
+    padding:7px 14px;border-radius:20px;cursor:pointer;font-size:.8rem}
   #cineExit:hover{background:rgba(255,107,107,.2)}
 
-  @media(max-width:800px){
-    .side-legend{display:none}
-    #cinePanel{min-width:auto;font-size:.66rem;padding:9px 10px}
-    #cineFormula{font-size:.72rem;padding:8px 14px;bottom:4vh}
+  @media(max-width:1200px){
+    .side-legend{width:220px;}
+  }
+  @media(max-width:900px){
+    #cinePanel{width:240px}
+    #cineTitle, #cineFormula, #cineDesc, #cineCharts, #cineDots { left: calc(50% - 120px); }
+    #cineNav, #cineExit { right: 254px; }
+    #cineRight { right: calc(240px + 2vw); }
+    .side-legend{ width: 180px; }
+    #cineCharts{flex-direction:column; bottom: 20vh;}
   }
 </style>
 </head>
@@ -199,8 +247,8 @@
 <!-- ============ MODE NORMAL ============ -->
 <div id="normalMode">
   <header>
-    <h1>Hypersymplectique → <em>Hyperkähler</em> · 11 scènes 3D</h1>
-    <p class="sub">Vue d'artiste corrigée (K3 plongée, morphing lisible) · transport parallèle par trièdres · zoom à pas fixes · <b>mode cinéma</b> disponible en haut à droite.</p>
+    <h1>Hypersymplectique → <em>Hyperkähler</em> · 10 scènes 3D</h1>
+    <p class="sub">Visualisation élégante du papier de recherche. Intégration de la cohomologie 2D. <b>Mode cinéma</b> disponible.</p>
   </header>
 
   <div class="acts" id="actsBar"></div>
@@ -245,9 +293,6 @@
         <button id="prevBtn" disabled>← précédent</button>
         <button id="nextBtn">suivant →</button>
       </div>
-      <p style="color:var(--muted);font-size:.63rem;margin:9px 0 0;line-height:1.5">
-        <span class="kbd">←</span>/<span class="kbd">→</span> naviguer · molette à pas fixes.
-      </p>
     </aside>
   </div>
 </div>
@@ -260,28 +305,47 @@
   <div class="vignette"></div>
 
   <div id="cineTitle">
-    <div class="step" id="cineStep">ACTE 1 / 11</div>
+    <div class="step" id="cineStep">ACTE 1 / 10</div>
     <h2 id="cineTitleText">Le décor hypersymplectique</h2>
   </div>
 
-  <div id="cinePanel">
-    <h5>Paramètres</h5>
-    <div class="row"><span>Rotation</span><span id="pRot">0.55</span></div>
-    <input type="range" id="pRotInput" min="0" max="2" step="0.05" value="0.55">
-    <div class="row"><span>Zoom</span><span id="pZoom">8.0</span></div>
-    <input type="range" id="pZoomInput" min="3" max="20" step="0.5" value="8">
-    <div class="row"><span>Halo</span><span id="pHalo">0.60</span></div>
-    <input type="range" id="pHaloInput" min="0" max="1" step="0.05" value="0.6">
-    <label class="toggle"><input type="checkbox" id="pAuto" checked> Auto-rotation</label>
-  </div>
-
-  <div class="side-legend" id="cineLeft"></div>
-  <div class="side-legend" id="cineRight"></div>
-
   <div id="cineFormula">
-    <span class="lbl" id="cineFormulaLbl">Formule · §1</span>
-    <div id="cineFormulaBody">ωᵢ ∧ ωⱼ = 2 Qᵢⱼ μ, det Q = 1</div>
+    <div id="cineFormulaBody"></div>
   </div>
+
+  <!-- Légendes latérales -->
+  <div class="side-legend" id="cineLeft"></div>
+  
+  <div class="side-legend" id="cineRight">
+    <!-- Encart Cohomologie -->
+    <div class="cine-legend-col" id="cineCohomologyCard">
+      <h4>Cohomologie · Heatmap</h4>
+      <canvas id="cineCohomologyCanvas" width="300" height="110"></canvas>
+      <div class="cohom-legend">
+        <span><i style="background:#ff6b6b"></i>[A]</span>
+        <span><i style="background:#4ecdc4"></i>[C]</span>
+        <span><i style="background:#ffaa00"></i>[D_ε]</span>
+        <span><i style="background:#00ccff"></i>[B]</span>
+        <span><i style="background:#ffffff"></i>F</span>
+      </div>
+    </div>
+    <!-- Les invariants -->
+    <div id="cineRightContent"></div>
+  </div>
+
+  <div id="cineCharts">
+    <div class="cine-chart-card">
+      <div class="tag">Profil des invariants</div>
+      <canvas id="cineChart1"></canvas>
+    </div>
+    <div class="cine-chart-card">
+      <div class="tag">Radar des dimensions</div>
+      <canvas id="cineChart2"></canvas>
+    </div>
+  </div>
+
+  <!-- Description -->
+  <div id="cineDesc"></div>
 
   <div id="cineDots"></div>
 
@@ -291,15 +355,34 @@
   </div>
 
   <button id="cineExit">✕ Quitter</button>
+
+  <div id="cinePanel">
+    <div class="lang-switch">
+      <button class="lang-btn active" id="langFr" title="Français">🇫🇷</button>
+      <button class="lang-btn" id="langEn" title="English">🇬🇧</button>
+    </div>
+
+    <h5>Paramètres</h5>
+    <div class="row"><span>Rotation</span><span id="pRot">0.55</span></div>
+    <input type="range" id="pRotInput" min="0" max="2" step="0.05" value="0.55">
+    <div class="row"><span>Zoom</span><span id="pZoom">8.0</span></div>
+    <input type="range" id="pZoomInput" min="3" max="22" step="0.5" value="8">
+    <div class="row"><span>Halo</span><span id="pHalo">0.60</span></div>
+    <input type="range" id="pHaloInput" min="0" max="1" step="0.05" value="0.6">
+    <label class="toggle"><input type="checkbox" id="pAuto" checked> Auto-rotation</label>
+
+    <hr>
+    <h5>Enregistrement vidéo</h5>
+    <button id="recBtn" class="rec">⏺ Démarrer l'enregistrement</button>
+    <button id="recStopBtn" style="display:none;">⏹ Arrêter & télécharger</button>
+    <div id="recStatus">Prêt</div>
+  </div>
 </div>
 
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-/* ============================================================
-   DONNÉES DES 11 ACTES
-   ============================================================ */
 const AXES = [
   {key:'fermeture',  label:'Fermeture',    color:'#5b8def'},
   {key:'positivite', label:'Positivité',   color:'#4ecdc4'},
@@ -309,121 +392,101 @@ const AXES = [
   {key:'hyper',      label:'Hyperkähler',  color:'#a78bfa'}
 ];
 
+// Données des actes avec traduction FR/EN
 const ACTS = [
-  {id:1, title:'Le décor hypersymplectique', subtitle:'Triple fermé, positif, normalisé',
+  {id:1, title:'Le décor hypersymplectique', titleEn:'The Hypersymplectic Setup', subtitle:'Triple fermé, positif, normalisé',
    ref:'§1 · Théorème 1.1',
    lead:'X⁴ close, connexe, orientée. Triple ω=(ω₁,ω₂,ω₃) fermé, span pointwise positif. <b>Rien n\'est encore parallèle.</b>',
-   thm:'Théorème 1.1 — ω(t), 0≤t≤1, à classes fixées, ωᵢ(1)∧ωⱼ(1)=2δᵢⱼμ₁.',
-   formula:'ωᵢ ∧ ωⱼ = 2 Qᵢⱼ μ, det Q = 1',
-   formulaLbl:'Normalisation · §1',
+   leadEn:'X⁴ closed, connected, oriented. Triple ω=(ω₁,ω₂,ω₃) closed, pointwise positive span. <b>Nothing is parallel yet.</b>',
+   formula:'\\omega_i \\wedge \\omega_j = 2 Q_{ij} \\mu, \\quad \\det Q = 1',
    leftLegend:[['#ff6b6b','ω₁ — première 2-forme'],['#4ecdc4','ω₂ — deuxième 2-forme'],['#ffe66d','ω₃ — troisième 2-forme']],
    rightLegend:[['#8b949e','X⁴ close orientée'],['#ffffff','span positif défini'],['#58a6ff','∫ωᵢ∧ωⱼ = δᵢⱼ']],
-   profile:[1.0,1.0,1.0,0.10,0.10,0.10], zoom:{min:4, max:16}},
+   profile:[1.0,1.0,1.0,0.10,0.10,0.10], zoom:{min:4, max:16}, cohomology:false},
 
-  {id:2, title:'Plan de base & sphère de coefficients', subtitle:'J_v, degré ±1',
+  {id:2, title:'Plan de base & sphère de coefficients', titleEn:'Base Plane & Coefficient Sphere', subtitle:'J_v, degré ±1',
    ref:'§2 · Lemmes 2.2, 2.4',
    lead:'(A,C) défini → J bien défini à signe près. Sphère v∈S², J_v lisse, degré |1|.',
-   thm:'Lemme 2.4 — J_v hermitien, degré absolu 1.',
-   formula:'v ↦ K⁻¹v / |K⁻¹v|  ∈ S²   (deg = ±1)',
-   formulaLbl:'Sphère de coefficients · Lemme 2.4',
+   leadEn:'(A,C) definite → J well-defined up to sign. Sphere v∈S², J_v smooth, degree |1|.',
+   formula:'v \\mapsto K^{-1}v / |K^{-1}v| \\in S^2 \\quad (\\deg = \\pm 1)',
    leftLegend:[['#ffe66d','v ∈ S² — direction'],['#ff6b6b','K⁻¹v — normale twistor'],['#58a6ff','J_v — structure presque complexe']],
    rightLegend:[['#4ecdc4','plan anti-invariant = span(A,C)'],['#8b949e','fibré canonique trivial'],['#ffffff','B taming J_v']],
-   profile:[1.0,1.0,1.0,0.20,0.20,0.30], zoom:{min:4, max:14}},
+   profile:[1.0,1.0,1.0,0.20,0.20,0.30], zoom:{min:4, max:14}, cohomology:false},
 
-  {id:3, title:'Courants positifs & énergie angulaire', subtitle:'Séparation, masse, lift',
+  {id:3, title:'Courants positifs & énergie angulaire', titleEn:'Positive Currents & Angular Energy', subtitle:'Séparation, masse, lift',
    ref:'§3 · Thm 3.1, 3.4, 3.8',
-   lead:'Courant N positif, lift fermé D, T=N+Q annihile toute forme fermée.',
-   thm:'Thm 3.4 — masse quadratique μ(B_s)≤Cs². Thm 3.8 — énergie angulaire ≤Cs⁴.',
-   formula:'μ(B_s(p)) ≤ C s²      ∫∫ |ℓ − τm|² ≤ C s⁴',
-   formulaLbl:'Masse & énergie · §3',
+   lead:'Courant N positif, lift fermé D, T=N+Q annihile toute forme fermée. <b>Cohomologie : [A],[C],[D] vs [B]</b> dans V.',
+   leadEn:'Positive current N, closed lift D, T=N+Q annihilates any closed form. <b>Cohomology: [A],[C],[D] vs [B]</b> in V.',
+   formula:'\\mu(B_s(p)) \\leq C s^2 \\quad \\iint |\\ell - \\tau m|^2 \\leq C s^4',
    leftLegend:[['#ff9f43','N — courant positif'],['#58a6ff','Q — anti-invariant'],['#4ecdc4','D — lift fermé']],
    rightLegend:[['#8b949e','B_s(p) — boule'],['#ffffff','τ — transport parallèle'],['#ffe66d','ℓ, m — lignes complexes']],
-   profile:[1.0,1.0,1.0,0.45,0.30,0.40], zoom:{min:4, max:14}},
+   profile:[1.0,1.0,1.0,0.45,0.30,0.40], zoom:{min:4, max:14}, cohomology:true},
 
-  {id:4, title:'Densité & critère de classe apprivoisée', subtitle:'θ(p), rectifiabilité',
+  {id:4, title:'Densité & critère de classe apprivoisée', titleEn:'Density & Tamed Class Criterion', subtitle:'θ(p), rectifiabilité',
    ref:'§4 · Thm 4.1, 4.2',
-   lead:'Densité θ(p), rectifiabilité de Preiss, courbes J-holomorphes par Rivière–Tian.',
-   thm:'Thm 4.2 — critère de courbe : H·d>0 pour toute courbe ⇒ H contient un taming.',
-   formula:'θ(p) = lim_{s↓0} s⁻² μ(B_s(p))      H·d > 0  ∀ courbe',
-   formulaLbl:'Densité & critère · §4',
+   lead:'Densité θ(p), rectifiabilité de Preiss, courbes J-holomorphes. <b>Cohomologie : θ>0 (orange) vs θ=0 (cyan)</b>.',
+   leadEn:'Density θ(p), Preiss rectifiability, J-holomorphic curves. <b>Cohomology: θ>0 (orange) vs θ=0 (cyan)</b>.',
+   formula:'\\theta(p) = \\lim_{s \\downarrow 0} s^{-2} \\mu(B_s(p)) \\quad H \\cdot d > 0 \\; \\forall \\text{ courbe}',
    leftLegend:[['#58a6ff','θ faible'],['#ff4d4d','θ fort / courbes'],['#ffffff','support θ>0']],
    rightLegend:[['#8b949e','partie diffuse θ=0'],['#ffe66d','courbes intégrales'],['#4ecdc4','critère H·d>0']],
-   profile:[1.0,1.0,1.0,0.55,0.55,0.50], zoom:{min:4, max:14}},
+   profile:[1.0,1.0,1.0,0.55,0.55,0.50], zoom:{min:4, max:14}, cohomology:true},
 
-  {id:5, title:'Courbes par un point & chambre uniforme', subtitle:'F²=0, pas de splitting',
+  {id:5, title:'Courbes par un point & chambre uniforme', titleEn:'Curves Through a Point & Uniform Chamber', subtitle:'F²=0, pas de splitting',
    ref:'§5–6 · Thm 5.1, 6.1, 6.3',
-   lead:'Sphère de coefficients → famille marquée de courbes J_v de classe F (F²=0).',
-   thm:'Thm 6.3 — pas de splitting : tore ou rationnelle nodale.',
-   formula:'F² = 0,   [F] ∈ Λ,   v = F⁺ / |F⁺|',
-   formulaLbl:'Classe nulle · §5-6',
+   lead:'Sphère de coefficients → famille marquée de courbes J_v de classe F (F²=0). <b>Cohomologie : [B] vs F⁺</b>.',
+   leadEn:'Coefficient sphere → marked family of J_v curves of class F (F²=0). <b>Cohomology: [B] vs F⁺</b>.',
+   formula:'F^2 = 0, \\quad [F] \\in \\Lambda, \\quad v = \\frac{F^+}{|F^+|}',
    leftLegend:[['#ffffff','point marqué p'],['#58a6ff','F⁺ — projection'],['#ff6b6b','famille de courbes']],
    rightLegend:[['#4ecdc4','courbe irréductible'],['#ffe66d','tore ou rationnelle'],['#a78bfa','chambre uniforme']],
-   profile:[1.0,1.0,1.0,0.65,0.85,0.65], zoom:{min:4, max:16}},
+   profile:[1.0,1.0,1.0,0.65,0.85,0.65], zoom:{min:4, max:16}, cohomology:true},
 
-  {id:6, title:'Pinceau de tores à nœuds ordinaires', subtitle:'p_X : X → S',
+  {id:6, title:'Pinceau de tores à nœuds ordinaires', titleEn:'Torus Pencil with Ordinary Nodes', subtitle:'p_X : X → S',
    ref:'§7 · Thm 7.1',
-   lead:'Fibration p_X:X→S, fibres tores régulières, rationnelles nodales.',
-   thm:'Thm 7.1 — pinceau de tores, nœuds = double point transverse.',
-   formula:'p_X : X → S,   fibres = T² ou ℙ¹(nœud)',
-   formulaLbl:'Pinceau · §7',
+   lead:'Fibration p_X:X→S, fibres tores régulières, rationnelles nodales. <b>Cohomologie : [A]·F = [C]·F = 0, [B]·F > 0</b>.',
+   leadEn:'Fibration p_X:X→S, regular torus fibers, nodal rational fibers. <b>Cohomology: [A]·F = [C]·F = 0, [B]·F > 0</b>.',
+   formula:'p_X : X \\to S, \\quad \\text{fibres} = T^2 \\text{ ou } \\mathbb{P}^1(\\text{nœud})',
    leftLegend:[['#4ecdc4','fibre T² régulière'],['#ff4d4d','nœud'],['#ffe66d','branche nodale']],
    rightLegend:[['#1e2a3d','base S close orientée'],['#ffffff','p_X propre'],['#8b949e','fibres Lagrangiennes']],
-   profile:[1.0,1.0,1.0,0.80,0.90,0.75], zoom:{min:4, max:14}},
+   profile:[1.0,1.0,1.0,0.80,0.90,0.75], zoom:{min:4, max:14}, cohomology:true},
 
-  {id:7, title:'Modèle nodal qui s\'effondre', subtitle:'Gibbons–Hawking périodique',
+  {id:7, title:'Modèle nodal qui s\'effondre', titleEn:'Collapsing Nodal Model', subtitle:'Gibbons–Hawking périodique',
    ref:'§8 · Thm 8.1',
-   lead:'p:Y→Δ holomorphe, nœud ordinaire, Σ=h ds∧dz, D_ε aire ε.',
-   thm:'Thm 8.1 — D_ε∧ReΣ=D_ε∧ImΣ=0, D_ε²=(ReΣ)², ∫fibre=ε.',
-   formula:'D_ε ∧ ReΣ = D_ε ∧ ImΣ = 0,   D_ε² = (ReΣ)²,   ∫_fibre D_ε = ε',
-   formulaLbl:'Modèle nodal · §8',
+   lead:'p:Y→Δ holomorphe, nœud ordinaire, Σ=h ds∧dz, D_ε aire ε. <b>Pas de cohomologie globale ici</b> (modèle local).',
+   leadEn:'Holomorphic p:Y→Δ, ordinary node, Σ=h ds∧dz, D_ε area ε. <b>No global cohomology here</b> (local model).',
+   formula:'D_\\epsilon \\wedge \\Re\\Sigma = D_\\epsilon \\wedge \\Im\\Sigma = 0, \\quad D_\\epsilon^2 = (\\Re\\Sigma)^2, \\quad \\int_{\\text{fibre}} D_\\epsilon = \\epsilon',
    leftLegend:[['#4ecdc4','fibre régulière'],['#ff4d4d','proche du nœud'],['#ffffff','nœud ordinaire']],
    rightLegend:[['#58a6ff','D_ε — Kähler'],['#ffe66d','branche'],['#8b949e','axe s']],
-   profile:[1.0,1.0,1.0,0.85,0.90,0.85], zoom:{min:4, max:14}},
+   profile:[1.0,1.0,1.0,0.85,0.90,0.85], zoom:{min:4, max:14}, cohomology:false},
 
-  {id:8, title:'Préparer les fibres régulières', subtitle:'Moyenne invariante, Ψ',
+  {id:8, title:'Préparer les fibres régulières', titleEn:'Preparing Regular Fibers', subtitle:'Moyenne invariante, Ψ',
    ref:'§9 · Thm 9.1',
-   lead:'Moyenne sur les tores, invariant à classes fixées.',
-   thm:'Thm 9.1 — Ψ fermée invariante, ∫fibre Ψ=1, Ψ∧A=Ψ∧C=0.',
-   formula:'∫_fibre Ψ = 1,   Ψ ∧ A = Ψ ∧ C = 0',
-   formulaLbl:'Préparation · §9',
+   lead:'Moyenne sur les tores, invariant à classes fixées. <b>Pas de nouvelle cohomologie</b> (préparation locale).',
+   leadEn:'Averaging on tori, invariant with fixed classes. <b>No new cohomology</b> (local preparation).',
+   formula:'\\int_{\\text{fibre}} \\Psi = 1, \\quad \\Psi \\wedge A = \\Psi \\wedge C = 0',
    leftLegend:[['#4ecdc4','tore régulier'],['#ffe66d','orbites de translation'],['#58a6ff','Ψ = da∧db']],
    rightLegend:[['#ff6b6b','A — invariant'],['#4ecdc4','C — invariant'],['#ffffff','moyenne Av']],
-   profile:[1.0,1.0,1.0,0.92,0.92,0.92], zoom:{min:4, max:14}},
+   profile:[1.0,1.0,1.0,0.92,0.92,0.92], zoom:{min:4, max:14}, cohomology:false},
 
-  {id:9, title:'Solution auxiliaire à volume prescrit', subtitle:'D_ε² = A²',
+  {id:9, title:'Solution auxiliaire à volume prescrit', titleEn:'Auxiliary Prescribed-Volume Solution', subtitle:'D_ε² = A²',
    ref:'§10 · Thm 10.1, 10.2',
-   lead:'Recollement + modèle, correction exacte, erreur exponentielle.',
-   thm:'Thm 10.2 — un seul ε rend [D_ε]·d>0 ⇒ [B]·d>0.',
-   formula:'[D_ε] = λ_ε F + ε u_ε,   D_ε² = A²',
-   formulaLbl:'Volume auxiliaire · §10',
+   lead:'Recollement + modèle, correction exacte. <b>Cohomologie : [D_ε]=λ_ε F + εu_ε vs [B]</b>, même composante de cône.',
+   leadEn:'Gluing + model, exact correction. <b>Cohomology: [D_ε]=λ_ε F + εu_ε vs [B]</b>, same cone component.',
+   formula:'[D_\\epsilon] = \\lambda_\\epsilon F + \\epsilon u_\\epsilon, \\quad D_\\epsilon^2 = A^2',
    leftLegend:[['#ff6b6b','A² volume'],['#4ecdc4','D_ε² volume'],['#58a6ff','fibres ε']],
    rightLegend:[['#ffe66d','λ_ε F'],['#a78bfa','ε u_ε'],['#ffffff','même composante']],
-   profile:[1.0,1.0,1.0,0.97,0.97,0.95], zoom:{min:4, max:14}},
+   profile:[1.0,1.0,1.0,0.97,0.97,0.95], zoom:{min:4, max:14}, cohomology:true},
 
-  {id:10, title:'Endpoint hyperkähler', subtitle:'Deux étapes kählériennes',
+  {id:10, title:'Endpoint hyperkähler', titleEn:'Hyperkähler Endpoint', subtitle:'Deux étapes kählériennes',
    ref:'§11 · Thm 1.1, Cor. 1.3',
-   lead:'A±iD intégrable, C taming ⇒ Kählérien. Yau ⇒ C₁. Puis seconde étape dans [B] ⇒ B₁.',
-   thm:'Thm 1.1 — démonstration. Cor. 1.3 — X≅K3 ou T⁴.',
-   formula:'I² = J² = K² = IJK = −1,   X ≅ K3 ou T⁴',
-   formulaLbl:'Endpoint · §11',
+   lead:'A±iD intégrable, C taming ⇒ Kählérien. Yau ⇒ C₁. Puis seconde étape dans [B] ⇒ B₁. <b>Cohomologie finale : les 3 classes deviennent parallèles</b>.',
+   leadEn:'A±iD integrable, C taming ⇒ Kähler. Yau ⇒ C₁. Then second step in [B] ⇒ B₁. <b>Final cohomology: the 3 classes become parallel</b>.',
+   formula:'I^2 = J^2 = K^2 = IJK = -1, \\quad X \\cong K3 \\text{ ou } T^4',
    leftLegend:[['#ff6b6b','I'],['#4ecdc4','J'],['#ffe66d','K']],
    rightLegend:[['#a78bfa','K3 ou T⁴'],['#ffffff','triple parallèle'],['#58a6ff','self-duel']],
-   profile:[1.0,1.0,1.0,1.0,1.0,1.0], zoom:{min:4, max:18}},
-
-  {id:11, title:'Vue d\'artiste · 4-variété → hyperkähler', subtitle:'Morphing + transport parallèle',
-   ref:'§11 · Synthèse',
-   lead:'<b>Morphing continu</b> entre la 4-variété K3 plongée et la triade hyperkähler (I,J,K). <b>Transport parallèle</b> visible : les trièdres glissent le long de la géodésique sans tourner (∇=0).',
-   thm:'Synthèse — triple (A,C₁,B₁) parallèle self-duel. ∇ω = 0.',
-   formula:'∇ωᵢ = 0   ⟺   ωᵢ parallèle self-duel   ⟺   métrique hyperkähler',
-   formulaLbl:'Vue d\'artiste · synthèse',
-   leftLegend:[['#4ecdc4','4-variété K3 (T²×T²)'],['#ff6b6b','I'],['#4ecdc4','J'],['#ffe66d','K']],
-   rightLegend:[['#ff9f43','trièdre transporté'],['#58a6ff','géodésique'],['#ffffff','marqueur ∇=0']],
-   profile:[1.0,1.0,1.0,1.0,1.0,1.0], zoom:{min:5, max:22}}
+   profile:[1.0,1.0,1.0,1.0,1.0,1.0], zoom:{min:4, max:18}, cohomology:false}
 ];
 
-/* ============================================================
-   SCÈNE THREE.JS — un seul renderer, deux caméras
-   ============================================================ */
+let currentLang = 'fr';
+
 const canvas = document.getElementById('scene');
 const sceneWrap = document.getElementById('sceneWrap');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, preserveDrawingBuffer:true});
@@ -445,12 +508,10 @@ controls.dampingFactor = 0.08;
 controls.rotateSpeed = 0.7;
 controls.autoRotate = true;
 controls.autoRotateSpeed = 0.5;
-// ZOOM À PAS FIXES
-controls.enableZoom = false;  // on gère manuellement
+controls.enableZoom = false;
 controls.minDistance = 4;
 controls.maxDistance = 18;
 
-/* Éclairage studio (halo + reflets) */
 scene.add(new THREE.AmbientLight(0x8899aa, 0.35));
 const keyLight = new THREE.DirectionalLight(0xffffff, 1.15);
 keyLight.position.set(6, 10, 5);
@@ -477,7 +538,6 @@ const haloLight = new THREE.PointLight(0xa78bfa, 0.65, 30);
 haloLight.position.set(0, 6, 0);
 scene.add(haloLight);
 
-/* Sol subtil pour les reflets */
 const ground = new THREE.Mesh(
   new THREE.CircleGeometry(30, 64),
   new THREE.MeshStandardMaterial({color:0x0a0f16, metalness:0.4, roughness:0.9, transparent:true, opacity:0.6})
@@ -491,9 +551,6 @@ const gridHelper = new THREE.GridHelper(20, 40, 0x1b2738, 0x0d1622);
 gridHelper.position.y = -3.19;
 scene.add(gridHelper);
 
-/* ============================================================
-   ZOOM À PAS FIXES
-   ============================================================ */
 const ZOOM_STEP = 0.8;
 function dollyIn(){
   const dir = camera.position.clone().sub(controls.target);
@@ -520,7 +577,6 @@ function updateZoomBadge(){
 }
 controls.addEventListener('change', updateZoomBadge);
 
-/* Resize normal */
 function resizeRenderer(){
   const w = sceneWrap.clientWidth, h = sceneWrap.clientHeight;
   renderer.setSize(w, h, false);
@@ -531,10 +587,8 @@ window.addEventListener('resize', ()=>{
   if(document.getElementById('cinemaMode').classList.contains('on')) resizeCinema();
 });
 
-/* boucle */
 let currentGroup = null;
 let tickFns = [];
-let morphState = {v:0, dir:1, paused:false, speed:1};
 
 function animate(){
   requestAnimationFrame(animate);
@@ -546,7 +600,6 @@ function animate(){
 resizeRenderer();
 animate();
 
-/* helpers */
 function disposeGroup(g){
   g.traverse(o=>{
     if(o.geometry) o.geometry.dispose();
@@ -559,7 +612,6 @@ function disposeGroup(g){
 }
 function makeGroup(){ const g = new THREE.Group(); scene.add(g); return g; }
 
-/* applique le zoom par acte */
 function applyZoom(z){
   controls.minDistance = z.min;
   controls.maxDistance = z.max;
@@ -571,10 +623,8 @@ function applyZoom(z){
 }
 
 /* ============================================================
-   SCÈNES
+   SCÈNES 3D
    ============================================================ */
-
-/* 1 — triple hypersymplectique */
 function sceneAct1(){
   const g = makeGroup();
   const colors = [0xff6b6b, 0x4ecdc4, 0xffe66d];
@@ -601,12 +651,10 @@ function sceneAct1(){
   );
   core.castShadow = true;
   g.add(core);
-
   return {group:g, hud:'ω₁,ω₂,ω₃ — 2-formes fermées, span positif',
     legend:[['#ff6b6b','ω₁'],['#4ecdc4','ω₂'],['#ffe66d','ω₃']], controls:[]};
 }
 
-/* 2 — sphère + sélecteur de plan */
 function sceneAct2(){
   const g = makeGroup();
   const sphere = new THREE.Mesh(
@@ -687,7 +735,6 @@ function sceneAct2(){
     ]};
 }
 
-/* 3 — courants positifs */
 function sceneAct3(){
   const g = makeGroup();
   const N = 240;
@@ -722,10 +769,8 @@ function sceneAct3(){
   for(let i=0;i<28;i++){
     const p = new THREE.Vector3(posN[i*3]*0.7,posN[i*3+1]*0.7,posN[i*3+2]*0.7);
     const ar = new THREE.ArrowHelper(dirs[i].clone().multiplyScalar(0.6), p, 0.5, 0x4ecdc4, 0.18, 0.11);
-    ar.line.material.transparent = true;
-    ar.line.material.opacity = 0.85;
-    ar.cone.material.transparent = true;
-    ar.cone.material.opacity = 0.85;
+    ar.line.material.transparent = true; ar.line.material.opacity = 0.85;
+    ar.cone.material.transparent = true; ar.cone.material.opacity = 0.85;
     dGroup.add(ar);
   }
   g.add(dGroup);
@@ -742,7 +787,6 @@ function sceneAct3(){
     legend:[['#ff9f43','N (positif)'],['#58a6ff','Q (anti-invariant)'],['#4ecdc4','lift D']], controls:[]};
 }
 
-/* 4 — densité */
 function sceneAct4(){
   const g = makeGroup();
   const N = 1400;
@@ -811,7 +855,6 @@ function sceneAct4(){
     legend:[['#58a6ff','θ faible'],['#ff4d4d','θ fort / courbes'],['#ffffff','support θ>0']], controls:[]};
 }
 
-/* 5 — courbes par un point */
 function sceneAct5(){
   const g = makeGroup();
   g.add(new THREE.Mesh(
@@ -854,7 +897,6 @@ function sceneAct5(){
     legend:[['#ffffff','point'],['#58a6ff','F⁺'],['#ff6b6b','famille']], controls:[]};
 }
 
-/* 6 — pinceau */
 function sceneAct6(){
   const g = makeGroup();
   const base = new THREE.Mesh(
@@ -909,7 +951,6 @@ function sceneAct6(){
     legend:[['#4ecdc4','fibres tores'],['#ff4d4d','nœud'],['#ffe66d','branche nodale']], controls:[]};
 }
 
-/* 7 — modèle qui s'effondre */
 function sceneAct7(){
   const g = makeGroup();
   const disk = new THREE.Mesh(
@@ -964,7 +1005,6 @@ function sceneAct7(){
     legend:[['#4ecdc4','fibre régulière'],['#ff4d4d','proche nœud'],['#ffffff','nœud']], controls:[]};
 }
 
-/* 8 — préparation invariante */
 function sceneAct8(){
   const g = makeGroup();
   const mainTorus = new THREE.Mesh(
@@ -1009,7 +1049,6 @@ function sceneAct8(){
     legend:[['#4ecdc4','tore'],['#ffe66d','orbites'],['#58a6ff','Ψ']], controls:[]};
 }
 
-/* 9 — volume auxiliaire */
 function sceneAct9(){
   const g = makeGroup();
   const aVol = new THREE.Mesh(
@@ -1049,7 +1088,6 @@ function sceneAct9(){
     legend:[['#ff6b6b','A²'],['#4ecdc4','D_ε²'],['#58a6ff','fibres ε']], controls:[]};
 }
 
-/* 10 — endpoint hyperkähler */
 function sceneAct10(){
   const g = makeGroup();
   const colors = [0xff6b6b, 0x4ecdc4, 0xffe66d];
@@ -1088,231 +1126,140 @@ function sceneAct10(){
     legend:[['#ff6b6b','I'],['#4ecdc4','J'],['#ffe66d','K'],['#a78bfa','K3/T⁴']], controls:[]};
 }
 
-/* 11 — VUE D'ARTISTE corrigée : 4-variété K3 plongée → triade hyperkähler, transport parallèle par trièdres */
-function sceneAct11(){
-  const g = makeGroup();
-
-  /* --- 4-variété : K3 plongée = T²×T² projetée, plus sobre qu'un torus knot --- */
-  // On utilise une surface de Kummer stylisée : tore à 4 "bosses" via déplacement radial sinusoïdal
-  const manifoldGroup = new THREE.Group();
-  const U = 120, V = 60;
-  const geo = new THREE.BufferGeometry();
-  const verts = [], indices = [], normals = [];
-  const R = 2.2, r = 0.75;
-  for(let i=0;i<=U;i++){
-    for(let j=0;j<=V;j++){
-      const u = (i/U)*Math.PI*2;
-      const v = (j/V)*Math.PI*2;
-      // tore 4D projeté : (R+r cos v) cos u, (R+r cos v) sin u, r sin v * cos(2u) — signature K3
-      const x = (R + r*Math.cos(v))*Math.cos(u);
-      const y = (R + r*Math.cos(v))*Math.sin(u);
-      const z = r*Math.sin(v)*Math.cos(2*u)*0.7;
-      verts.push(x,y,z);
-    }
-  }
-  for(let i=0;i<U;i++){
-    for(let j=0;j<V;j++){
-      const a = i*(V+1)+j;
-      const b = a+1;
-      const c = a+(V+1);
-      const d = c+1;
-      indices.push(a,c,b, b,c,d);
-    }
-  }
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
-  geo.setIndex(indices);
-  geo.computeVertexNormals();
-
-  const manifold = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({
-    color:0x4ecdc4, metalness:0.7, roughness:0.25,
-    emissive:0x2a7f78, emissiveIntensity:0.4,
-    clearcoat:1, clearcoatRoughness:0.15, transparent:true, opacity:1.0
-  }));
-  manifold.castShadow = true;
-  manifold.receiveShadow = true;
-  manifoldGroup.add(manifold);
-
-  const manifoldWire = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-    color:0xe6edf3, wireframe:true, transparent:true, opacity:0.06
-  }));
-  manifoldGroup.add(manifoldWire);
-  g.add(manifoldGroup);
-
-  /* --- triade hyperkähler I,J,K (sphères self-duelles) --- */
-  const hkGroup = new THREE.Group();
-  [0xff6b6b, 0x4ecdc4, 0xffe66d].forEach((c,i)=>{
-    const s = new THREE.Mesh(
-      new THREE.SphereGeometry(1.6 + i*0.35, 40, 28),
-      new THREE.MeshPhysicalMaterial({color:c, transparent:true, opacity:0.0,
-        metalness:0.2, roughness:0.15, transmission:0.7, thickness:0.5, clearcoat:1})
-    );
-    hkGroup.add(s);
-  });
-  g.add(hkGroup);
-
-  /* --- axes I,J,K (apparaissent au morphing) --- */
-  const axesGroup = new THREE.Group();
-  [[new THREE.Vector3(1,0,0),0xff6b6b],[new THREE.Vector3(0,1,0),0x4ecdc4],[new THREE.Vector3(0,0,1),0xffe66d]]
-  .forEach(([dir,col])=>{
-    const a1 = new THREE.ArrowHelper(dir, new THREE.Vector3(0,0,0), 2.6, col, 0.3, 0.15);
-    const a2 = new THREE.ArrowHelper(dir.clone().negate(), new THREE.Vector3(0,0,0), 2.6, col, 0.3, 0.15);
-    [a1,a2].forEach(a=>{
-      a.line.material.transparent = true; a.line.material.opacity = 0;
-      a.cone.material.transparent = true; a.cone.material.opacity = 0;
-    });
-    axesGroup.add(a1); axesGroup.add(a2);
-  });
-  g.add(axesGroup);
-
-  /* --- géodésique fermée sur la 4-variété --- */
-  const geoPts = [];
-  const NG = 400;
-  for(let i=0;i<NG;i++){
-    const u = (i/NG) * Math.PI * 2;
-    const v = (i/NG) * Math.PI * 2 * 3; // 3 tours
-    const x = (R + r*Math.cos(v))*Math.cos(u);
-    const y = (R + r*Math.cos(v))*Math.sin(u);
-    const z = r*Math.sin(v)*Math.cos(2*u)*0.7;
-    geoPts.push(new THREE.Vector3(x,y,z));
-  }
-  const geoCurve = new THREE.CatmullRomCurve3(geoPts, true);
-  const geoTorus = new THREE.Mesh(
-    new THREE.TubeGeometry(geoCurve, 500, 0.03, 8, true),
-    new THREE.MeshBasicMaterial({color:0x58a6ff, transparent:true, opacity:0.85})
-  );
-  g.add(geoTorus);
-
-  // marqueur
-  const traveler = new THREE.Mesh(
-    new THREE.SphereGeometry(0.12, 20, 14),
-    new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xffffff, emissiveIntensity:1.0, metalness:0.6, roughness:0.2})
-  );
-  g.add(traveler);
-
-  /* --- trièdres transportés parallèlement (bien visibles) ---
-     À chaque position, on construit un trièdre orthonormé (e1,e2,e3)
-     où e1 = tangente à la géodésique, et (e2,e3) sont transportés
-     par transport parallèle discret (on propage un repère initial). */
-  const TRI_N = 18;
-  const trihedra = [];
-  const triColors = [0xff9f43, 0x58a6ff, 0xffe66d];
-
-  // Précalcul des repères transportés
-  const tris = []; // {pos, e1, e2, e3}
-  let prevE2 = null, prevE3 = null;
-  for(let i=0;i<TRI_N;i++){
-    const u = (i/TRI_N) % 1;
-    const pos = geoCurve.getPoint(u);
-    const e1 = geoCurve.getTangent(u).normalize();
-    let e2, e3;
-    if(i===0){
-      // base initiale
-      const up = new THREE.Vector3(0,1,0);
-      e2 = up.clone().sub(e1.clone().multiplyScalar(up.dot(e1))).normalize();
-      e3 = new THREE.Vector3().crossVectors(e1, e2).normalize();
-    } else {
-      // transport parallèle : e2_next = e2_prev - (e2_prev·e1_next)*e1_next
-      const prev = tris[i-1];
-      const e1n = e1;
-      // rotation minimale (parallèle discret)
-      const q = new THREE.Quaternion().setFromUnitVectors(prev.e1, e1n);
-      e2 = prev.e2.clone().applyQuaternion(q);
-      e2.sub(e1n.clone().multiplyScalar(e2.dot(e1n))).normalize();
-      e3 = new THREE.Vector3().crossVectors(e1n, e2).normalize();
-    }
-    tris.push({pos, e1, e2, e3});
-  }
-
-  // Créer les trièdres visuels
-  tris.forEach(({pos,e1,e2,e3})=>{
-    const grp = new THREE.Group();
-    grp.position.copy(pos);
-    // flèche tangente (orange) — suit la courbe
-    const a1 = new THREE.ArrowHelper(e1, new THREE.Vector3(0,0,0), 0.45, triColors[0], 0.15, 0.08);
-    // flèche normale 1 (bleue)
-    const a2 = new THREE.ArrowHelper(e2, new THREE.Vector3(0,0,0), 0.35, triColors[1], 0.13, 0.07);
-    // flèche normale 2 (jaune)
-    const a3 = new THREE.ArrowHelper(e3, new THREE.Vector3(0,0,0), 0.35, triColors[2], 0.13, 0.07);
-    [a1,a2,a3].forEach(a=>{
-      a.line.material.transparent = true; a.line.material.opacity = 0.95;
-      a.cone.material.transparent = true; a.cone.material.opacity = 0.95;
-      grp.add(a);
-    });
-    grp.userData = {e1, e2, e3, pos};
-    trihedra.push(grp);
-    g.add(grp);
-  });
-
-  /* --- animation --- */
-  let morph = 0;
-  let morphDir = 1;
-  let travelU = 0;
-
-  function tick(t){
-    // morphing 0 → 1 → 0 (pause possible via morphState.paused)
-    if(!morphState.paused){
-      morph += morphDir * 0.005 * morphState.speed;
-      if(morph > 1){ morph = 1; morphDir = -1; }
-      if(morph < 0){ morph = 0; morphDir = 1; }
-    }
-
-    // 4-variété : opacité 1 → 0.15 et wireframe
-    manifold.material.opacity = 1 - 0.85*morph;
-    manifold.material.emissiveIntensity = 0.4 + 0.4*morph;
-    manifoldWire.material.opacity = 0.06 + 0.20*morph;
-
-    // hyperkähler sphères : opacité 0 → 0.22
-    hkGroup.children.forEach(s=>{
-      s.material.opacity = 0.22 * morph;
-      s.scale.setScalar(1 + 0.15*morph);
-    });
-
-    // axes I,J,K : opacité 0 → 0.9
-    axesGroup.children.forEach(a=>{
-      a.line.material.opacity = 0.9 * morph;
-      a.cone.material.opacity = 0.9 * morph;
-    });
-
-    // géodésique toujours visible
-    geoTorus.material.opacity = 0.5 + 0.4*morph;
-
-    // voyageur
-    travelU = (t * 0.10) % 1;
-    const tpos = geoCurve.getPoint(travelU);
-    traveler.position.copy(tpos);
-    traveler.scale.setScalar(0.8 + 0.4*Math.sin(t*3));
-
-    // trièdres déjà positionnés, on peut faire pulser l'intensité
-    trihedra.forEach((tr, i)=>{
-      const phase = Math.sin(t*2 + i*0.5)*0.5+0.5;
-      tr.children.forEach((a, k)=>{
-        a.line.material.opacity = 0.5 + 0.45*phase;
-        a.cone.material.opacity = 0.5 + 0.45*phase;
-      });
-    });
-  }
-  tickFns.push(tick);
-
-  return {group:g, hud:'Morphing 4-variété K3 ↔ hyperkähler · transport parallèle (trièdres)',
-    legend:[['#4ecdc4','4-variété K3'],['#ff6b6b','I'],['#4ecdc4','J'],['#ffe66d','K'],['#ff9f43','trièdre //']],
-    controls:[
-      {label:'Pause morph', onClick:(btn)=>{
-        morphState.paused = !morphState.paused;
-      }},
-      {label:'Speed ×1', onClick:()=>{ morphState.speed = 1; }},
-      {label:'Speed ×2', onClick:()=>{ morphState.speed = 2; }},
-      {label:'Speed ×0.5', onClick:()=>{ morphState.speed = 0.5; }}
-    ]};
-}
-
-/* dispatch */
 const SCENES = {
   1: sceneAct1, 2: sceneAct2, 3: sceneAct3, 4: sceneAct4, 5: sceneAct5,
-  6: sceneAct6, 7: sceneAct7, 8: sceneAct8, 9: sceneAct9, 10: sceneAct10, 11: sceneAct11
+  6: sceneAct6, 7: sceneAct7, 8: sceneAct8, 9: sceneAct9, 10: sceneAct10
 };
 
 /* ============================================================
-   Chart.js annexes
+   CANVAS 2D : COHOMOLOGIE & CARTE DE CHALEUR
+   ============================================================ */
+const cohomCanvas = document.getElementById('cineCohomologyCanvas');
+const cohomCtx = cohomCanvas.getContext('2d');
+
+function drawCohomology(){
+  const w = cohomCanvas.width, h = cohomCanvas.height;
+  cohomCtx.clearRect(0,0,w,h);
+
+  const cx = w/2, cy = h*0.65;
+  const sx = w*0.22, sz = w*0.11;
+  const sy = h*0.35;
+
+  function project(x,z,y){
+    return {
+      X: cx + (x - z)*sx*0.6,
+      Y: cy + (x + z)*sz*0.6 - y*sy
+    };
+  }
+  function surfY(x,z){
+    return Math.sin(x*1.6)*Math.cos(z*1.4)*0.35 + Math.sin(x*2.8)*0.12;
+  }
+
+  const seg = 12;
+  const xMin=-2.2, xMax=2.2, zMin=-1.6, zMax=1.6;
+  
+  for(let i=0;i<seg;i++){
+    for(let j=0;j<seg;j++){
+      const x1 = xMin + (xMax-xMin)*(i/seg);
+      const x2 = xMin + (xMax-xMin)*((i+1)/seg);
+      const z1 = zMin + (zMax-zMin)*(j/seg);
+      const z2 = zMin + (zMax-zMin)*((j+1)/seg);
+      
+      const yAvg = (surfY(x1,z1) + surfY(x2,z1) + surfY(x1,z2) + surfY(x2,z2))/4;
+      const intensity = Math.max(0, Math.min(1, (yAvg + 0.6) / 1.2));
+      
+      let r, g, b;
+      if(intensity < 0.33) {
+        r = 0; g = intensity * 3 * 200; b = 255;
+      } else if(intensity < 0.66) {
+        r = (intensity - 0.33) * 3 * 255; g = 200; b = 255 - (intensity - 0.33) * 3 * 255;
+      } else {
+        r = 255; g = 200 - (intensity - 0.66) * 3 * 200; b = 0;
+      }
+
+      cohomCtx.fillStyle = `rgba(${r},${g},${b}, 0.3)`;
+      cohomCtx.beginPath();
+      const p1 = project(x1,z1,surfY(x1,z1));
+      const p2 = project(x2,z1,surfY(x2,z1));
+      const p3 = project(x2,z2,surfY(x2,z2));
+      const p4 = project(x1,z2,surfY(x1,z2));
+      cohomCtx.moveTo(p1.X, p1.Y);
+      cohomCtx.lineTo(p2.X, p2.Y);
+      cohomCtx.lineTo(p3.X, p3.Y);
+      cohomCtx.lineTo(p4.X, p4.Y);
+      cohomCtx.closePath();
+      cohomCtx.fill();
+    }
+  }
+
+  cohomCtx.lineWidth = 0.5;
+  cohomCtx.strokeStyle = 'rgba(88,166,255,0.15)';
+  for(let i=0;i<=seg;i++){
+    const t = i/seg;
+    cohomCtx.beginPath();
+    for(let j=0;j<=seg;j++){
+      const x = xMin + (xMax-xMin)*t;
+      const z = zMin + (zMax-zMin)*(j/seg);
+      const p = project(x,z,surfY(x,z)+0.05);
+      if(j===0) cohomCtx.moveTo(p.X,p.Y); else cohomCtx.lineTo(p.X,p.Y);
+    }
+    cohomCtx.stroke();
+    cohomCtx.beginPath();
+    for(let j=0;j<=seg;j++){
+      const z = zMin + (zMax-zMin)*t;
+      const x = xMin + (xMax-xMin)*(j/seg);
+      const p = project(x,z,surfY(x,z)+0.05);
+      if(j===0) cohomCtx.moveTo(p.X,p.Y); else cohomCtx.lineTo(p.X,p.Y);
+    }
+    cohomCtx.stroke();
+  }
+
+  function drawSeries(side, color, phase, amp){
+    cohomCtx.strokeStyle = color;
+    cohomCtx.fillStyle = color;
+    cohomCtx.lineWidth = 1.8;
+    cohomCtx.beginPath();
+    const nP = 30;
+    for(let i=0;i<nP;i++){
+      const t = i/(nP-1);
+      const x = side==='left' ? (-2.0 + t*1.7) : (0.3 + t*1.7);
+      const z = Math.sin(t*Math.PI*2 + phase)*amp;
+      const y = surfY(x,z) + 0.15;
+      const p = project(x,z,y);
+      if(i===0) cohomCtx.moveTo(p.X,p.Y); else cohomCtx.lineTo(p.X,p.Y);
+    }
+    cohomCtx.stroke();
+    for(let i=0;i<nP;i+=3){
+      const t = i/(nP-1);
+      const x = side==='left' ? (-2.0 + t*1.7) : (0.3 + t*1.7);
+      const z = Math.sin(t*Math.PI*2 + phase)*amp;
+      const y = surfY(x,z) + 0.15;
+      const p = project(x,z,y);
+      cohomCtx.beginPath();
+      cohomCtx.arc(p.X,p.Y,1.5,0,Math.PI*2);
+      cohomCtx.fill();
+    }
+  }
+
+  drawSeries('left', '#ff6b6b', 0.0, 0.8);
+  drawSeries('left', '#4ecdc4', 1.2, 0.9);
+  drawSeries('left', '#ffaa00', 2.4, 1.0);
+  drawSeries('right', '#00ccff', 0.5, 0.9);
+
+  const pf = project(0,0,surfY(0,0)+0.2);
+  cohomCtx.beginPath();
+  cohomCtx.arc(pf.X,pf.Y,3.5,0,Math.PI*2);
+  cohomCtx.fillStyle = '#ffffff';
+  cohomCtx.fill();
+  cohomCtx.strokeStyle = 'rgba(255,255,255,0.8)';
+  cohomCtx.lineWidth = 1.5;
+  cohomCtx.beginPath();
+  cohomCtx.arc(pf.X,pf.Y,6,0,Math.PI*2);
+  cohomCtx.stroke();
+}
+
+/* ============================================================
+   CHART.JS
    ============================================================ */
 let chart1=null, chart2=null;
 function buildCharts(profile){
@@ -1345,8 +1292,41 @@ function buildCharts(profile){
   } else { chart2.data.datasets[0].data = profile; chart2.update(); }
 }
 
+let cineChart1=null, cineChart2=null;
+function buildCineCharts(profile){
+  const labels = AXES.map(a=>a.label);
+  if(!cineChart1){
+    cineChart1 = new Chart(document.getElementById('cineChart1'), {
+      type:'line',
+      data:{labels, datasets:[{label:'Valeur', data:profile,
+        borderColor:'#58a6ff', backgroundColor:'rgba(88,166,255,0.15)',
+        pointBackgroundColor: AXES.map(a=>a.color),
+        pointRadius:4, borderWidth:2, tension:0.35, fill:true}]},
+      options:{responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{legend:{display:false}},
+        scales:{y:{min:0,max:1, ticks:{color:'#8b949e', stepSize:0.25, font:{size:9}},
+                  grid:{color:'rgba(139,148,158,0.15)'}},
+                x:{ticks:{color:'#c9d7e6', font:{size:8}}, grid:{display:false}}}}
+    });
+  } else { cineChart1.data.datasets[0].data = profile; cineChart1.update('none'); }
+
+  if(!cineChart2){
+    cineChart2 = new Chart(document.getElementById('cineChart2'), {
+      type:'radar',
+      data:{labels, datasets:[{label:'Acte', data:profile,
+        borderColor:'#4ecdc4', backgroundColor:'rgba(78,205,196,0.18)',
+        pointBackgroundColor: AXES.map(a=>a.color), borderWidth:2, pointRadius:3}]},
+      options:{responsive:true, maintainAspectRatio:false, animation:false,
+        scales:{r:{min:0,max:1, angleLines:{color:'rgba(139,148,158,0.2)'},
+          grid:{color:'rgba(139,148,158,0.2)'},
+          pointLabels:{color:'#c9d7e6', font:{size:8}}, ticks:{display:false}}},
+        plugins:{legend:{display:false}}}
+    });
+  } else { cineChart2.data.datasets[0].data = profile; cineChart2.update('none'); }
+}
+
 /* ============================================================
-   Navigation NORMALE
+   NAVIGATION NORMALE
    ============================================================ */
 let current = 0;
 const actsBar = document.getElementById('actsBar');
@@ -1364,14 +1344,15 @@ function goTo(i){
   const a = ACTS[current];
   [...actsBar.children].forEach((b,k)=>b.classList.toggle('active', k===current));
 
-  document.getElementById('actTitle').textContent = `Acte ${current+1} · ${a.title}`;
+  // Mise à jour Normal Mode
+  document.getElementById('actTitle').textContent = `Acte ${current+1} · ${currentLang === 'fr' ? a.title : a.titleEn}`;
   document.getElementById('actSubtitle').textContent = a.subtitle;
   document.getElementById('actRef').textContent = a.ref;
-  document.getElementById('narrTitle').textContent = a.title;
-  document.getElementById('narrLead').innerHTML = a.lead;
-  document.getElementById('thmBox').innerHTML =
-    `<b>${a.thm.split('—')[0]}</b> — ${a.thm.split('—').slice(1).join('—').trim()}
-     <span class="ref">${a.ref}</span>`;
+  document.getElementById('narrTitle').textContent = currentLang === 'fr' ? a.title : a.titleEn;
+  document.getElementById('narrLead').innerHTML = currentLang === 'fr' ? a.lead : a.leadEn;
+  
+  // Fix: plus de a.thm.split car la propriété n'existe plus
+  document.getElementById('thmBox').innerHTML = `<span class="ref">${a.ref}</span>`;
 
   const ml = document.getElementById('metricList');
   ml.innerHTML = '';
@@ -1385,7 +1366,6 @@ function goTo(i){
 
   if(currentGroup) disposeGroup(currentGroup);
   tickFns = [];
-  morphState.paused = false;
 
   controls.target.set(0,0,0);
   camera.position.set(6,4.5,8);
@@ -1417,9 +1397,23 @@ function goTo(i){
   });
 
   buildCharts(a.profile);
+  if(document.getElementById('cinemaMode').classList.contains('on')){
+    buildCineCharts(a.profile);
+    updateCohomologyCard(a);
+  }
 
   document.getElementById('prevBtn').disabled = current===0;
   document.getElementById('nextBtn').disabled = current===ACTS.length-1;
+}
+
+function updateCohomologyCard(a){
+  const card = document.getElementById('cineCohomologyCard');
+  if(a.cohomology){
+    card.style.display = 'block';
+    drawCohomology();
+  } else {
+    card.style.display = 'none';
+  }
 }
 
 document.getElementById('prevBtn').addEventListener('click', ()=>goTo(current-1));
@@ -1434,7 +1428,7 @@ document.addEventListener('keydown', e=>{
    ============================================================ */
 const cinemaMode = document.getElementById('cinemaMode');
 const cinemaCanvas = document.getElementById('cinemaCanvas');
-const cinemaRenderer = new THREE.WebGLRenderer({canvas:cinemaCanvas, antialias:true, alpha:true});
+const cinemaRenderer = new THREE.WebGLRenderer({canvas:cinemaCanvas, antialias:true, alpha:true, preserveDrawingBuffer:true});
 cinemaRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 cinemaRenderer.shadowMap.enabled = true;
 cinemaRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1454,7 +1448,6 @@ cinemaControls.enableZoom = false;
 cinemaControls.minDistance = 3;
 cinemaControls.maxDistance = 22;
 
-/* zoom pas fixes pour cinema */
 function cinemaDollyIn(){
   const dir = cinemaCamera.position.clone().sub(cinemaControls.target);
   const d = dir.length();
@@ -1473,15 +1466,16 @@ cinemaCanvas.addEventListener('wheel', (e)=>{
 }, {passive:false});
 
 function resizeCinema(){
-  const w = window.innerWidth, h = window.innerHeight;
+  // Le canvas fait la largeur de l'écran moins 320px (panneau)
+  const w = window.innerWidth - 320;
+  const h = window.innerHeight;
   cinemaRenderer.setSize(w, h, false);
-  cinemaCamera.aspect = w/h; cinemaCamera.updateProjectionMatrix();
+  // L'aspect ratio est mis à jour proportionnellement
+  cinemaCamera.aspect = w/h; 
+  cinemaCamera.updateProjectionMatrix();
 }
 
-// On réutilise la même scène que la normale (le groupe actuel y est attaché)
-// On crée une 2e caméra pointant sur le même scene → l'utilisateur voit le même objet
 let cinemaCurrent = -1;
-
 function cinemaRender(){
   requestAnimationFrame(cinemaRender);
   cinemaControls.update();
@@ -1500,6 +1494,8 @@ function openCinema(){
   resizeCinema();
   cinemaControls.target.copy(controls.target);
   cinemaCamera.position.copy(camera.position).multiplyScalar(1.2);
+  buildCineCharts(ACTS[current].profile);
+  updateCohomologyCard(ACTS[current]);
   cinemaRender();
   cinemaGoTo(current);
 }
@@ -1511,7 +1507,6 @@ function closeCinema(){
 document.getElementById('cinemaBtn').addEventListener('click', openCinema);
 document.getElementById('cineExit').addEventListener('click', closeCinema);
 
-/* Progression cinéma */
 const dots = document.getElementById('cineDots');
 ACTS.forEach((a,i)=>{
   const d = document.createElement('div');
@@ -1522,25 +1517,39 @@ ACTS.forEach((a,i)=>{
 
 function cinemaGoTo(i){
   cinemaCurrent = Math.max(0, Math.min(ACTS.length-1, i));
-  // on change aussi la scène normale (même scène partagée)
-  goTo(cinemaCurrent);
+  goTo(cinemaCurrent); // Met à jour la scène 3D et la cohomologie
   const a = ACTS[cinemaCurrent];
 
   document.getElementById('cineStep').textContent = `ACTE ${cinemaCurrent+1} / ${ACTS.length}`;
-  document.getElementById('cineTitleText').textContent = a.title;
-  document.getElementById('cineFormulaLbl').textContent = a.formulaLbl;
-  document.getElementById('cineFormulaBody').textContent = a.formula;
+  document.getElementById('cineTitleText').textContent = currentLang === 'fr' ? a.title : a.titleEn;
+  
+  // Rendu de l'équation en TeX via KaTeX
+  const formulaEl = document.getElementById('cineFormulaBody');
+  formulaEl.innerHTML = ''; // On nettoie
+  katex.render(a.formula, formulaEl, {
+    throwOnError: false,
+    displayMode: true
+  });
 
-  // légendes latérales
+  // Description traduite
+  document.getElementById('cineDesc').innerHTML = currentLang === 'fr' ? a.lead : a.leadEn;
+
+  // Légende gauche
   const left = document.getElementById('cineLeft');
-  left.innerHTML = '<h4>Éléments</h4><ul>' + a.leftLegend.map(([c,t])=>
-    `<li><span class="dot" style="background:${c};color:${c}"></span><span>${t}</span></li>`
-  ).join('') + '</ul>';
+  left.innerHTML = `<div class="cine-legend-col">
+    <h4>Éléments</h4>
+    <ul>${a.leftLegend.map(([c,t])=>`<li><span class="dot" style="background:${c};color:${c}"></span><span>${t}</span></li>`).join('')}</ul>
+  </div>`;
 
-  const right = document.getElementById('cineRight');
-  right.innerHTML = '<h4>Invariants</h4><ul>' + a.rightLegend.map(([c,t])=>
-    `<li><span class="dot" style="background:${c};color:${c}"></span><span>${t}</span></li>`
-  ).join('') + '</ul>';
+  // Légende droite (Invariants)
+  const rightContent = document.getElementById('cineRightContent');
+  rightContent.innerHTML = `<div class="cine-legend-col">
+    <h4>Invariants</h4>
+    <ul>${a.rightLegend.map(([c,t])=>`<li><span class="dot" style="background:${c};color:${c}"></span><span>${t}</span></li>`).join('')}</ul>
+  </div>`;
+
+  buildCineCharts(a.profile);
+  updateCohomologyCard(a);
 
   [...dots.children].forEach((d,k)=>d.classList.toggle('on', k===cinemaCurrent));
 
@@ -1558,7 +1567,31 @@ document.addEventListener('keydown', e=>{
   if(e.key==='Escape') closeCinema();
 });
 
-/* Panneau paramètres cinéma */
+/* ============================================================
+   SWITCH LANGUE
+   ============================================================ */
+const langFr = document.getElementById('langFr');
+const langEn = document.getElementById('langEn');
+
+langFr.addEventListener('click', ()=>{
+  currentLang = 'fr';
+  langFr.classList.add('active');
+  langEn.classList.remove('active');
+  goTo(current);
+  if (cinemaMode.classList.contains('on')) cinemaGoTo(cinemaCurrent);
+});
+
+langEn.addEventListener('click', ()=>{
+  currentLang = 'en';
+  langEn.classList.add('active');
+  langFr.classList.remove('active');
+  goTo(current);
+  if (cinemaMode.classList.contains('on')) cinemaGoTo(cinemaCurrent);
+});
+
+/* ============================================================
+   PARAMÈTRES & ENREGISTREMENT
+   ============================================================ */
 const pRotInput = document.getElementById('pRotInput');
 const pZoomInput = document.getElementById('pZoomInput');
 const pHaloInput = document.getElementById('pHaloInput');
@@ -1579,8 +1612,77 @@ pHaloInput.addEventListener('input', e=>{
   haloLight.intensity = v * 1.2;
 });
 
-/* init */
-goTo(0);
+window.addEventListener('resize', ()=>{
+  if(document.getElementById('cinemaMode').classList.contains('on')){
+    resizeCinema();
+    setTimeout(()=>{ if(ACTS[cinemaCurrent].cohomology) drawCohomology(); }, 80);
+  }
+});
+
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingStream = null;
+const recBtn = document.getElementById('recBtn');
+const recStopBtn = document.getElementById('recStopBtn');
+const recStatus = document.getElementById('recStatus');
+
+recBtn.addEventListener('click', async ()=>{
+  try {
+    recordingStream = cinemaCanvas.captureStream(30);
+    const options = { mimeType: 'video/webm;codecs=vp9' };
+    if(!MediaRecorder.isTypeSupported(options.mimeType)){
+      options.mimeType = 'video/webm;codecs=vp8';
+    }
+    mediaRecorder = new MediaRecorder(recordingStream, options);
+    recordedChunks = [];
+    mediaRecorder.ondataavailable = (e)=>{
+      if(e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = ()=>{
+      const blob = new Blob(recordedChunks, {type:'video/webm'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hyperkähler_acte_${cinemaCurrent+1}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      recStatus.textContent = 'Enregistrement sauvegardé ✓';
+      recStopBtn.style.display = 'none';
+      recBtn.style.display = 'block';
+      recBtn.classList.remove('on');
+      recBtn.textContent = '⏺ Démarrer l\'enregistrement';
+    };
+    mediaRecorder.start();
+    recBtn.classList.add('on');
+    recBtn.textContent = '⏺ Enregistrement...';
+    recBtn.style.display = 'none';
+    recStopBtn.style.display = 'block';
+    recStatus.textContent = '● En cours...';
+  } catch(err) {
+    recStatus.textContent = 'Erreur : ' + err.message;
+  }
+});
+
+recStopBtn.addEventListener('click', ()=>{
+  if(mediaRecorder && mediaRecorder.state !== 'inactive'){
+    mediaRecorder.stop();
+    recStatus.textContent = 'Traitement...';
+  }
+});
+
+// Initialisation
+document.addEventListener("DOMContentLoaded", function() {
+  renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '$', right: '$', display: false}
+    ],
+    throwOnError : false
+  });
+  goTo(0);
+});
 </script>
 </body>
 </html>
