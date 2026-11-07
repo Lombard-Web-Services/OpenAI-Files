@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Vue d'Artiste Hyperkähler · Formes, Morphing & Transport</title>
+<title>Vue d'Artiste Hyperkähler · Formes, Morphing, Hyperkähler Finale</title>
 <script type="importmap">
 { "imports": {
   "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -11,14 +11,9 @@
 </script>
 <style>
   :root {
-    --bg: #05070b;
-    --ink: #e6edf3;
-    --muted: #8b949e;
-    --accent: #58a6ff;
-    --red: #ff6b6b;
-    --green: #4ecdc4;
-    --yellow: #ffe66d;
-    --orange: #ff9f43;
+    --bg: #05070b; --ink: #e6edf3; --muted: #8b949e;
+    --accent: #58a6ff; --red: #ff6b6b; --green: #4ecdc4;
+    --yellow: #ffe66d; --orange: #ff9f43;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--ink); font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
@@ -103,6 +98,7 @@
       <option value="artist">K3 & Transport Parallèle</option>
       <option value="forms">3 Formes (I, J, K séparées)</option>
       <option value="morph">Morphing univarié (I → J → K → X⁴)</option>
+      <option value="hyper">Variété Hyperkähler Finale</option>
     </select>
 
     <hr>
@@ -133,6 +129,14 @@
       <input type="range" id="morphSlider" min="0" max="1" step="0.001" value="0">
       <div style="font-size:.75rem; color:var(--muted); text-align:center; margin-bottom:12px;" id="morphState">I → J</div>
       <label class="toggle"><input type="checkbox" id="morphAuto" checked> Auto (boucle)</label>
+    </div>
+
+    <div id="panelHyper" class="cond-panel">
+      <h5>Hyperkähler Finale</h5>
+      <div class="row"><span>Intensité I·J·K</span><span id="pHkIntensity">0.80</span></div>
+      <input type="range" id="pHkIntensityInput" min="0" max="1.5" step="0.01" value="0.8">
+      <label class="toggle"><input type="checkbox" id="pShowParallel" checked> Afficher ∇ω = 0</label>
+      <label class="toggle"><input type="checkbox" id="pShowFields" checked> Afficher I, J, K</label>
     </div>
   </div>
 </div>
@@ -188,7 +192,7 @@ window.addEventListener('resize', resizeRenderer);
 resizeRenderer();
 
 /* ============================================================
-   ZOOM PAR PALIERS (MOLETTE) — corrigé
+   ZOOM PAR PALIERS (MOLETTE)
    ============================================================ */
 const ZOOM_STEP = 0.8;
 let zoomLock = false;
@@ -230,14 +234,24 @@ const state = {
 let currentGroup = null;
 let tickFns = [];
 
+/* Refs vue artiste */
 let manifoldRef = null, manifoldWireRef = null, hkGroupRef = null;
 let morphEnabledArtist = true, showSpheres = true;
 
+/* Refs vue formes */
 let fieldI, fieldJ, fieldK;
 
+/* Refs vue morphing (GPU) */
 let morphMesh = null, morphWire = null, morphMaterial = null;
 let morphT = 0, morphDir = 1, morphAuto = true;
 let morphUniforms = null;
+
+/* Refs vue hyperkähler finale */
+let hyperManifold = null, hyperWire = null;
+let hyperFieldsGroup = null;
+let hyperParallelGroup = null;
+let hkIntensity = 0.8;
+let hkShowParallel = true, hkShowFields = true;
 
 /* ============================================================
    NETTOYAGE
@@ -258,6 +272,9 @@ function resetRefs() {
   fieldI = fieldJ = fieldK = null;
   morphMesh = morphWire = morphMaterial = null;
   morphUniforms = null;
+  hyperManifold = hyperWire = null;
+  hyperFieldsGroup = null;
+  hyperParallelGroup = null;
   tickFns = [];
 }
 
@@ -356,7 +373,7 @@ function buildArtistScene() {
       manifoldRef.material.emissiveIntensity = 0.5 + 0.3 * morph;
     }
     if (manifoldWireRef) {
-      manifoldWireRef.material.opacity = 0.1 + 0.15 * morph;
+      manifoldWireRef.material.opacity = state.wireframe ? (0.1 + 0.15 * morph) : 0.0;
     }
     if (hkGroupRef) {
       hkGroupRef.children.forEach(child => {
@@ -437,13 +454,7 @@ function buildFormsScene() {
 }
 
 /* ============================================================
-   VUE 3 : MORPHING UNIVARIÉ — GPU via onBeforeCompile
-   ============================================================
-   Principe : la géométrie de base (X⁴) est construite UNE SEULE FOIS
-   avec des normales lissées. La déformation I→J→K→X⁴ est calculée
-   dans le vertex shader à partir d'un uniform `uT` mis à jour
-   chaque frame (coût CPU ~0). Résolution réduite + pas de
-   computeVertexNormals() dynamique → 60 fps.
+   VUE 3 : MORPHING UNIVARIÉ (GPU)
    ============================================================ */
 const R_MIN = A_PARAM + 0.05;
 const R_MAX = 7.0;
@@ -473,9 +484,7 @@ function buildMorphScene() {
         const x = r * Math.sin(theta) * Math.cos(phi);
         const y = r * Math.cos(theta);
         const z = r * Math.sin(theta) * Math.sin(phi) * Math.sqrt(Math.max(0.01, f));
-        positions[vIdx*3] = x;
-        positions[vIdx*3+1] = y;
-        positions[vIdx*3+2] = z;
+        positions[vIdx*3] = x; positions[vIdx*3+1] = y; positions[vIdx*3+2] = z;
         colors[vIdx*3] = cr; colors[vIdx*3+1] = cg; colors[vIdx*3+2] = cb;
         vIdx++;
       }
@@ -509,103 +518,64 @@ function buildMorphScene() {
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
 
-  // Uniform partagé entre vertex et fragment
-  morphUniforms = {
-    uT: { value: 0.0 },
-  };
+  morphUniforms = { uT: { value: 0.0 } };
 
-  // Matériau principal : vertex shader déforme, normales approximées
   morphMaterial = new THREE.MeshStandardMaterial({
     vertexColors: true, metalness: 0.6, roughness: 0.28,
     side: THREE.DoubleSide, flatShading: false,
   });
 
+  const deformSnippet = `
+    uniform float uT;
+    vec3 deform(vec3 p) {
+      float seg = uT * 3.0;
+      float i0 = floor(min(seg, 2.999));
+      float local = seg - i0;
+      float wI = sin(p.x * 2.0) * 0.18;
+      float wJ = cos(p.y * 2.0) * 0.18;
+      float wK = sin(p.z * 2.0) * 0.18;
+      float wX = 0.0;
+      float w0 = 0.0, w1 = 0.0;
+      vec3 d0, d1;
+      if (i0 < 0.5)      { w0 = wI; w1 = wJ; d0 = vec3(1,0,0); d1 = vec3(0,1,0); }
+      else if (i0 < 1.5) { w0 = wJ; w1 = wK; d0 = vec3(0,1,0); d1 = vec3(0,0,1); }
+      else               { w0 = wK; w1 = wX; d0 = vec3(0,0,1); d1 = vec3(0,0,0); }
+      float w = mix(w0, w1, local);
+      vec3  b = mix(d0, d1, local);
+      return p + b * w;
+    }
+  `;
+
   morphMaterial.onBeforeCompile = (shader) => {
     shader.uniforms.uT = morphUniforms.uT;
-
-    // --- VERTEX SHADER : déformation GPU ---
-    shader.vertexShader = `
-      uniform float uT;
-      vec3 deform(vec3 p) {
-        // segment [0,1] -> [0,3] sur 4 formes : I, J, K, X⁴
-        float seg = uT * 3.0;
-        float i0 = floor(min(seg, 2.999));
-        float local = seg - i0;
-
-        // ondes propres à chaque forme (mêmes formules que la version CPU)
-        float wI = sin(p.x * 2.0) * 0.18;
-        float wJ = cos(p.y * 2.0) * 0.18;
-        float wK = sin(p.z * 2.0) * 0.18;
-        float wX = 0.0;
-
-        float w0 = 0.0, w1 = 0.0;
-        vec3 d0, d1;
-        if (i0 < 0.5)      { w0 = wI; w1 = wJ; d0 = vec3(1,0,0); d1 = vec3(0,1,0); }
-        else if (i0 < 1.5) { w0 = wJ; w1 = wK; d0 = vec3(0,1,0); d1 = vec3(0,0,1); }
-        else               { w0 = wK; w1 = wX; d0 = vec3(0,0,1); d1 = vec3(0,0,0); }
-
-        float w = mix(w0, w1, local);
-        vec3  b = mix(d0, d1, local);
-        return p + b * w;
-      }
-      ` + shader.vertexShader;
-
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <begin_vertex>',
-      `
-      vec3 transformed = deform(position);
-      `
-    );
-
-    // Approximation de normale : on garde la normale de la forme X⁴
-    // (assez lisse pour un rendu artistique). La déformation est faible
-    // (amplitude 0.18) donc l'écart visuel est négligeable.
-  };
-
-  morphMesh = new THREE.Mesh(geometry, morphMaterial);
-  g.add(morphMesh);
-
-  // Wireframe séparé (partage la même géométrie + shader déformant)
-  const wireMat = new THREE.MeshBasicMaterial({
-    color: 0xffffff, wireframe: true, transparent: true, opacity: 0.0, visible: false
-  });
-  wireMat.onBeforeCompile = (shader) => {
-    shader.uniforms.uT = morphUniforms.uT;
-    shader.vertexShader = `
-      uniform float uT;
-      vec3 deform(vec3 p) {
-        float seg = uT * 3.0;
-        float i0 = floor(min(seg, 2.999));
-        float local = seg - i0;
-        float wI = sin(p.x * 2.0) * 0.18;
-        float wJ = cos(p.y * 2.0) * 0.18;
-        float wK = sin(p.z * 2.0) * 0.18;
-        float wX = 0.0;
-        float w0 = 0.0, w1 = 0.0;
-        vec3 d0, d1;
-        if (i0 < 0.5)      { w0 = wI; w1 = wJ; d0 = vec3(1,0,0); d1 = vec3(0,1,0); }
-        else if (i0 < 1.5) { w0 = wJ; w1 = wK; d0 = vec3(0,1,0); d1 = vec3(0,0,1); }
-        else               { w0 = wK; w1 = wX; d0 = vec3(0,0,1); d1 = vec3(0,0,0); }
-        float w = mix(w0, w1, local);
-        vec3  b = mix(d0, d1, local);
-        return p + b * w;
-      }
-      ` + shader.vertexShader;
+    shader.vertexShader = deformSnippet + shader.vertexShader;
     shader.vertexShader = shader.vertexShader.replace(
       '#include <begin_vertex>',
       `vec3 transformed = deform(position);`
     );
   };
 
+  morphMesh = new THREE.Mesh(geometry, morphMaterial);
+  g.add(morphMesh);
+
+  const wireMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, wireframe: true, transparent: true, opacity: 0.0, visible: false
+  });
+  wireMat.onBeforeCompile = (shader) => {
+    shader.uniforms.uT = morphUniforms.uT;
+    shader.vertexShader = deformSnippet + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `vec3 transformed = deform(position);`
+    );
+  };
   morphWire = new THREE.Mesh(geometry, wireMat);
   g.add(morphWire);
 
   morphT = 0; morphDir = 1;
-  morphUniforms.uT.value = 0;
 
   tickFns.push((t, dt) => {
     if (morphAuto) {
-      // Vitesse accélérée : cycle complet 0→1 en ~1.1 s → aller-retour ~2.2 s
       morphT += morphDir * dt * 0.9;
       if (morphT >= 1) { morphT = 1; morphDir = -1; }
       if (morphT <= 0) { morphT = 0; morphDir = 1; }
@@ -616,7 +586,6 @@ function buildMorphScene() {
       morphMesh.rotation.y += dt * 0.15;
       morphWire.rotation.y += dt * 0.15;
     }
-    // Mise à jour GPU (coût quasi nul)
     morphUniforms.uT.value = morphT;
   });
 }
@@ -633,11 +602,157 @@ function updateMorphUI() {
 }
 
 /* ============================================================
+   VUE 4 : VARIÉTÉ HYPERKÄHLER FINALE
+   ------------------------------------------------------------
+   La triade I, J, K agit SIMULTANÉMENT et de façon parallèle
+   sur le manifold X⁴ : le fibré tangent est couvert par les
+   trois structures, chacune préservant la métrique.
+   Visualisation : 3 champs de vecteurs colorés + ∇ω = 0
+   (flèches identiques après transport le long de la géodésique)
+   ============================================================ */
+function buildHyperScene() {
+  const g = new THREE.Group();
+  scene.add(g);
+  currentGroup = g;
+
+  // --- Manifold X⁴ central (Eguchi-Hanson stylisé) ---
+  const torusGeo = new THREE.TorusKnotGeometry(1.9, 0.5, 140, 18, 2, 3);
+  const manifoldMat = new THREE.MeshPhysicalMaterial({
+    color: 0x4ecdc4, metalness: 0.75, roughness: 0.25,
+    emissive: 0x1f5e57, emissiveIntensity: 0.55,
+    clearcoat: 1, clearcoatRoughness: 0.15,
+    transparent: true, opacity: 0.92
+  });
+  hyperManifold = new THREE.Mesh(torusGeo, manifoldMat);
+  g.add(hyperManifold);
+
+  const wireMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, wireframe: true, transparent: true, opacity: 0.0, visible: false
+  });
+  hyperWire = new THREE.Mesh(new THREE.TorusKnotGeometry(1.9, 0.5, 140, 10, 2, 3), wireMat);
+  g.add(hyperWire);
+
+  // --- Triade I, J, K : champs de vecteurs orthogonaux parallèles ---
+  const fieldsGroup = new THREE.Group();
+  hyperFieldsGroup = fieldsGroup;
+  const colors = [0xff6b6b, 0x4ecdc4, 0xffe66d];
+  const dirs = [new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,1)];
+
+  colors.forEach((c, i) => {
+    // Sphère filaire de rayon croissant
+    const sphMat = new THREE.MeshBasicMaterial({
+      color: c, wireframe: true, transparent: true, opacity: 0.18
+    });
+    const sph = new THREE.Mesh(new THREE.SphereGeometry(2.2 + i * 0.35, 20, 14), sphMat);
+    fieldsGroup.add(sph);
+
+    // Deux flèches opposées = direction de la structure complexe
+    const dir = dirs[i];
+    [dir, dir.clone().negate()].forEach(d => {
+      const ar = new THREE.ArrowHelper(d, new THREE.Vector3(0,0,0), 3.2, c, 0.35, 0.18);
+      ar.line.material.transparent = true;
+      ar.line.material.opacity = 0.85;
+      ar.cone.material.transparent = true;
+      ar.cone.material.opacity = 0.85;
+      fieldsGroup.add(ar);
+    });
+  });
+  g.add(fieldsGroup);
+
+  // --- Transport parallèle ∇ω = 0 : anneaux → flèches toujours identiques ---
+  const parallelGroup = new THREE.Group();
+  hyperParallelGroup = parallelGroup;
+
+  const geoPts = [];
+  const N = 300;
+  for (let i = 0; i < N; i++) {
+    const u = (i / N) * Math.PI * 2 * 2;
+    const R = 1.9, r = 0.5, p = 2, q = 3;
+    const cq = Math.cos(q * u / p), sq = Math.sin(q * u / p);
+    const cu = Math.cos(u), su = Math.sin(u);
+    geoPts.push(new THREE.Vector3((R + r * cq) * cu, (R + r * cq) * su, r * sq));
+  }
+  const geoCurve = new THREE.CatmullRomCurve3(geoPts);
+  const geoTorus = new THREE.Mesh(
+    new THREE.TubeGeometry(geoCurve, 300, 0.035, 6, true),
+    new THREE.MeshBasicMaterial({ color: 0x58a6ff, transparent: true, opacity: 0.85 })
+  );
+  parallelGroup.add(geoTorus);
+
+  const traveler = new THREE.Mesh(
+    new THREE.SphereGeometry(0.11, 12, 10),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.0 })
+  );
+  parallelGroup.add(traveler);
+
+  const PAR_N = 20;
+  const parallelArrows = [];
+  for (let i = 0; i < PAR_N; i++) {
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(0.09, 0.28, 10),
+      new THREE.MeshStandardMaterial({ color: 0xff9f43, emissive: 0xff9f43, emissiveIntensity: 1.0 })
+    );
+    parallelArrows.push(cone);
+    parallelGroup.add(cone);
+  }
+  g.add(parallelGroup);
+
+  const refVec = new THREE.Vector3(0, 0, 1);
+
+  // Animation
+  tickFns.push((t, dt) => {
+    // Rotation lente de la triade (pour montrer leur orthogonalité)
+    if (hyperFieldsGroup) {
+      hyperFieldsGroup.rotation.x += dt * 0.05;
+      hyperFieldsGroup.rotation.y += dt * 0.05;
+      hyperFieldsGroup.visible = hkShowFields;
+      // Intensité : scale des sphères
+      hyperFieldsGroup.children.forEach(child => {
+        if (child.isMesh && child.geometry.type === 'SphereGeometry') {
+          const base = 1 + 0.15 * Math.sin(t * 0.5);
+          child.scale.setScalar(base * (0.7 + 0.4 * hkIntensity));
+          child.material.opacity = 0.10 + 0.15 * hkIntensity;
+        }
+      });
+    }
+    // Manifold pulse
+    if (hyperManifold) {
+      hyperManifold.rotation.y += dt * 0.08;
+      hyperManifold.material.emissiveIntensity = 0.4 + 0.3 * hkIntensity + 0.1 * Math.sin(t * 1.2);
+    }
+    if (hyperWire) {
+      hyperWire.rotation.y += dt * 0.08;
+      hyperWire.material.opacity = state.wireframe ? (0.35 + 0.15 * hkIntensity) : 0.0;
+    }
+    // Transport parallèle
+    if (hyperParallelGroup) {
+      hyperParallelGroup.visible = hkShowParallel;
+      if (hkShowParallel) {
+        const u = ((t * 0.18) % 1);
+        traveler.position.copy(geoCurve.getPoint(u));
+        for (let i = 0; i < PAR_N; i++) {
+          const uu = (u + i / PAR_N) % 1;
+          const p = geoCurve.getPoint(uu);
+          const tan = geoCurve.getTangent(uu).normalize();
+          const ar = parallelArrows[i];
+          ar.position.copy(p);
+          const v = refVec.clone().sub(tan.clone().multiplyScalar(refVec.dot(tan)));
+          if (v.lengthSq() < 1e-4) v.set(0, 1, 0);
+          v.normalize();
+          ar.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), v);
+        }
+      }
+    }
+  });
+}
+
+/* ============================================================
    UI : MENU, WIREFRAME, SLIDER, LÉGENDES
    ============================================================ */
 const artistSelect = document.getElementById('artistSelect');
 const panelArtist = document.getElementById('panelArtist');
 const panelMorph = document.getElementById('panelMorph');
+const panelHyper = document.getElementById('panelHyper');
 const btnWireframe = document.getElementById('btnWireframe');
 const morphSlider = document.getElementById('morphSlider');
 const morphAutoCb = document.getElementById('morphAuto');
@@ -716,6 +831,31 @@ const LEGENDS = {
     title: 'Morphing Univarié',
     step: 'SYNTHÈSE · I → J → K → X⁴',
     desc: "Interpolation continue sur les quatre formes : la structure complexe <b>I</b> se déforme en <b>J</b>, puis en <b>K</b>, puis rejoint la <b>4-variété X⁴</b>. Le paramètre <b>t</b> parcourt l'intervalle [0, 1] en boucle (aller-retour).",
+  },
+  hyper: {
+    left: `
+      <div class="cine-legend-col">
+        <h4>Triade Parallèle</h4>
+        <ul>
+          <li><span class="dot" style="background:#ff6b6b;color:#ff6b6b"></span><span><b>I</b> · ω_I</span></li>
+          <li><span class="dot" style="background:#4ecdc4;color:#4ecdc4"></span><span><b>J</b> · ω_J</span></li>
+          <li><span class="dot" style="background:#ffe66d;color:#ffe66d"></span><span><b>K</b> · ω_K</span></li>
+        </ul>
+        <div class="formula">IJ = K, JK = I, KI = J</div>
+      </div>`,
+    right: `
+      <div class="cine-legend-col">
+        <h4>Conditions Hyperkähler</h4>
+        <ul>
+          <li><span class="dot" style="background:#4ecdc4;color:#4ecdc4"></span><span>X⁴ Eguchi-Hanson</span></li>
+          <li><span class="dot" style="background:#58a6ff;color:#58a6ff"></span><span>Géodésique fermée</span></li>
+          <li><span class="dot" style="background:#ff9f43;color:#ff9f43"></span><span>∇ω = 0 (parallèle)</span></li>
+        </ul>
+        <div class="formula">∇ω_I = ∇ω_J = ∇ω_K = 0</div>
+      </div>`,
+    title: 'Variété Hyperkähler Finale',
+    step: 'SYNTHÈSE · ∇ω = 0',
+    desc: "Les trois structures complexes <b>I</b>, <b>J</b>, <b>K</b> agissent simultanément sur le fibré tangent de <b>X⁴</b> et sont toutes trois parallèles pour la métrique d'Eguchi-Hanson. Les flèches orange suivent la géodésique bleue en conservant leur orientation : signature visuelle de <b>∇ω_I = ∇ω_J = ∇ω_K = 0</b>.",
   }
 };
 
@@ -750,10 +890,12 @@ function switchView(view) {
 
   panelArtist.classList.toggle('visible', view === 'artist');
   panelMorph.classList.toggle('visible', view === 'morph');
+  panelHyper.classList.toggle('visible', view === 'hyper');
 
   if (view === 'artist') buildArtistScene();
   else if (view === 'forms') buildFormsScene();
   else if (view === 'morph') buildMorphScene();
+  else if (view === 'hyper') buildHyperScene();
 
   applyWireframe();
 
@@ -764,14 +906,16 @@ function switchView(view) {
 
   refreshLegend();
 
-  // Dézoom 50 % à l'arrivée sur le morphing (distance ×2)
-  if (view === 'morph') {
-    const dir = camera.position.clone().sub(controls.target).normalize();
-    const currentDist = camera.position.distanceTo(controls.target);
-    const targetDist = Math.min(controls.maxDistance, currentDist * 2.0);
-    camera.position.copy(controls.target).add(dir.multiplyScalar(targetDist));
-    syncZoomUI();
-  }
+  // Recalage caméra par vue (évite le bug de distance résiduelle)
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  let targetDist;
+  if (view === 'morph') targetDist = 18;      // dézoom 50 % + vue large
+  else if (view === 'hyper') targetDist = 9;  // cadre serré sur le manifold
+  else if (view === 'forms') targetDist = 7;  // 3 courbes proches
+  else targetDist = 8;                        // artist
+  targetDist = Math.max(controls.minDistance, Math.min(controls.maxDistance, targetDist));
+  camera.position.copy(controls.target).add(dir.multiplyScalar(targetDist));
+  syncZoomUI();
 
   controls.autoRotate = (view === 'forms') && state.autoRotate;
 }
@@ -789,6 +933,10 @@ function applyWireframe() {
   if (state.view === 'morph' && morphWire) {
     morphWire.material.visible = on;
     morphWire.material.opacity = on ? 0.35 : 0.0;
+  }
+  if (state.view === 'hyper' && hyperWire) {
+    hyperWire.material.visible = on;
+    hyperWire.material.opacity = on ? 0.4 : 0.0;
   }
 }
 
@@ -854,6 +1002,24 @@ pOpacityInput.addEventListener('input', (e) => {
 
 pMorph.addEventListener('change', (e) => { morphEnabledArtist = e.target.checked; });
 pShowSpheres.addEventListener('change', (e) => { showSpheres = e.target.checked; });
+
+/* Contrôles vue hyperkähler */
+const pHkIntensityInput = document.getElementById('pHkIntensityInput');
+const pShowParallel = document.getElementById('pShowParallel');
+const pShowFields = document.getElementById('pShowFields');
+
+if (pHkIntensityInput) {
+  pHkIntensityInput.addEventListener('input', (e) => {
+    hkIntensity = parseFloat(e.target.value);
+    document.getElementById('pHkIntensity').textContent = hkIntensity.toFixed(2);
+  });
+}
+if (pShowParallel) {
+  pShowParallel.addEventListener('change', (e) => { hkShowParallel = e.target.checked; });
+}
+if (pShowFields) {
+  pShowFields.addEventListener('change', (e) => { hkShowFields = e.target.checked; });
+}
 
 /* ============================================================
    BOUCLE D'ANIMATION
