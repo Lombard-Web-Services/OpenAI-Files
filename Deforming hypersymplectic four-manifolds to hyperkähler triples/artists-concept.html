@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Vue d'Artiste Hyperkähler · Formes, Morphing & Transport</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+<style>
+  :root {
+    --bg: #05070b;
+    --ink: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --red: #ff6b6b;
+    --green: #4ecdc4;
+    --yellow: #ffe66d;
+    --orange: #ff9f43;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--ink); font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+
+  #cinemaMode { position: fixed; inset: 0; background: #000; overflow: hidden; }
+  #cinemaCanvas { position: absolute; top: 0; left: 0; bottom: 0; width: calc(100% - 340px); height: 100%; display: block; }
+
+  .vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 40% 45%, transparent 20%, rgba(0,0,0,0.8) 100%); }
+
+  #cineTitle { position: absolute; top: 5vh; left: calc(50% - 170px); transform: translateX(-50%); text-align: center; pointer-events: none; z-index: 5; width: 100%; padding: 0 60px; }
+  #cineTitle h2 { margin: 0; font-family: 'Times New Roman', Times, serif; font-size: clamp(2.4rem, 5.5vw, 4.2rem); font-weight: 400; letter-spacing: 1px; background: linear-gradient(135deg, #fff, #a0c4ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 4px 30px rgba(88,166,255,.35); }
+  #cineTitle .step { color: var(--muted); font-size: 1rem; letter-spacing: 5px; text-transform: uppercase; margin-bottom: 10px; opacity: 0.85; font-family: 'Segoe UI', sans-serif; }
+
+  #cineDesc { position: absolute; bottom: 8vh; left: calc(50% - 170px); transform: translateX(-50%); max-width: min(900px, 65vw); text-align: center; pointer-events: none; z-index: 5; color: #e6edf3; font-family: 'Times New Roman', Times, serif; font-size: clamp(1.2rem, 1.8vw, 1.5rem); line-height: 1.5; text-shadow: 0 2px 12px rgba(0,0,0,.9); background: rgba(5,7,11,0.7); padding: 14px 28px; border-radius: 12px; backdrop-filter: blur(4px); border: 1px solid rgba(88,166,255,0.1); }
+
+  .side-legend { position: absolute; top: 50%; transform: translateY(-50%); z-index: 5; pointer-events: none; width: 280px; display: flex; flex-direction: column; gap: 16px; }
+  #cineLeft { left: 2vw; }
+  #cineRight { right: calc(340px + 2vw); }
+
+  .cine-legend-col { background: rgba(13,19,27,.85); backdrop-filter: blur(10px); border: 1px solid rgba(88,166,255,.2); border-radius: 12px; padding: 14px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .cine-legend-col h4 { margin: 0 0 10px; font-size: .85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; font-weight: 700; font-family: 'Segoe UI', sans-serif; }
+  .cine-legend-col ul { list-style: none; padding: 0; margin: 0; }
+  .cine-legend-col li { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; color: #e6edf3; font-size: 1rem; line-height: 1.4; font-family: 'Times New Roman', serif; }
+  .cine-legend-col li .dot { width: 12px; height: 12px; border-radius: 3px; flex: none; margin-top: 4px; box-shadow: 0 0 8px currentColor; }
+  .cine-legend-col .formula {
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(88,166,255,.15);
+    font-family: 'Cambria Math', Georgia, serif; color: var(--accent); font-size: 1rem;
+  }
+
+  #cinePanel { position: absolute; top: 0; right: 0; bottom: 0; width: 340px; z-index: 10; background: rgba(10,15,22,.95); backdrop-filter: blur(14px); border-left: 1px solid rgba(88,166,255,.2); padding: 24px 20px; overflow-y: auto; font-size: .85rem; }
+  #cinePanel h5 { margin: 0 0 12px; font-size: .75rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }
+  #cinePanel .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; color: var(--muted); }
+  #cinePanel .row span:last-child { color: var(--ink); font-family: 'SF Mono', monospace; font-size: .75rem; }
+  #cinePanel input[type=range] { width: 100%; accent-color: #58a6ff; cursor: pointer; margin-bottom: 16px; }
+  #cinePanel select { width: 100%; background: #1a2332; color: #fff; border: 1px solid #2a3648; padding: 10px; border-radius: 8px; font-size: .9rem; cursor: pointer; outline: none; margin-bottom: 16px; }
+  #cinePanel select option { background: #0e131b; }
+  #cinePanel .toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--ink); margin: 8px 0; }
+  #cinePanel input[type=checkbox] { accent-color: #58a6ff; cursor: pointer; }
+  #cinePanel hr { border: none; border-top: 1px solid #1e2836; margin: 20px 0; }
+
+  #cinePanel .btn {
+    background: #1a2332; color: #fff; border: 1px solid #2a3648; padding: 9px 12px;
+    border-radius: 8px; cursor: pointer; width: 100%; font-size: .8rem; transition: .2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  #cinePanel .btn:hover { background: #24354a; border-color: var(--accent); }
+  #cinePanel .btn.active { background: #1f3350; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  #cinePanel .btn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  #cinePanel .btn .dot.off { background: #444; }
+
+  .cond-panel { display: none; }
+  .cond-panel.visible { display: block; }
+
+  @media(max-width: 1000px) {
+    #cinemaCanvas { width: calc(100% - 260px); }
+    #cinePanel { width: 260px; padding: 16px 14px; }
+    #cineRight { right: calc(260px + 2vw); }
+    .side-legend { width: 210px; }
+    #cineTitle, #cineDesc { left: calc(50% - 130px); }
+  }
+</style>
+</head>
+<body>
+
+<div id="cinemaMode">
+  <canvas id="cinemaCanvas"></canvas>
+  <div class="vignette"></div>
+
+  <div id="cineTitle">
+    <div class="step" id="cineStep">VUE D'ARTISTE · SYNTHÈSE</div>
+    <h2 id="cineTitleText">Morphing & Transport Parallèle</h2>
+  </div>
+
+  <div class="side-legend" id="cineLeft"></div>
+  <div class="side-legend" id="cineRight"></div>
+
+  <div id="cineDesc"></div>
+
+  <div id="cinePanel">
+    <h5>Vue d'Artiste</h5>
+    <select id="artistSelect">
+      <option value="artist">K3 & Transport Parallèle</option>
+      <option value="forms">3 Formes (I, J, K séparées)</option>
+      <option value="morph">Morphing univarié (I → J → K → X⁴)</option>
+    </select>
+
+    <hr>
+
+    <h5>Paramètres</h5>
+    <div class="row"><span>Rotation</span><span id="pRot">0.50</span></div>
+    <input type="range" id="pRotInput" min="0" max="2" step="0.05" value="0.5">
+
+    <div class="row"><span>Zoom</span><span id="pZoom">8.0</span></div>
+    <input type="range" id="pZoomInput" min="3" max="30" step="0.5" value="8">
+
+    <label class="toggle"><input type="checkbox" id="pAuto" checked> Auto-rotation</label>
+    <button class="btn" id="btnWireframe" style="margin-top:10px;"><span class="dot off"></span> Wireframe</button>
+
+    <hr>
+
+    <div id="panelArtist" class="cond-panel visible">
+      <h5>Scène K3</h5>
+      <div class="row"><span>Opacité Sphères</span><span id="pOpacity">0.30</span></div>
+      <input type="range" id="pOpacityInput" min="0" max="1" step="0.01" value="0.3">
+      <label class="toggle"><input type="checkbox" id="pMorph" checked> Activer Morphing</label>
+      <label class="toggle"><input type="checkbox" id="pShowSpheres" checked> Afficher les Sphères</label>
+    </div>
+
+    <div id="panelMorph" class="cond-panel">
+      <h5>Morphing univarié</h5>
+      <div class="row"><span>Paramètre t</span><span id="tValue">0.00</span></div>
+      <input type="range" id="morphSlider" min="0" max="1" step="0.001" value="0">
+      <div style="font-size:.75rem; color:var(--muted); text-align:center; margin-bottom:12px;" id="morphState">I → J</div>
+      <label class="toggle"><input type="checkbox" id="morphAuto" checked> Auto (boucle)</label>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============================================================
+   INITIALISATION THREE.JS
+   ============================================================ */
+const canvas = document.getElementById('cinemaCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05070b, 0.02);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 300);
+camera.position.set(6, 5, 9);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.rotateSpeed = 0.5;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;
+controls.enableZoom = false;
+controls.minDistance = 3;
+controls.maxDistance = 30;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.3);
+keyLight.position.set(5, 10, 7);
+scene.add(keyLight);
+const fillLight = new THREE.PointLight(0x58a6ff, 1.0, 40);
+fillLight.position.set(-5, -2, 5);
+scene.add(fillLight);
+const rimLight = new THREE.PointLight(0xff9f43, 0.8, 40);
+rimLight.position.set(0, -6, -5);
+scene.add(rimLight);
+
+function resizeRenderer() {
+  const w = window.innerWidth - (window.innerWidth > 1000 ? 340 : 260);
+  const h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resizeRenderer);
+resizeRenderer();
+
+/* ============================================================
+   ZOOM PAR PALIERS (MOLETTE) — corrigé
+   ============================================================ */
+const ZOOM_STEP = 0.8;
+let zoomLock = false;
+
+function applyZoom(direction) {
+  const dir = camera.position.clone().sub(controls.target);
+  const d = dir.length();
+  const nd = Math.max(controls.minDistance, Math.min(controls.maxDistance, d + direction * ZOOM_STEP));
+  if (Math.abs(nd - d) < 1e-4) return;
+  camera.position.copy(controls.target).add(dir.normalize().multiplyScalar(nd));
+  syncZoomUI();
+}
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (zoomLock) return;
+  zoomLock = true;
+  applyZoom(e.deltaY > 0 ? +1 : -1);
+  setTimeout(() => { zoomLock = false; }, 80);
+}, { passive: false });
+
+function syncZoomUI() {
+  const d = camera.position.distanceTo(controls.target);
+  const pZoom = document.getElementById('pZoom');
+  const pZoomInput = document.getElementById('pZoomInput');
+  if (pZoom) pZoom.textContent = d.toFixed(1);
+  if (pZoomInput) pZoomInput.value = d.toFixed(1);
+}
+
+/* ============================================================
+   ÉTAT GLOBAL
+   ============================================================ */
+const state = {
+  view: 'artist',
+  wireframe: false,
+  autoRotate: true,
+};
+
+let currentGroup = null;
+let tickFns = [];
+
+let manifoldRef = null, manifoldWireRef = null, hkGroupRef = null;
+let morphEnabledArtist = true, showSpheres = true;
+
+let fieldI, fieldJ, fieldK;
+
+let morphMesh = null, morphWire = null, morphMaterial = null;
+let morphT = 0, morphDir = 1, morphAuto = true;
+let morphUniforms = null;
+
+/* ============================================================
+   NETTOYAGE
+   ============================================================ */
+function disposeGroup(g) {
+  g.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) {
+      if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+      else o.material.dispose();
+    }
+  });
+  scene.remove(g);
+}
+
+function resetRefs() {
+  manifoldRef = manifoldWireRef = hkGroupRef = null;
+  fieldI = fieldJ = fieldK = null;
+  morphMesh = morphWire = morphMaterial = null;
+  morphUniforms = null;
+  tickFns = [];
+}
+
+/* ============================================================
+   VUE 1 : VUE D'ARTISTE (K3 & TRANSPORT)
+   ============================================================ */
+function buildArtistScene() {
+  const g = new THREE.Group();
+  scene.add(g);
+  currentGroup = g;
+
+  const torusGeo = new THREE.TorusKnotGeometry(2.0, 0.55, 160, 20, 2, 3);
+  const manifoldMat = new THREE.MeshPhysicalMaterial({
+    color: 0x4ecdc4, metalness: 0.7, roughness: 0.3,
+    emissive: 0x2a7f78, emissiveIntensity: 0.5,
+    clearcoat: 1, clearcoatRoughness: 0.1,
+    transparent: true, opacity: 1.0
+  });
+  manifoldRef = new THREE.Mesh(torusGeo, manifoldMat);
+  g.add(manifoldRef);
+
+  const wireMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, wireframe: true, transparent: true, opacity: 0.0, visible: false
+  });
+  manifoldWireRef = new THREE.Mesh(new THREE.TorusKnotGeometry(2.0, 0.55, 160, 12, 2, 3), wireMat);
+  g.add(manifoldWireRef);
+
+  const hkGroup = new THREE.Group();
+  hkGroupRef = hkGroup;
+  const colors = [0xff6b6b, 0x4ecdc4, 0xffe66d];
+  colors.forEach((c, i) => {
+    const sphMat = new THREE.MeshStandardMaterial({
+      color: c, emissive: c, emissiveIntensity: 0.6,
+      transparent: true, opacity: 0.3, wireframe: true
+    });
+    const sph = new THREE.Mesh(new THREE.SphereGeometry(1.5 + i * 0.4, 24, 16), sphMat);
+    hkGroup.add(sph);
+
+    const dirs = [new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,1)];
+    const dir = dirs[i];
+    [dir, dir.clone().negate()].forEach(d => {
+      const ar = new THREE.ArrowHelper(d, new THREE.Vector3(0,0,0), 3.5, c, 0.4, 0.2);
+      ar.line.material.transparent = true;
+      ar.line.material.opacity = 0.9;
+      ar.cone.material.transparent = true;
+      ar.cone.material.opacity = 0.9;
+      hkGroup.add(ar);
+    });
+  });
+  g.add(hkGroup);
+
+  const geoPts = [];
+  const N = 300;
+  for (let i = 0; i < N; i++) {
+    const u = (i / N) * Math.PI * 2 * 2;
+    const R = 2.0, r = 0.55, p = 2, q = 3;
+    const cq = Math.cos(q * u / p), sq = Math.sin(q * u / p);
+    const cu = Math.cos(u), su = Math.sin(u);
+    geoPts.push(new THREE.Vector3((R + r * cq) * cu, (R + r * cq) * su, r * sq));
+  }
+  const geoCurve = new THREE.CatmullRomCurve3(geoPts);
+  const geoTorus = new THREE.Mesh(
+    new THREE.TubeGeometry(geoCurve, 300, 0.04, 6, true),
+    new THREE.MeshBasicMaterial({ color: 0x58a6ff, transparent: true, opacity: 0.8 })
+  );
+  g.add(geoTorus);
+
+  const traveler = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 12, 10),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.0 })
+  );
+  g.add(traveler);
+
+  const PAR_N = 16;
+  const parallelArrows = [];
+  for (let i = 0; i < PAR_N; i++) {
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(0.1, 0.3, 10),
+      new THREE.MeshStandardMaterial({ color: 0xff9f43, emissive: 0xff9f43, emissiveIntensity: 1.0 })
+    );
+    parallelArrows.push(cone);
+    g.add(cone);
+  }
+
+  const refVec = new THREE.Vector3(0, 0, 1);
+  let morph = 0, morphDirA = 1;
+
+  tickFns.push((t, dt) => {
+    if (morphEnabledArtist) {
+      morph += morphDirA * dt * 0.4;
+      if (morph > 1) { morph = 1; morphDirA = -1; }
+      if (morph < 0) { morph = 0; morphDirA = 1; }
+    }
+    if (manifoldRef) {
+      manifoldRef.material.opacity = 1 - 0.7 * morph;
+      manifoldRef.material.emissiveIntensity = 0.5 + 0.3 * morph;
+    }
+    if (manifoldWireRef) {
+      manifoldWireRef.material.opacity = 0.1 + 0.15 * morph;
+    }
+    if (hkGroupRef) {
+      hkGroupRef.children.forEach(child => {
+        if (child.isMesh && child.geometry.type === 'SphereGeometry') {
+          child.visible = showSpheres;
+          child.scale.setScalar(1 + 0.15 * morph);
+        }
+      });
+    }
+    geoTorus.material.opacity = 0.4 + 0.5 * morph;
+
+    const u = ((t * 0.15) % 1);
+    traveler.position.copy(geoCurve.getPoint(u));
+    for (let i = 0; i < PAR_N; i++) {
+      const uu = (u + i / PAR_N) % 1;
+      const p = geoCurve.getPoint(uu);
+      const tan = geoCurve.getTangent(uu).normalize();
+      const ar = parallelArrows[i];
+      ar.position.copy(p);
+      const v = refVec.clone().sub(tan.clone().multiplyScalar(refVec.dot(tan)));
+      if (v.lengthSq() < 1e-4) v.set(0, 1, 0);
+      v.normalize();
+      ar.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), v);
+    }
+  });
+}
+
+/* ============================================================
+   VUE 2 : 3 FORMES SÉPARÉES
+   ============================================================ */
+const A_PARAM = 2.0;
+
+function createQuaternionicField(colorHex, axis) {
+  const points = [];
+  const N = 240;
+  const radius = A_PARAM + 0.6;
+  for (let i = 0; i <= N; i++) {
+    const t = (i / N) * Math.PI * 4;
+    let x, y, z;
+    if (axis === 'I') { x = t * 0.1; y = radius * Math.cos(t); z = radius * Math.sin(t); }
+    else if (axis === 'J') { x = radius * Math.cos(t); y = t * 0.1; z = radius * Math.sin(t); }
+    else { x = radius * Math.cos(t); y = radius * Math.sin(t); z = t * 0.1; }
+    points.push(new THREE.Vector3(x, y, z));
+  }
+  const curve = new THREE.CatmullRomCurve3(points);
+  const tubeGeo = new THREE.TubeGeometry(curve, 160, 0.05, 10, false);
+  const mat = new THREE.MeshStandardMaterial({
+    color: colorHex, emissive: colorHex, emissiveIntensity: 0.75,
+    metalness: 0.5, roughness: 0.2
+  });
+  return new THREE.Mesh(tubeGeo, mat);
+}
+
+function buildFormsScene() {
+  const g = new THREE.Group();
+  scene.add(g);
+  currentGroup = g;
+
+  fieldI = createQuaternionicField(0xff4d4d, 'I');
+  fieldJ = createQuaternionicField(0x4dff88, 'J');
+  fieldK = createQuaternionicField(0x4d8bff, 'K');
+  g.add(fieldI, fieldJ, fieldK);
+
+  const makeAnchor = (color) => {
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 12, 12),
+      new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1 })
+    );
+    return m;
+  };
+  g.add(makeAnchor(0xff4d4d), makeAnchor(0x4dff88), makeAnchor(0x4d8bff));
+
+  tickFns.push((t, dt) => {
+    fieldI.rotation.x += dt * 0.4;
+    fieldJ.rotation.y += dt * 0.4;
+    fieldK.rotation.z += dt * 0.4;
+  });
+}
+
+/* ============================================================
+   VUE 3 : MORPHING UNIVARIÉ — GPU via onBeforeCompile
+   ============================================================
+   Principe : la géométrie de base (X⁴) est construite UNE SEULE FOIS
+   avec des normales lissées. La déformation I→J→K→X⁴ est calculée
+   dans le vertex shader à partir d'un uniform `uT` mis à jour
+   chaque frame (coût CPU ~0). Résolution réduite + pas de
+   computeVertexNormals() dynamique → 60 fps.
+   ============================================================ */
+const R_MIN = A_PARAM + 0.05;
+const R_MAX = 7.0;
+const stepsR = 24, stepsTheta = 28, stepsPhi = 28;
+
+function buildMorphScene() {
+  const g = new THREE.Group();
+  scene.add(g);
+  currentGroup = g;
+
+  const vertexCount = (stepsR + 1) * (stepsTheta + 1) * (stepsPhi + 1);
+  const positions = new Float32Array(vertexCount * 3);
+  const colors = new Float32Array(vertexCount * 3);
+  const indices = [];
+
+  let vIdx = 0;
+  for (let i = 0; i <= stepsR; i++) {
+    const r = R_MIN + (i / stepsR) * (R_MAX - R_MIN);
+    const f = 1.0 - Math.pow(A_PARAM / r, 4);
+    const curvature = 12.0 * Math.pow(A_PARAM, 4) / Math.pow(r, 6);
+    const tC = Math.min(1.0, curvature / 1.5);
+    const cr = tC, cg = 0.15, cb = 1.0 - tC;
+    for (let j = 0; j <= stepsTheta; j++) {
+      const theta = (j / stepsTheta) * Math.PI;
+      for (let k = 0; k <= stepsPhi; k++) {
+        const phi = (k / stepsPhi) * Math.PI * 2;
+        const x = r * Math.sin(theta) * Math.cos(phi);
+        const y = r * Math.cos(theta);
+        const z = r * Math.sin(theta) * Math.sin(phi) * Math.sqrt(Math.max(0.01, f));
+        positions[vIdx*3] = x;
+        positions[vIdx*3+1] = y;
+        positions[vIdx*3+2] = z;
+        colors[vIdx*3] = cr; colors[vIdx*3+1] = cg; colors[vIdx*3+2] = cb;
+        vIdx++;
+      }
+    }
+  }
+
+  const strideTheta = stepsPhi + 1;
+  const strideR = (stepsTheta + 1) * strideTheta;
+  for (let i = 0; i < stepsR; i++) {
+    for (let j = 0; j < stepsTheta; j++) {
+      for (let k = 0; k < stepsPhi; k++) {
+        const a = i * strideR + j * strideTheta + k;
+        const b = a + 1;
+        const c = a + strideTheta;
+        const d = c + 1;
+        const e = a + strideR;
+        const f = e + 1;
+        const gg = e + strideTheta;
+        const h = gg + 1;
+        indices.push(a, c, b, b, c, d);
+        indices.push(e, f, gg, f, h, gg);
+        indices.push(a, b, e, b, f, e);
+        indices.push(c, gg, d, d, gg, h);
+      }
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+
+  // Uniform partagé entre vertex et fragment
+  morphUniforms = {
+    uT: { value: 0.0 },
+  };
+
+  // Matériau principal : vertex shader déforme, normales approximées
+  morphMaterial = new THREE.MeshStandardMaterial({
+    vertexColors: true, metalness: 0.6, roughness: 0.28,
+    side: THREE.DoubleSide, flatShading: false,
+  });
+
+  morphMaterial.onBeforeCompile = (shader) => {
+    shader.uniforms.uT = morphUniforms.uT;
+
+    // --- VERTEX SHADER : déformation GPU ---
+    shader.vertexShader = `
+      uniform float uT;
+      vec3 deform(vec3 p) {
+        // segment [0,1] -> [0,3] sur 4 formes : I, J, K, X⁴
+        float seg = uT * 3.0;
+        float i0 = floor(min(seg, 2.999));
+        float local = seg - i0;
+
+        // ondes propres à chaque forme (mêmes formules que la version CPU)
+        float wI = sin(p.x * 2.0) * 0.18;
+        float wJ = cos(p.y * 2.0) * 0.18;
+        float wK = sin(p.z * 2.0) * 0.18;
+        float wX = 0.0;
+
+        float w0 = 0.0, w1 = 0.0;
+        vec3 d0, d1;
+        if (i0 < 0.5)      { w0 = wI; w1 = wJ; d0 = vec3(1,0,0); d1 = vec3(0,1,0); }
+        else if (i0 < 1.5) { w0 = wJ; w1 = wK; d0 = vec3(0,1,0); d1 = vec3(0,0,1); }
+        else               { w0 = wK; w1 = wX; d0 = vec3(0,0,1); d1 = vec3(0,0,0); }
+
+        float w = mix(w0, w1, local);
+        vec3  b = mix(d0, d1, local);
+        return p + b * w;
+      }
+      ` + shader.vertexShader;
+
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `
+      vec3 transformed = deform(position);
+      `
+    );
+
+    // Approximation de normale : on garde la normale de la forme X⁴
+    // (assez lisse pour un rendu artistique). La déformation est faible
+    // (amplitude 0.18) donc l'écart visuel est négligeable.
+  };
+
+  morphMesh = new THREE.Mesh(geometry, morphMaterial);
+  g.add(morphMesh);
+
+  // Wireframe séparé (partage la même géométrie + shader déformant)
+  const wireMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, wireframe: true, transparent: true, opacity: 0.0, visible: false
+  });
+  wireMat.onBeforeCompile = (shader) => {
+    shader.uniforms.uT = morphUniforms.uT;
+    shader.vertexShader = `
+      uniform float uT;
+      vec3 deform(vec3 p) {
+        float seg = uT * 3.0;
+        float i0 = floor(min(seg, 2.999));
+        float local = seg - i0;
+        float wI = sin(p.x * 2.0) * 0.18;
+        float wJ = cos(p.y * 2.0) * 0.18;
+        float wK = sin(p.z * 2.0) * 0.18;
+        float wX = 0.0;
+        float w0 = 0.0, w1 = 0.0;
+        vec3 d0, d1;
+        if (i0 < 0.5)      { w0 = wI; w1 = wJ; d0 = vec3(1,0,0); d1 = vec3(0,1,0); }
+        else if (i0 < 1.5) { w0 = wJ; w1 = wK; d0 = vec3(0,1,0); d1 = vec3(0,0,1); }
+        else               { w0 = wK; w1 = wX; d0 = vec3(0,0,1); d1 = vec3(0,0,0); }
+        float w = mix(w0, w1, local);
+        vec3  b = mix(d0, d1, local);
+        return p + b * w;
+      }
+      ` + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `vec3 transformed = deform(position);`
+    );
+  };
+
+  morphWire = new THREE.Mesh(geometry, wireMat);
+  g.add(morphWire);
+
+  morphT = 0; morphDir = 1;
+  morphUniforms.uT.value = 0;
+
+  tickFns.push((t, dt) => {
+    if (morphAuto) {
+      // Vitesse accélérée : cycle complet 0→1 en ~1.1 s → aller-retour ~2.2 s
+      morphT += morphDir * dt * 0.9;
+      if (morphT >= 1) { morphT = 1; morphDir = -1; }
+      if (morphT <= 0) { morphT = 0; morphDir = 1; }
+      const slider = document.getElementById('morphSlider');
+      if (slider) slider.value = morphT;
+      updateMorphUI();
+    } else {
+      morphMesh.rotation.y += dt * 0.15;
+      morphWire.rotation.y += dt * 0.15;
+    }
+    // Mise à jour GPU (coût quasi nul)
+    morphUniforms.uT.value = morphT;
+  });
+}
+
+function updateMorphUI() {
+  const labels = ['I', 'J', 'K', 'X⁴'];
+  const idx = Math.min(3, Math.floor(morphT * 4));
+  const next = Math.min(3, idx + 1);
+  const tValueEl = document.getElementById('tValue');
+  const morphStateEl = document.getElementById('morphState');
+  if (tValueEl) tValueEl.textContent = morphT.toFixed(3);
+  if (morphStateEl) morphStateEl.textContent = `${labels[idx]} → ${labels[next]}`;
+  refreshLegend();
+}
+
+/* ============================================================
+   UI : MENU, WIREFRAME, SLIDER, LÉGENDES
+   ============================================================ */
+const artistSelect = document.getElementById('artistSelect');
+const panelArtist = document.getElementById('panelArtist');
+const panelMorph = document.getElementById('panelMorph');
+const btnWireframe = document.getElementById('btnWireframe');
+const morphSlider = document.getElementById('morphSlider');
+const morphAutoCb = document.getElementById('morphAuto');
+
+const LEGENDS = {
+  artist: {
+    left: `
+      <div class="cine-legend-col">
+        <h4>Triade Hyperkähler</h4>
+        <ul>
+          <li><span class="dot" style="background:#ff6b6b;color:#ff6b6b"></span><span><b>I</b> — Structure Complexe</span></li>
+          <li><span class="dot" style="background:#4ecdc4;color:#4ecdc4"></span><span><b>J</b> — Structure Complexe</span></li>
+          <li><span class="dot" style="background:#ffe66d;color:#ffe66d"></span><span><b>K</b> — Structure Complexe</span></li>
+        </ul>
+        <div class="formula">IJ = K, JK = I, KI = J</div>
+      </div>`,
+    right: `
+      <div class="cine-legend-col">
+        <h4>Géométrie</h4>
+        <ul>
+          <li><span class="dot" style="background:#4ecdc4;color:#4ecdc4"></span><span>4-variété (K3 stylisé)</span></li>
+          <li><span class="dot" style="background:#58a6ff;color:#58a6ff"></span><span>Géodésique</span></li>
+          <li><span class="dot" style="background:#ff9f43;color:#ff9f43"></span><span>Transport parallèle (∇=0)</span></li>
+        </ul>
+        <div class="formula">∇ω_I = ∇ω_J = ∇ω_K = 0</div>
+      </div>`,
+    title: 'Morphing & Transport Parallèle',
+    step: "VUE D'ARTISTE · SYNTHÈSE",
+    desc: "Morphing continu entre la 4-variété (tore K3) et la métrique hyperkähler. Les flèches orange illustrent le <b>transport parallèle</b> le long de la géodésique bleue : leur orientation reste strictement constante dans le fibré tangent, signature visuelle de <b>∇ω = 0</b>.",
+  },
+  forms: {
+    left: `
+      <div class="cine-legend-col">
+        <h4>Structures Quaternioniques</h4>
+        <ul>
+          <li><span class="dot" style="background:#ff4d4d;color:#ff4d4d"></span><span><b>I</b> — structure complexe (axe x)</span></li>
+          <li><span class="dot" style="background:#4dff88;color:#4dff88"></span><span><b>J</b> — structure complexe (axe y)</span></li>
+          <li><span class="dot" style="background:#4d8bff;color:#4d8bff"></span><span><b>K</b> — structure complexe (axe z)</span></li>
+        </ul>
+        <div class="formula">IJ = K, JK = I, KI = J</div>
+      </div>`,
+    right: `
+      <div class="cine-legend-col">
+        <h4>Géométrie</h4>
+        <ul>
+          <li><span class="dot" style="background:#4ecdc4;color:#4ecdc4"></span><span>Espace ALE non-compact</span></li>
+          <li><span class="dot" style="background:#58a6ff;color:#58a6ff"></span><span>Métrique d'Eguchi-Hanson</span></li>
+          <li><span class="dot" style="background:#ff9f43;color:#ff9f43"></span><span>Ricci(g) = 0</span></li>
+        </ul>
+        <div class="formula">ds² = f(r)dr² + r²(σ₁² + σ₂²) + r²f(r)σ₃²</div>
+      </div>`,
+    title: 'Trois Formes Séparées',
+    step: 'SYNTHÈSE · I, J, K',
+    desc: "Les trois structures complexes <b>I</b>, <b>J</b>, <b>K</b> de la variété hyperkähler, visualisées séparément comme des courbes fermées orientées selon les axes x, y et z. Leur composition engendre l'algèbre des quaternions.",
+  },
+  morph: {
+    left: `
+      <div class="cine-legend-col">
+        <h4>Morphing Univarié</h4>
+        <ul>
+          <li><span class="dot" style="background:#58a6ff;color:#58a6ff"></span><span>Courant : <b>I</b></span></li>
+          <li><span class="dot" style="background:#ff9f43;color:#ff9f43"></span><span>Cible : <b>J</b></span></li>
+        </ul>
+        <div class="formula">ω(t) = (1−t)·ω_i + t·ω_{i+1}</div>
+      </div>`,
+    right: `
+      <div class="cine-legend-col">
+        <h4>Géométrie</h4>
+        <ul>
+          <li><span class="dot" style="background:#4ecdc4;color:#4ecdc4"></span><span>4-variété X⁴</span></li>
+          <li><span class="dot" style="background:#58a6ff;color:#58a6ff"></span><span>Métrique Eguchi-Hanson</span></li>
+          <li><span class="dot" style="background:#ff9f43;color:#ff9f43"></span><span>Ricci(g) = 0</span></li>
+        </ul>
+        <div class="formula">ds² = f(r)dr² + r²(σ₁² + σ₂²) + r²f(r)σ₃²</div>
+      </div>`,
+    title: 'Morphing Univarié',
+    step: 'SYNTHÈSE · I → J → K → X⁴',
+    desc: "Interpolation continue sur les quatre formes : la structure complexe <b>I</b> se déforme en <b>J</b>, puis en <b>K</b>, puis rejoint la <b>4-variété X⁴</b>. Le paramètre <b>t</b> parcourt l'intervalle [0, 1] en boucle (aller-retour).",
+  }
+};
+
+function refreshLegend() {
+  if (state.view === 'morph') {
+    const labels = ['I', 'J', 'K', 'X⁴'];
+    const idx = Math.min(3, Math.floor(morphT * 4));
+    const next = Math.min(3, idx + 1);
+    document.getElementById('cineLeft').innerHTML = `
+      <div class="cine-legend-col">
+        <h4>Morphing Univarié</h4>
+        <ul>
+          <li><span class="dot" style="background:#58a6ff;color:#58a6ff"></span><span>Courant : <b>${labels[idx]}</b></span></li>
+          <li><span class="dot" style="background:#ff9f43;color:#ff9f43"></span><span>Cible : <b>${labels[next]}</b></span></li>
+        </ul>
+        <div class="formula">t = ${morphT.toFixed(3)}</div>
+      </div>`;
+    document.getElementById('cineRight').innerHTML = LEGENDS.morph.right;
+  } else {
+    const l = LEGENDS[state.view];
+    document.getElementById('cineLeft').innerHTML = l.left;
+    document.getElementById('cineRight').innerHTML = l.right;
+  }
+}
+
+function switchView(view) {
+  state.view = view;
+  artistSelect.value = view;
+
+  if (currentGroup) { disposeGroup(currentGroup); currentGroup = null; }
+  resetRefs();
+
+  panelArtist.classList.toggle('visible', view === 'artist');
+  panelMorph.classList.toggle('visible', view === 'morph');
+
+  if (view === 'artist') buildArtistScene();
+  else if (view === 'forms') buildFormsScene();
+  else if (view === 'morph') buildMorphScene();
+
+  applyWireframe();
+
+  const l = LEGENDS[view];
+  document.getElementById('cineTitleText').textContent = l.title;
+  document.getElementById('cineStep').textContent = l.step;
+  document.getElementById('cineDesc').innerHTML = l.desc;
+
+  refreshLegend();
+
+  // Dézoom 50 % à l'arrivée sur le morphing (distance ×2)
+  if (view === 'morph') {
+    const dir = camera.position.clone().sub(controls.target).normalize();
+    const currentDist = camera.position.distanceTo(controls.target);
+    const targetDist = Math.min(controls.maxDistance, currentDist * 2.0);
+    camera.position.copy(controls.target).add(dir.multiplyScalar(targetDist));
+    syncZoomUI();
+  }
+
+  controls.autoRotate = (view === 'forms') && state.autoRotate;
+}
+
+function applyWireframe() {
+  const on = state.wireframe;
+  const dot = btnWireframe.querySelector('.dot');
+  if (dot) dot.classList.toggle('off', !on);
+  btnWireframe.classList.toggle('active', on);
+
+  if (state.view === 'artist' && manifoldWireRef) {
+    manifoldWireRef.material.visible = on;
+    manifoldWireRef.material.opacity = on ? 0.5 : 0.0;
+  }
+  if (state.view === 'morph' && morphWire) {
+    morphWire.material.visible = on;
+    morphWire.material.opacity = on ? 0.35 : 0.0;
+  }
+}
+
+artistSelect.addEventListener('change', (e) => switchView(e.target.value));
+
+btnWireframe.addEventListener('click', () => {
+  state.wireframe = !state.wireframe;
+  applyWireframe();
+});
+
+morphSlider.addEventListener('input', (e) => {
+  morphT = parseFloat(e.target.value);
+  morphAuto = false;
+  if (morphAutoCb) morphAutoCb.checked = false;
+  if (morphUniforms) morphUniforms.uT.value = morphT;
+  updateMorphUI();
+});
+
+if (morphAutoCb) {
+  morphAutoCb.addEventListener('change', (e) => {
+    morphAuto = e.target.checked;
+    if (morphAuto) morphDir = (morphT >= 1) ? -1 : 1;
+  });
+}
+
+const pRotInput = document.getElementById('pRotInput');
+const pZoomInput = document.getElementById('pZoomInput');
+const pAuto = document.getElementById('pAuto');
+
+pRotInput.addEventListener('input', (e) => {
+  const v = parseFloat(e.target.value);
+  document.getElementById('pRot').textContent = v.toFixed(2);
+  controls.autoRotateSpeed = v;
+});
+
+pZoomInput.addEventListener('input', (e) => {
+  const v = parseFloat(e.target.value);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  camera.position.copy(controls.target).add(dir.multiplyScalar(v));
+  syncZoomUI();
+});
+
+pAuto.addEventListener('change', (e) => {
+  state.autoRotate = e.target.checked;
+  controls.autoRotate = (state.view === 'forms') && state.autoRotate;
+});
+
+const pOpacityInput = document.getElementById('pOpacityInput');
+const pMorph = document.getElementById('pMorph');
+const pShowSpheres = document.getElementById('pShowSpheres');
+
+pOpacityInput.addEventListener('input', (e) => {
+  const v = parseFloat(e.target.value);
+  document.getElementById('pOpacity').textContent = v.toFixed(2);
+  if (hkGroupRef) {
+    hkGroupRef.children.forEach(child => {
+      if (child.isMesh && child.geometry.type === 'SphereGeometry') {
+        child.material.opacity = v;
+      }
+    });
+  }
+});
+
+pMorph.addEventListener('change', (e) => { morphEnabledArtist = e.target.checked; });
+pShowSpheres.addEventListener('change', (e) => { showSpheres = e.target.checked; });
+
+/* ============================================================
+   BOUCLE D'ANIMATION
+   ============================================================ */
+let lastTime = performance.now();
+function animate() {
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt = Math.min(0.1, (now - lastTime) / 1000);
+  lastTime = now;
+  const t = now * 0.001;
+
+  controls.update();
+  tickFns.forEach(fn => fn(t, dt));
+  renderer.render(scene, camera);
+  syncZoomUI();
+}
+
+/* ============================================================
+   LANCEMENT
+   ============================================================ */
+syncZoomUI();
+switchView('artist');
+animate();
+</script>
+</body>
+</html>
