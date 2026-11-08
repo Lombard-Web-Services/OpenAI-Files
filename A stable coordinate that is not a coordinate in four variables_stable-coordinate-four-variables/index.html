@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cinéma — Contre-exemple stable-coordinate</title>
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#0a0c10;color:#d8dee9;
+    font-family:"Times New Roman",Georgia,serif}
+
+  *::-webkit-scrollbar{display:none}
+  *{scrollbar-width:none}
+
+  /* === Layout principal : contenu + sidebar === */
+  #app{
+    display:grid;
+    grid-template-columns: 1fr 320px;
+    height:100vh;
+    width:100vw;
+  }
+
+  /* ============================================================
+     CONTENEUR DE CONTENU (capturé lors des exports)
+     ============================================================ */
+  #content-area{
+    position:relative;
+    min-width:0; min-height:0;
+    display:flex; flex-direction:column;
+    overflow:hidden;
+    background:#0a0c10;
+  }
+
+  /* --- MODE CINÉMA (layout vertical) --- */
+  #content-area.mode-cinema{
+    display:grid;
+    grid-template-rows: auto auto 1fr auto;
+  }
+  #content-area.mode-cinema .title-band{border-bottom:1px solid #1a2028;}
+  #content-area.mode-cinema .eq-band{border-bottom:1px solid #1a2028;}
+  #content-area.mode-cinema .desc-band{border-top:1px solid #1a2028; max-height:38vh;}
+  
+  /* --- MODE SPLIT (layout horizontal) --- */
+  #content-area.mode-split{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+  }
+  #content-area.mode-split .left-pane{
+    display:flex; flex-direction:column; justify-content:center;
+    padding:4vh 3vw; border-right:1px solid #1a2028;
+    overflow-y:auto;
+  }
+  #content-area.mode-split .right-pane{
+    position:relative; display:flex; flex-direction:column;
+  }
+  #content-area.mode-split .viz-area{
+    flex:1;
+  }
+
+  /* ============================================================
+     ÉLÉMENTS COMMUNS (Titre, Eq, Desc)
+     ============================================================ */
+  .title-band{
+    padding:28px 40px 16px;
+    text-align:center;
+    background:linear-gradient(to bottom,#0e1014,#0a0c10);
+  }
+  .mode-split .title-band{
+    padding:0 0 16px 0;
+    text-align:left;
+    background:transparent;
+  }
+  .title-band .kicker{
+    color:#f9e2af; font-size:clamp(13px, 1.4vw, 16px);
+    letter-spacing:6px; text-transform:uppercase;
+    font-weight:700; font-family:"SF Mono",Consolas,monospace;
+    margin-bottom:10px;
+  }
+  .title-band h1{
+    font-size:clamp(28px, 3.6vw, 48px);
+    font-weight:800; line-height:1.15; color:#f5f5ff;
+    letter-spacing:-0.4px;
+  }
+  .title-band h1 em{color:#f38ba8;font-style:italic}
+
+  .eq-band{
+    padding:18px 40px 22px;
+    text-align:center;
+    background:#0a0c10;
+  }
+  .mode-split .eq-band{
+    padding:18px 0 22px 0;
+    text-align:left;
+    background:transparent;
+  }
+  .eq-band .formula-block{
+    display:inline-block;
+    background:#14171d;
+    border:1px solid #262a33;
+    border-left:4px solid #58c4dc;
+    padding:20px 40px;
+    font-size:clamp(22px, 2.6vw, 32px);
+    text-align:left;
+    min-width:280px;
+  }
+  .eq-band .formula-block .katex{color:#a6e3a1;font-size:1em}
+  .eq-band .cite{
+    display:block;color:#6c7a8c;
+    font-size:clamp(13px,1.3vw,15px);
+    margin-top:12px;
+    font-family:"SF Mono",Consolas,monospace;
+    font-style:italic;
+  }
+
+  .desc-band{
+    padding:24px 40px 28px;
+    background:linear-gradient(to top,#0e1014,#0a0c10);
+    overflow-y:auto;
+    display:grid;
+    gap:32px;
+    align-items:start;
+  }
+  .mode-cinema .desc-band{
+    grid-template-columns:1.4fr 1fr;
+  }
+  .mode-split .desc-band{
+    display:block;
+    padding:0;
+    background:transparent;
+    overflow:visible;
+  }
+  .desc-band p.desc{
+    color:#c8d0dc;
+    font-size:clamp(18px, 1.9vw, 24px);
+    line-height:1.6;margin-bottom:14px;
+  }
+  .desc-band p.desc em{color:#f5f5ff;font-style:italic;font-weight:700}
+  .desc-band p.desc strong.hl{color:#f38ba8}
+  .desc-band p.desc code{
+    background:#14171d;color:#a6e3a1;
+    padding:2px 6px;border-radius:3px;
+    font-family:"SF Mono",monospace;font-size:0.85em;
+  }
+  .analogy-note{
+    background:#1a1510;border-left:4px solid #f9e2af;
+    padding:14px 18px;margin:14px 0;
+    font-size:clamp(15px,1.5vw,18px);
+    color:#f9e2af;font-style:italic;
+  }
+  .fibers{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0;}
+  .fiber{
+    background:#14171d;border:1px solid #262a33;
+    padding:12px 16px;
+    display:grid;grid-template-columns:auto 1fr auto;
+    align-items:center;gap:14px;
+  }
+  .fiber .lam{color:#58c4dc;font-size:18px;min-width:70px}
+  .fiber .shape{color:#a6e3a1;font-size:20px;font-weight:700;font-family:"SF Mono",monospace}
+  .fiber .dim{color:#6c7a8c;font-size:12px}
+  .logic{font-size:clamp(15px,1.5vw,17px);line-height:1.9;font-family:"SF Mono",Consolas,monospace;}
+  .logic .step{color:#d8dee9;padding-left:22px;position:relative;margin-bottom:8px;}
+  .logic .step::before{content:"▸";color:#58c4dc;position:absolute;left:2px;font-weight:700;}
+  .logic .contra{
+    color:#f38ba8;font-weight:800;
+    padding:12px 12px 12px 34px;
+    border-left:4px solid #f38ba8;background:#2a0f1a;
+    margin-top:14px;position:relative;
+  }
+  .logic .contra::before{content:"✗";position:absolute;left:8px;font-size:1.2em;}
+
+  /* ============================================================
+     ZONE 3D
+     ============================================================ */
+  .viz-area{
+    position:relative;
+    background:#0a0c10;
+    overflow:hidden;
+    min-height:0;
+    width:100%; height:100%;
+  }
+  .viz-area canvas{
+    position:absolute;inset:0;
+    width:100%;height:100%;display:block;
+    cursor:crosshair;touch-action:none;
+  }
+  .hud{
+    position:absolute;top:14px;left:14px;z-index:6;
+    font:12px/1.5 "SF Mono",Consolas,monospace;color:#7d8a9c;
+    background:#0e1014dd;border:1px solid #262a33;border-radius:3px;
+    padding:10px 14px;backdrop-filter:blur(6px);pointer-events:none;
+    min-width:170px;
+  }
+  .hud .row{display:flex;justify-content:space-between;gap:12px;}
+  .hud .k{color:#4a5468;}
+  .hud .v{color:#58c4dc;}
+  .viz-controls{
+    position:absolute;top:14px;right:14px;
+    display:flex;flex-direction:column;gap:4px;z-index:6;
+  }
+  .viz-controls button{
+    width:36px;height:36px;border-radius:3px;border:1px solid #2e3745;
+    background:#14171dee;color:#d8dee9;font:bold 16px "SF Mono",monospace;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:all .12s;
+  }
+  .viz-controls button:hover{background:#1f2633;border-color:#58c4dc;color:#58c4dc;}
+  .viz-controls button:active{transform:scale(0.94);}
+
+  /* ============================================================
+     SIDEBAR
+     ============================================================ */
+  #sidebar{
+    background:#0e1014;
+    border-left:1px solid #1a2028;
+    padding:20px 18px;
+    overflow-y:auto;
+    display:flex;flex-direction:column;gap:16px;
+  }
+  #sidebar h3{
+    color:#58c4dc;font-size:11px;letter-spacing:2px;
+    text-transform:uppercase;font-weight:700;
+    font-family:"SF Mono",monospace;
+    margin-bottom:8px;
+    padding-bottom:6px;border-bottom:1px solid #262a33;
+  }
+  #sidebar label{
+    display:block;
+    font-family:"SF Mono",monospace;font-size:11px;color:#7d8a9c;
+    margin-bottom:4px;
+  }
+  #sidebar select, #sidebar input{
+    width:100%;
+    background:#14171d;border:1px solid #2e3745;
+    color:#d8dee9;font-family:"SF Mono",monospace;font-size:13px;
+    padding:8px 10px;border-radius:3px;
+    outline:none;transition:border-color .15s;
+  }
+  #sidebar select:focus, #sidebar input:focus{border-color:#58c4dc;}
+  #sidebar select{cursor:pointer;}
+
+  /* Boutons de navigation (étapes) */
+  .nav-list{
+    display:grid;grid-template-columns:1fr;gap:6px;
+  }
+  .nav-list button{
+    background:#14171d;border:1px solid #2e3745;
+    color:#a8b2c0;font-family:"SF Mono",monospace;font-size:12px;
+    padding:10px 14px;border-radius:3px;
+    cursor:pointer;text-align:left;transition:all .15s;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .nav-list button:hover{background:#1f2633;border-color:#58c4dc;color:#d8dee9;}
+  .nav-list button.active{background:#1f2633;border-color:#58c4dc;color:#58c4dc;font-weight:700;}
+  .nav-list button .num{font-size:10px;opacity:0.6;}
+
+  #record-btn{
+    background:#f38ba8;color:#0a0c10;border:none;border-radius:3px;
+    padding:12px 16px;cursor:pointer;
+    font:bold 14px "SF Mono",monospace;
+    text-transform:uppercase;letter-spacing:1.5px;
+    transition:all .15s;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  #record-btn:hover{background:#ff8eab;}
+  #record-btn:active{transform:scale(0.97);}
+  #record-btn.recording{
+    background:#a6e3a1;color:#0a0c10;
+    animation:pulse 1.2s ease infinite;
+  }
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(166,227,161,0.7);}50%{box-shadow:0 0 0 10px rgba(166,227,161,0);}}
+  #record-btn::before{content:"●";font-size:1.2em;}
+  #record-btn.recording::before{content:"■";font-size:1em;}
+  #rec-status{
+    font-family:"SF Mono",monospace;font-size:11px;color:#6c7a8c;
+    text-align:center;min-height:16px;margin-top:8px;
+  }
+  #rec-status.active{color:#f38ba8;font-weight:700;}
+
+  #export-bar{display:flex;flex-direction:column;gap:6px;}
+  #export-bar button{
+    background:#14171d;border:1px solid #2e3745;
+    color:#d8dee9;font:bold 12px "SF Mono",monospace;
+    padding:9px 12px;border-radius:3px;
+    cursor:pointer;transition:all .15s;text-align:left;
+  }
+  #export-bar button:hover{background:#1f2633;border-color:#f9e2af;color:#f9e2af;}
+  #export-bar button:active{transform:scale(0.97);}
+
+  #toast{
+    position:fixed;bottom:80px;left:calc(50% - 160px);transform:translateX(-50%) translateY(20px);
+    background:#14171d;color:#f9e2af;border:1px solid #f9e2af;
+    padding:10px 22px;border-radius:4px;
+    font:13px "SF Mono",monospace;
+    opacity:0;transition:all .3s;pointer-events:none;z-index:20;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* KaTeX overrides */
+  .katex{color:inherit;font-size:1em!important;}
+  .katex-display{color:#a6e3a1;margin:0!important;}
+  .title-band .katex{color:#58c4dc;}
+  .title-band .katex-display{margin:0;}
+</style>
+</head>
+<body>
+
+<div id="app">
+  
+  <!-- CONTENEUR DE CONTENU (SANS LA SIDEBAR) -->
+  <div id="content-area" class="mode-cinema">
+    <!-- Le contenu sera injecté ici par JS -->
+  </div>
+
+  <!-- SIDEBAR PERSISTANTE -->
+  <aside id="sidebar">
+    <div>
+      <h3>Mode d'affichage</h3>
+      <select id="mode-select">
+        <option value="cinema" selected>Mode Cinéma (vertical)</option>
+        <option value="split">Mode Split (gauche/droite)</option>
+      </select>
+    </div>
+
+    <div>
+      <h3>Étapes (1 → 6)</h3>
+      <div class="nav-list" id="nav-list"></div>
+    </div>
+
+    <div>
+      <h3>Vidéo · Enregistrement</h3>
+      <label>Résolution</label>
+      <select id="res-select">
+        <option value="720">720p — 1280×720</option>
+        <option value="1080" selected>1080p — 1920×1080</option>
+        <option value="1440">1440p — 2560×1440</option>
+      </select>
+      <label style="margin-top:10px">FPS</label>
+      <select id="fps-select">
+        <option value="24">24 fps</option>
+        <option value="30" selected>30 fps</option>
+        <option value="60">60 fps</option>
+      </select>
+      <label style="margin-top:10px">Bitrate</label>
+      <select id="bitrate-select">
+        <option value="2000000">2 Mbps</option>
+        <option value="5000000" selected>5 Mbps</option>
+        <option value="10000000">10 Mbps</option>
+      </select>
+      <button id="record-btn" style="margin-top:14px;width:100%">Enregistrer</button>
+      <div id="rec-status">prêt</div>
+    </div>
+
+    <div>
+      <h3>Export Image</h3>
+      <div id="export-bar">
+        <button id="export-viz">📷 Capturer la figure 3D</button>
+        <button id="export-all">📄 Capturer tout le contenu</button>
+      </div>
+    </div>
+
+    <div>
+      <h3>Réglages rendu</h3>
+      <label>Vitesse animation</label>
+      <select id="speed-select">
+        <option value="0.5">×0.5</option>
+        <option value="1" selected>×1.0</option>
+        <option value="2">×2.0</option>
+      </select>
+    </div>
+
+    <div style="margin-top:auto;font:11px/1.5 'SF Mono',monospace;color:#4a5468;padding-top:12px;border-top:1px solid #262a33">
+      P(z) = z⁵ − 1<br>
+      Contre-exemple stable-coordinate
+    </div>
+  </aside>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Rendu KaTeX
+   ============================================================ */
+function renderMath(el){
+  if(typeof katex === 'undefined') return;
+  try {
+    renderMathInElement(el, {
+      delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],
+      throwOnError: false, errorColor: '#f38ba8'
+    });
+  } catch(e){ console.warn(e); }
+}
+
+/* ============================================================
+   Caméra
+   ============================================================ */
+const CAM = {
+  ax: 0.55, ay: -0.7, dist: 6.2,
+  panX: 0, panY: 0,
+  def: { ax: 0.55, ay: -0.7, dist: 6.2 },
+  speed: 1.0
+};
+
+let vizCanvas = null;
+let vizCtx = null;
+let vizW = 0, vizH = 0;
+
+function fitViz(){
+  if(!vizCanvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const r = vizCanvas.getBoundingClientRect();
+  const w = Math.max(1, Math.round(r.width * dpr));
+  const h = Math.max(1, Math.round(r.height * dpr));
+  if(vizCanvas.width !== w || vizCanvas.height !== h){
+    vizCanvas.width = w; vizCanvas.height = h;
+  }
+  vizW = w; vizH = h;
+}
+
+const _p = [0,0,0];
+function rotProj(x, h, y, out){
+  out = out || _p;
+  const ca = Math.cos(CAM.ax), sa = Math.sin(CAM.ax);
+  const cb = Math.cos(CAM.ay), sb = Math.sin(CAM.ay);
+  const x1 = ca*x + sa*y;
+  const z1 = -sa*x + ca*y;
+  const y2 = cb*h - sb*z1;
+  const z2 = sb*h + cb*z1;
+  const zz = z2 + CAM.dist;
+  const f = (2.2*Math.min(vizW,vizH)) / (zz > 0.001 ? zz : 0.001);
+  out[0] = vizW/2 + CAM.panX + x1*f;
+  out[1] = vizH/2 + CAM.panY - y2*f;
+  out[2] = zz;
+  return out;
+}
+
+/* ============================================================
+   Primitives
+   ============================================================ */
+function clearViz(){
+  if(!vizCtx) return;
+  vizCtx.fillStyle = '#0a0c10';
+  vizCtx.fillRect(0,0,vizW,vizH);
+}
+
+function drawGround(){
+  const G = 10, step = 0.4, half = G*step;
+  vizCtx.strokeStyle = '#1a2028'; vizCtx.lineWidth = 1;
+  for(let i=0;i<=G;i++){
+    const v = -half + i*step*2/G;
+    let a = rotProj(-half, 0, v, [0,0,0]);
+    let b = rotProj(half, 0, v, [0,0,0]);
+    vizCtx.beginPath(); vizCtx.moveTo(a[0],a[1]); vizCtx.lineTo(b[0],b[1]); vizCtx.stroke();
+    a = rotProj(v, 0, -half, [0,0,0]);
+    b = rotProj(v, 0, half, [0,0,0]);
+    vizCtx.beginPath(); vizCtx.moveTo(a[0],a[1]); vizCtx.lineTo(b[0],b[1]); vizCtx.stroke();
+  }
+}
+
+function drawSurface(fn, opts){
+  const N = opts.N || 40, dom = opts.dom || 1.5;
+  const zScale = opts.zScale || 0.6;
+  const clampLo = opts.clampLo !== undefined ? opts.clampLo : -Infinity;
+  const clampHi = opts.clampHi !== undefined ? opts.clampHi : Infinity;
+  const colorFn = opts.colorFn;
+  const showWire = opts.showWire !== false;
+  const wireAlpha = opts.wireAlpha !== undefined ? opts.wireAlpha : 0.15;
+
+  const stride = N+1, total = stride*stride;
+  const PX = new Float32Array(total), PY = new Float32Array(total),
+        D = new Float32Array(total), ZZ = new Float32Array(total);
+  for(let j=0;j<stride;j++){
+    const y = -dom + 2*dom*j/N;
+    for(let i=0;i<stride;i++){
+      const x = -dom + 2*dom*i/N;
+      let h = fn(x,y);
+      if(h<clampLo) h=clampLo;
+      if(h>clampHi) h=clampHi;
+      rotProj(x, h*zScale, y, _p);
+      const k=j*stride+i;
+      PX[k]=_p[0]; PY[k]=_p[1]; D[k]=_p[2]; ZZ[k]=h;
+    }
+  }
+  const nf = N*N;
+  const idxA = new Int32Array(nf*4), dep = new Float32Array(nf), hv = new Float32Array(nf);
+  let n=0;
+  for(let j=0;j<N;j++){
+    const rj=j*stride;
+    for(let i=0;i<N;i++){
+      const a=rj+i, b=a+1, c=a+stride+1, d=a+stride, o=n*4;
+      idxA[o]=a; idxA[o+1]=b; idxA[o+2]=c; idxA[o+3]=d;
+      dep[n]=(D[a]+D[b]+D[c]+D[d])*0.25;
+      hv[n]=(ZZ[a]+ZZ[b]+ZZ[c]+ZZ[d])*0.25;
+      n++;
+    }
+  }
+  const order = new Uint32Array(nf);
+  for(let i=0;i<nf;i++) order[i]=i;
+  order.sort((A,B)=>dep[B]-dep[A]);
+
+  for(let k=0;k<nf;k++){
+    const f = order[k], o=f*4;
+    const i0=idxA[o], i1=idxA[o+1], i2=idxA[o+2], i3=idxA[o+3];
+    const col = colorFn(hv[f]);
+    const dh = (ZZ[i1]-ZZ[i0]) + (ZZ[i3]-ZZ[i2]);
+    const sh = 0.7 + 0.3*Math.tanh(dh*4);
+    vizCtx.fillStyle = `rgb(${(col[0]*sh)|0},${(col[1]*sh)|0},${(col[2]*sh)|0})`;
+    vizCtx.beginPath();
+    vizCtx.moveTo(PX[i0],PY[i0]);
+    vizCtx.lineTo(PX[i1],PY[i1]);
+    vizCtx.lineTo(PX[i2],PY[i2]);
+    vizCtx.lineTo(PX[i3],PY[i3]);
+    vizCtx.closePath(); vizCtx.fill();
+  }
+  if(showWire){
+    vizCtx.strokeStyle = `rgba(255,255,255,${wireAlpha})`;
+    vizCtx.lineWidth = 0.5;
+    for(let j=0;j<stride;j++){
+      vizCtx.beginPath(); let first=true;
+      for(let i=0;i<stride;i++){
+        const idx = j*stride+i;
+        if(first){ vizCtx.moveTo(PX[idx],PY[idx]); first=false; }
+        else vizCtx.lineTo(PX[idx],PY[idx]);
+      }
+      vizCtx.stroke();
+    }
+    for(let i=0;i<stride;i++){
+      vizCtx.beginPath(); let first=true;
+      for(let j=0;j<stride;j++){
+        const idx = j*stride+i;
+        if(first){ vizCtx.moveTo(PX[idx],PY[idx]); first=false; }
+        else vizCtx.lineTo(PX[idx],PY[idx]);
+      }
+      vizCtx.stroke();
+    }
+  }
+  if(opts.points){
+    for(const pt of opts.points){
+      const [px,py,pz,color,label] = pt;
+      rotProj(px, pz||0, py, _p);
+      vizCtx.fillStyle = color || '#f38ba8';
+      vizCtx.beginPath();
+      vizCtx.arc(_p[0],_p[1], Math.max(4, vizW/140), 0, Math.PI*2);
+      vizCtx.fill();
+      vizCtx.strokeStyle = '#ffffff'; vizCtx.lineWidth = 1; vizCtx.stroke();
+      if(label){
+        vizCtx.font = `bold ${Math.max(14, vizW/60)}px "SF Mono",monospace`;
+        vizCtx.fillStyle = '#ffffff';
+        vizCtx.fillText(label, _p[0]+10, _p[1]-8);
+      }
+    }
+  }
+}
+
+function drawBox3D(cx,cy,cz,size,color,alphaHex){
+  const c = [
+    [cx-size, cy-size, cz-size],[cx+size, cy-size, cz-size],
+    [cx+size, cy+size, cz-size],[cx-size, cy+size, cz-size],
+    [cx-size, cy-size, cz+size],[cx+size, cy-size, cz+size],
+    [cx+size, cy+size, cz+size],[cx-size, cy+size, cz+size]
+  ];
+  const proj = c.map(p=>rotProj(p[0],p[1],p[2],[0,0,0]));
+  const faces = [[0,1,2,3],[4,5,6,7],[0,1,5,4],[2,3,7,6],[1,2,6,5],[0,3,7,4]];
+  faces.sort((a,b)=>{
+    const da = a.reduce((s,i)=>s+proj[i][2],0);
+    const db = b.reduce((s,i)=>s+proj[i][2],0);
+    return db-da;
+  });
+  for(const f of faces){
+    vizCtx.fillStyle = color + (alphaHex||'22');
+    vizCtx.beginPath();
+    vizCtx.moveTo(proj[f[0]][0],proj[f[0]][1]);
+    for(let i=1;i<4;i++) vizCtx.lineTo(proj[f[i]][0],proj[f[i]][1]);
+    vizCtx.closePath(); vizCtx.fill();
+  }
+  vizCtx.strokeStyle = color; vizCtx.lineWidth = 1.2;
+  const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  for(const [a,b] of edges){
+    vizCtx.beginPath();
+    vizCtx.moveTo(proj[a][0],proj[a][1]);
+    vizCtx.lineTo(proj[b][0],proj[b][1]);
+    vizCtx.stroke();
+  }
+  for(let i=0;i<8;i++){
+    vizCtx.fillStyle = color;
+    vizCtx.beginPath(); vizCtx.arc(proj[i][0],proj[i][1],3,0,Math.PI*2); vizCtx.fill();
+  }
+}
+
+/* ============================================================
+   VIZ scenes
+   ============================================================ */
+let animT = 0;
+function tick(){ animT += 0.006 * CAM.speed; }
+
+function vizScene1(){
+  drawGround();
+  drawSurface((x,y)=>{
+    const x2 = x*x - y*y, y2 = 2*x*y;
+    const x4r = x2*x2 - y2*y2, x4i = 2*x2*y2;
+    const re = x4r*x - x4i*y - 1;
+    const im = x4r*y + x4i*x;
+    return Math.sqrt(re*re + im*im);
+  }, {
+    N: 48, dom: 1.6, zScale: 0.5, clampHi: 2.0,
+    showWire: true, wireAlpha: 0.12,
+    colorFn: t => {
+      const v = Math.min(1, t/2);
+      if(v<0.33) return [88+(146-88)*(v/0.33)|0, 166+(220-166)*(v/0.33)|0, 220+(255-220)*(v/0.33)|0];
+      if(v<0.66) return [146+(240-146)*((v-0.33)/0.33)|0, 220+(230-220)*((v-0.33)/0.33)|0, 255+(180-255)*((v-0.33)/0.33)|0];
+      return [240+(255-240)*((v-0.66)/0.34)|0, 230+(140-230)*((v-0.66)/0.34)|0, 180+(120-180)*((v-0.66)/0.34)|0];
+    },
+    points: [0,1,2,3,4].map(k=>{
+      const th = 2*Math.PI*k/5;
+      return [Math.cos(th), Math.sin(th), 0, '#f38ba8', 'z'+k];
+    })
+  });
+}
+
+let hcT = 0;
+function vizScene2(){
+  drawGround();
+  hcT += 0.005 * CAM.speed;
+  const t = hcT;
+  const r4 = (v,a,i,j)=>{
+    const c=Math.cos(a), s=Math.sin(a);
+    const out=v.slice();
+    out[i]=c*v[i]-s*v[j]; out[j]=s*v[i]+c*v[j];
+    return out;
+  };
+  const verts = [];
+  for(let i=0;i<16;i++){
+    let v=[(i&1)?1:-1,(i&2)?1:-1,(i&4)?1:-1,(i&8)?1:-1];
+    v=r4(v,t,0,3); v=r4(v,t*0.7,1,3); v=r4(v,t*0.4,0,2);
+    const w = v[3]+2.2;
+    verts.push([v[0]/w*1.6, v[1]/w*1.6, v[2]/w*1.6]);
+  }
+  const edges=[];
+  for(let i=0;i<16;i++) for(let bit=0;bit<4;bit++){
+    const j = i ^ (1<<bit);
+    if(i<j) edges.push([i,j]);
+  }
+  const proj = verts.map(v=>{
+    rotProj(v[0], v[1], v[2], _p);
+    return [_p[0],_p[1],_p[2]];
+  });
+  edges.sort((a,b)=>{
+    const da = proj[a[0]][2]+proj[a[1]][2];
+    const db = proj[b[0]][2]+proj[b[1]][2];
+    return db-da;
+  });
+  for(const [i,j] of edges){
+    const depth = (proj[i][2]+proj[j][2])*0.5;
+    const alpha = 0.35 + 0.65*Math.min(1, 6/Math.max(1,depth));
+    vizCtx.strokeStyle = `rgba(88,196,220,${alpha})`;
+    vizCtx.lineWidth = 1.2 + 2*(1-Math.min(1,depth/8));
+    vizCtx.beginPath();
+    vizCtx.moveTo(proj[i][0],proj[i][1]);
+    vizCtx.lineTo(proj[j][0],proj[j][1]);
+    vizCtx.stroke();
+  }
+  for(const p of proj){
+    const r = Math.max(2, 5*(1 - Math.min(1,p[2]/10)));
+    vizCtx.fillStyle = '#f9e2af';
+    vizCtx.beginPath(); vizCtx.arc(p[0],p[1],r,0,Math.PI*2); vizCtx.fill();
+    vizCtx.strokeStyle = '#0e1014'; vizCtx.lineWidth = 1; vizCtx.stroke();
+  }
+}
+
+let mT = 0;
+function vizScene3(){
+  drawGround();
+  mT += 0.007 * CAM.speed;
+  const angle = mT;
+  const rect = [[-1,-0.7],[1,-0.7],[1,0.7],[-1,0.7]];
+  const shear = (p,k) => [p[0] + k*p[1], p[1]];
+  const rot2 = (p,a) => [Math.cos(a)*p[0]-Math.sin(a)*p[1], Math.sin(a)*p[0]+Math.cos(a)*p[1]];
+  const k = Math.sin(angle)*0.8;
+  const a = angle*0.3;
+
+  vizCtx.strokeStyle = '#1a2028'; vizCtx.lineWidth = 0.8;
+  const G = 8, half = 1.3;
+  for(let i=0;i<=G;i++){
+    const v = -half + i*2*half/G;
+    let p1 = rotProj(-half, 0, v, [0,0,0]);
+    let p2 = rotProj(half, 0, v, [0,0,0]);
+    vizCtx.beginPath(); vizCtx.moveTo(p1[0],p1[1]); vizCtx.lineTo(p2[0],p2[1]); vizCtx.stroke();
+    p1 = rotProj(v, 0, -half, [0,0,0]);
+    p2 = rotProj(v, 0, half, [0,0,0]);
+    vizCtx.beginPath(); vizCtx.moveTo(p1[0],p1[1]); vizCtx.lineTo(p2[0],p2[1]); vizCtx.stroke();
+  }
+  const orig = rect.map(p => rotProj(p[0], 0, p[1], [0,0,0]));
+  vizCtx.strokeStyle = '#6c7a8c'; vizCtx.lineWidth = 1.5;
+  vizCtx.setLineDash([4,3]);
+  vizCtx.beginPath();
+  vizCtx.moveTo(orig[0][0],orig[0][1]);
+  for(let i=1;i<4;i++) vizCtx.lineTo(orig[i][0],orig[i][1]);
+  vizCtx.closePath(); vizCtx.stroke();
+  vizCtx.setLineDash([]);
+
+  const def = rect.map(p => rot2(shear(p,k), a)).map(p => rotProj(p[0], 0, p[1], [0,0,0]));
+  vizCtx.strokeStyle = '#f38ba8'; vizCtx.lineWidth = 2.5;
+  vizCtx.beginPath();
+  vizCtx.moveTo(def[0][0],def[0][1]);
+  for(let i=1;i<4;i++) vizCtx.lineTo(def[i][0],def[i][1]);
+  vizCtx.closePath(); vizCtx.stroke();
+  for(let i=0;i<4;i++){
+    vizCtx.fillStyle = '#f38ba8';
+    vizCtx.beginPath(); vizCtx.arc(def[i][0],def[i][1],4,0,Math.PI*2); vizCtx.fill();
+  }
+}
+
+let vfT = 0;
+function vizScene4(){
+  drawGround();
+  vfT += 0.007 * CAM.speed;
+  const ph = Math.sin(vfT)*0.5;
+  const S = 18, dom = 1.4;
+  for(let j=0;j<S;j++){
+    for(let i=0;i<S;i++){
+      const u = -dom + 2*dom*i/(S-1);
+      const F = -dom + 2*dom*j/(S-1);
+      const dx = -ph, dy = 0;
+      const L = 0.13;
+      const r0 = rotProj(u,0,F,[0,0,0]);
+      const r1 = rotProj(u+dx*L,0,F+dy*L,[0,0,0]);
+      const alpha = 0.25 + 0.65*Math.abs(ph);
+      vizCtx.strokeStyle = ph>0 ? `rgba(166,227,161,${alpha})` : `rgba(243,139,168,${alpha})`;
+      vizCtx.lineWidth = 1.4;
+      vizCtx.beginPath();
+      vizCtx.moveTo(r0[0],r0[1]);
+      vizCtx.lineTo(r1[0],r1[1]);
+      vizCtx.stroke();
+      if(Math.abs(ph) > 0.15){
+        const ang = Math.atan2(r1[1]-r0[1], r1[0]-r0[0]);
+        vizCtx.beginPath();
+        vizCtx.moveTo(r1[0],r1[1]);
+        vizCtx.lineTo(r1[0] - 5*Math.cos(ang-0.4), r1[1] - 5*Math.sin(ang-0.4));
+        vizCtx.moveTo(r1[0],r1[1]);
+        vizCtx.lineTo(r1[0] - 5*Math.cos(ang+0.4), r1[1] - 5*Math.sin(ang+0.4));
+        vizCtx.stroke();
+      }
+    }
+  }
+}
+
+function vizScene5(){
+  drawGround();
+  const fibers = [
+    {c:[-1.6, 0.9, 0], label:'λ = 0',   color:'#58c4dc'},
+    {c:[ 1.6, 0.9, 0], label:'λ = 1',   color:'#a6e3a1'},
+    {c:[ 0,   0.9, 1.6], label:'λ ∈ ℂ', color:'#f9e2af'}
+  ];
+  const sorted = fibers.map(f=>{
+    const p = rotProj(f.c[0], f.c[1], f.c[2], [0,0,0]);
+    return {...f, p};
+  }).sort((a,b)=>b.p[2]-a.p[2]);
+  for(const f of sorted) drawBox3D(f.c[0], f.c[1], f.c[2], 0.85, f.color, '25');
+  for(const f of sorted){
+    vizCtx.font = `bold ${Math.max(14, vizW/50)}px "SF Mono",monospace`;
+    vizCtx.fillStyle = f.color; vizCtx.textAlign = 'center';
+    vizCtx.fillText(f.label, f.p[0], f.p[1]+6);
+  }
+  vizCtx.textAlign = 'left';
+}
+
+function vizScene6(){
+  drawGround();
+  drawSurface((x,y)=>{
+    const v = 1 + 4*x*y;
+    if(v < 0) return -0.6;
+    return (-1 + Math.sqrt(v))/2;
+  }, {
+    N: 40, dom: 1.2, zScale: 1.0, clampLo: -0.8, clampHi: 1.8,
+    showWire: true, wireAlpha: 0.18,
+    colorFn: h => {
+      const v = (h+0.6)/1.8;
+      if(v<0.33) return [88+(146-88)*(v/0.33)|0, 166+(220-166)*(v/0.33)|0, 220+(255-220)*(v/0.33)|0];
+      if(v<0.66) return [146+(240-146)*((v-0.33)/0.33)|0, 220+(230-220)*((v-0.33)/0.33)|0, 255+(180-255)*((v-0.33)/0.33)|0];
+      return [240+(255-240)*((v-0.66)/0.34)|0, 230+(140-230)*((v-0.66)/0.34)|0, 180+(120-180)*((v-0.66)/0.34)|0];
+    }
+  });
+}
+
+/* ============================================================
+   SCÈNES (Données)
+   ============================================================ */
+const scenes = [
+{
+  kicker: "Théorème 1.1",
+  titleHTML: () => `Un contre-exemple au <em>stable coordinate conjecture</em> en dimension 4`,
+  eqHTML: () => `
+    $$\\begin{aligned}
+    Q &= x_2^2 - x_4^2 + x_1 x_3 \\\\
+    f &= x_1 - 2Q\\bigl(Q(x_2 + x_4) + x_1 x_4\\bigr)
+    \\end{aligned}$$
+    <span class="cite">Théorème 1.1 — $R = \\mathbb{C}[x_1,x_2,x_3,x_4]$</span>
+  `,
+  descLeft: () => `
+    <p class="desc">Un polynôme de degré 5 qui n'est <em>pas un coordinat</em> dans $\\mathbb{C}[x_1,x_2,x_3,x_4]$, mais qui le devient après adjonction d'<em>une seule variable</em>.</p>
+    <p class="desc"><strong class="hl">pas coordinat = n'est pas une coordonnée</strong> : il n'existe aucun automorphisme de $R$ qui envoie $f$ sur $x_1$. Pourtant, dans $R[w]$, un tel automorphisme existe.</p>
+  `,
+  descRight: () => `
+    <div class="analogy-note">⚠ <strong>Analogie visuelle</strong><br>La surface représente $|z^5-1|$ : elle illustre la complexité degré 5 (5 puits, montée vers $\\infty$), pas la structure de $f$ lui-même.</div>
+  `,
+  viz: vizScene1,
+  hud: () => `MESH |P(z)| = |z^5 − 1|<br><span style="color:#4a5468">N=48² · wireframe</span>`
+},
+{
+  kicker: "Section 2 — Construction",
+  titleHTML: () => `Présentation hypersurface de l'anneau à 4 variables`,
+  eqHTML: () => `
+    $$\\begin{aligned}
+    P &= k[p, s, u, F, J] \\\\
+    x &= s^2 - u^2 + pF \\\\
+    H &= x^2 F - (1+2sx)J - pJ^2 - u \\\\
+    A &= P/(H)
+    \\end{aligned}$$
+    <span class="cite">Section 2 — formule (2.1)</span>
+  `,
+  descLeft: () => `
+    <p class="desc">Le polynôme distingué est <em>$p$</em>. L'élément $x$ est homogène de poids $0$. $H$ contient un terme quadratique qui rend possible le changement de coordonnées de la Proposition 2.1.</p>
+  `,
+  descRight: () => `
+    <p class="desc"><strong class="hl">Clé :</strong> d'après Prop. 2.1, l'anneau $A$ est isomorphe à un anneau de polynômes en 4 variables. Après le changement $(p',s',F',J) = (x_1,x_2,x_3,x_4)$, l'élément $p$ devient exactement le $f$ de (1.1).</p>
+  `,
+  viz: vizScene2,
+  hud: () => `HYPERCUBE 4D<br><span style="color:#4a5468">16 vertices · 32 edges</span>`
+},
+{
+  kicker: "Proposition 2.1",
+  titleHTML: () => `Un changement de coordonnées qui rend $H$ linéaire`,
+  eqHTML: () => `
+    $$\\begin{aligned}
+    M &= \\begin{pmatrix} F & s-u \\\\ s+u & -p \\end{pmatrix}, \\quad e = \\begin{pmatrix} x \\\\ -J \\end{pmatrix} \\\\
+    M' &= (I_2 - 2ne^{\\!t})M \\\\
+    \\det M' &= \\det M \\\\
+    p &= p' - 2x\\bigl(x(s' + J) + p'J\\bigr)
+    \\end{aligned}$$
+    <span class="cite">Proposition 2.1 — formule (2.2)</span>
+  `,
+  descLeft: () => `
+    <p class="desc">La transformation $M' = (I_2 - 2ne^{\\!t})M$ <em>préserve le déterminant</em>. Sous $(p', s', F', J) = (x_1, x_2, x_3, x_4)$, l'élément $p$ devient exactement le $f$ du Théorème 1.1.</p>
+  `,
+  descRight: () => `
+    <p class="desc">Les polynômes <code>p'</code>, <code>s'</code>, <code>F'</code>, <code>J</code> forment un <em>système de coordonnées</em> sur $P$.</p>
+  `,
+  viz: vizScene3,
+  hud: () => `MATRIX TRANSFORM<br><span style="color:#4a5468">det M = det M'</span>`
+},
+{
+  kicker: "Proposition 2.2",
+  titleHTML: () => `Une variable ajoutée ⟹ $p$ devient un coordinat`,
+  eqHTML: () => `
+    $$\\begin{aligned}
+    \\Delta &= -p\\,\\frac{\\partial}{\\partial u} \\\\
+    \\exp(w\\Delta)(H) &= H + pw \\\\
+    A[w] &\\simeq P[w]/(H + pw) \\;\\simeq\\; k[p, s, u, N, w']
+    \\end{aligned}$$
+    <span class="cite">Proposition 2.2 — formules (2.9)–(2.12)</span>
+  `,
+  descLeft: () => `
+    <p class="desc">En adjoignant $w$, on utilise la dérivation <em>localement nilpotente</em> $\\Delta = -p\\,\\partial/\\partial u$ pour remplacer $H = 0$ par $H + pw = 0$. C'est la <strong class="hl">stabilité à une variable</strong>.</p>
+  `,
+  descRight: () => `
+    <p class="desc">Après élimination de $u$ par $L = x_0^2 F - (1+2sx_0)J$ et $H = L - u + pQ_0$, l'élément $p$ est un des cinq générateurs de $A[w]$.</p>
+  `,
+  viz: vizScene4,
+  hud: () => `VECTOR FIELD<br><span style="color:#4a5468">Δ = −p ∂/∂u</span>`
+},
+{
+  kicker: "Proposition 2.3 & Corollaire 1.2",
+  titleHTML: () => `Toute fibre est isomorphe à $\\mathbb{A}^3$`,
+  eqHTML: () => `
+    $$A/(p - \\lambda) \\;\\simeq\\; k[x, y, z] \\;\\simeq\\; \\mathbb{A}^3$$
+    <span class="cite">Proposition 2.3 — formules (2.10)–(2.12)</span>
+  `,
+  descLeft: () => `
+    <p class="desc"><strong class="hl">Conséquence clé :</strong> chaque fibre $f^{-1}(\\lambda) \\subset \\mathbb{A}^4$ est isomorphe à $\\mathbb{A}^3$, mais son plongement dans $\\mathbb{A}^4$ n'est pas rectifiable. C'est précisément ce qui donne le contre-exemple à <em>Abhyankar–Sathaye</em> en dimension ambiante 4.</p>
+  `,
+  descRight: () => `
+    <div class="fibers">
+      <div class="fiber"><div class="lam">$\\lambda = 0$</div><div class="shape">$k[s,u,N]$</div><div class="dim">$\\simeq \\mathbb{A}^3$</div></div>
+      <div class="fiber"><div class="lam">$\\lambda = 1$</div><div class="shape">$k[x,y,z]$</div><div class="dim">$\\simeq \\mathbb{A}^3$</div></div>
+      <div class="fiber"><div class="lam">$\\lambda \\in \\mathbb{C}$</div><div class="shape">$k[x,y,z]$</div><div class="dim">$\\simeq \\mathbb{A}^3$</div></div>
+    </div>
+  `,
+  viz: vizScene5,
+  hud: () => `FIBERS A³<br><span style="color:#4a5468">λ = 0 · 1 · ℂ</span>`
+},
+{
+  kicker: "Sections 3–5 — L'obstruction",
+  titleHTML: () => `Pourquoi $p$ n'est pas un coordinat`,
+  eqHTML: () => `
+    $$B = k[x,y,z,u]/(xy - z(z+1)), \\quad I = (f_0, g_0), \\quad v = a^3 b + a^2 u^2 - d^2$$
+    <span class="cite">Sections 3–5 — Théorème 1.1</span>
+  `,
+  descLeft: () => `
+    <p class="desc">Si $p$ était un coordinat, la différenciation dans une autre coordonnée produirait une dérivation localement nilpotente non nulle $E$ de la quadrique $B$.</p>
+  `,
+  descRight: () => `
+    <div class="logic">
+      <div class="step">Prop 3.3 → $E$ sur $B$, $E(h) = 0$ pour $h \\in I$</div>
+      <div class="step">Prop 4.6 → $E$ se relève à $C$, $E(v) = 0$</div>
+      <div class="step">Prop 5.1 → $E(a) = E(d) = E(u) = 0$</div>
+      <div class="step">$E(b) = aq$, $q \\in k[a,d,u]$, poids $-2$</div>
+      <div class="contra">Impossible : $k[a,d,u]$ n'a que des poids $1, 1, 0$</div>
+    </div>
+  `,
+  viz: vizScene6,
+  hud: () => `QUADRIC B<br><span style="color:#4a5468">xy − z(z+1) = 0</span>`
+}
+];
+
+/* ============================================================
+   État & Navigation
+   ============================================================ */
+let current = 0;
+const total = scenes.length;
+let currentMode = 'cinema'; // 'cinema' ou 'split'
+
+const $content = document.getElementById('content-area');
+const $sidebar = document.getElementById('sidebar');
+const $navList = document.getElementById('nav-list');
+const $modeSelect = document.getElementById('mode-select');
+const $toast = document.getElementById('toast');
+
+let vizRAF = null;
+let frameCount = 0, fpsT = performance.now(), fps = 60;
+
+// Construction de la liste de navigation dans la sidebar
+for(let i=0; i<total; i++){
+  const btn = document.createElement('button');
+  btn.innerHTML = `<span>Étape ${i+1} · ${scenes[i].kicker.split(' — ')[0]}</span><span class="num">${i+1}/${total}</span>`;
+  btn.addEventListener('click', ()=>goTo(i));
+  btn.dataset.index = i;
+  $navList.appendChild(btn);
+}
+
+function updateHUD(scene){
+  frameCount++;
+  const now = performance.now();
+  if(now - fpsT > 500){
+    fps = Math.round(frameCount * 1000 / (now - fpsT));
+    frameCount = 0; fpsT = now;
+  }
+  const sceneInfo = scene.hud ? scene.hud() : '';
+  const hudEl = document.getElementById('hud');
+  if(hudEl){
+    hudEl.innerHTML = `
+      <div class="row"><span class="k">FPS</span><span class="v">${fps}</span></div>
+      <div class="row"><span class="k">ax</span><span class="v">${CAM.ax.toFixed(2)}</span></div>
+      <div class="row"><span class="k">ay</span><span class="v">${CAM.ay.toFixed(2)}</span></div>
+      <div class="row"><span class="k">dist</span><span class="v">${CAM.dist.toFixed(2)}</span></div>
+      <hr style="border:none;border-top:1px solid #262a33;margin:6px 0">
+      <div style="color:#f9e2af;font-weight:700;letter-spacing:1px;font-size:10px">${scene.kicker}</div>
+      <div style="color:#a8b2c0;font-size:10px;margin-top:2px">${sceneInfo}</div>
+    `;
+  }
+}
+
+/* Fonction centrale de rendu du layout */
+function renderLayout(){
+  const scene = scenes[current];
+  CAM.ax = CAM.def.ax; CAM.ay = CAM.def.ay; CAM.dist = CAM.def.dist;
+  CAM.panX = 0; CAM.panY = 0;
+
+  $content.className = `mode-${currentMode}`;
+
+  if(currentMode === 'cinema'){
+    $content.innerHTML = `
+      <div class="title-band" id="title-band">
+        <div class="kicker">${scene.kicker}</div>
+        <h1>${scene.titleHTML()}</h1>
+      </div>
+      <div class="eq-band" id="eq-band">
+        <div class="formula-block">${scene.eqHTML()}</div>
+      </div>
+      <div class="viz-area">
+        <canvas id="viz"></canvas>
+        <div class="hud" id="hud"></div>
+        <div class="viz-controls">
+          <button id="viz-zoom-in" title="Zoom +">+</button>
+          <button id="viz-zoom-out" title="Zoom −">−</button>
+          <button id="viz-reset" title="Vue par défaut">⌂</button>
+        </div>
+      </div>
+      <div class="desc-band" id="desc-band">
+        <div class="left-col">${scene.descLeft()}</div>
+        <div class="right-col">${scene.descRight()}</div>
+      </div>
+    `;
+  } else {
+    // Mode Split
+    $content.innerHTML = `
+      <div class="left-pane">
+        <div class="title-band">
+          <div class="kicker">${scene.kicker}</div>
+          <h1>${scene.titleHTML()}</h1>
+        </div>
+        <div class="eq-band">
+          <div class="formula-block">${scene.eqHTML()}</div>
+        </div>
+        <div class="desc-band">
+          <div class="left-col">${scene.descLeft()}</div>
+          <div class="right-col">${scene.descRight()}</div>
+        </div>
+      </div>
+      <div class="right-pane">
+        <div class="viz-area">
+          <canvas id="viz"></canvas>
+          <div class="hud" id="hud"></div>
+          <div class="viz-controls">
+            <button id="viz-zoom-in" title="Zoom +">+</button>
+            <button id="viz-zoom-out" title="Zoom −">−</button>
+            <button id="viz-reset" title="Vue par défaut">⌂</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Re-lier les événements KaTeX
+  renderMath($content);
+
+  // Re-lier les boutons de la caméra
+  vizCanvas = document.getElementById('viz');
+  vizCtx = vizCanvas.getContext('2d');
+  
+  document.getElementById('viz-zoom-in').addEventListener('click', ()=>{
+    CAM.dist = Math.max(2.5, CAM.dist*0.8);
+  });
+  document.getElementById('viz-zoom-out').addEventListener('click', ()=>{
+    CAM.dist = Math.min(20, CAM.dist*1.25);
+  });
+  document.getElementById('viz-reset').addEventListener('click', ()=>{
+    CAM.ax = CAM.def.ax; CAM.ay = CAM.def.ay; CAM.dist = CAM.def.dist;
+    CAM.panX = 0; CAM.panY = 0;
+  });
+
+  // Re-lier les contrôles souris
+  attachVizControls(vizCanvas);
+
+  fitViz();
+  if(vizRAF) cancelAnimationFrame(vizRAF);
+  
+  const drawFn = scene.viz;
+  const animate = () => {
+    tick();
+    clearViz();
+    drawFn();
+    updateHUD(scene);
+    vizRAF = requestAnimationFrame(animate);
+  };
+  animate();
+}
+
+function goTo(idx){
+  if(idx < 0 || idx >= total) return;
+  current = idx;
+  
+  // Mise à jour de la liste de nav
+  [...$navList.children].forEach((btn, i) => {
+    btn.classList.toggle('active', i === idx);
+  });
+
+  renderLayout();
+}
+
+/* ============================================================
+   Contrôles souris sur la 3D
+   ============================================================ */
+function attachVizControls(canvas){
+  let drag=false, lx=0, ly=0, isPan=false;
+  canvas.addEventListener('pointerdown', e=>{
+    drag=true; lx=e.clientX; ly=e.clientY; isPan = e.shiftKey;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', e=>{
+    if(!drag) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly;
+    if(isPan || e.shiftKey){
+      CAM.panX += dx; CAM.panY += dy;
+    } else {
+      CAM.ay += dx*0.008; CAM.ax += dy*0.008;
+      CAM.ax = Math.max(-1.4, Math.min(1.4, CAM.ax));
+    }
+    lx=e.clientX; ly=e.clientY;
+  });
+  canvas.addEventListener('pointerup', ()=>{ drag=false; });
+  canvas.addEventListener('pointercancel', ()=>{ drag=false; });
+  canvas.addEventListener('wheel', e=>{
+    e.preventDefault();
+    CAM.dist *= (1 + Math.sign(e.deltaY)*0.08);
+    CAM.dist = Math.max(2.5, Math.min(20, CAM.dist));
+  }, {passive:false});
+}
+
+/* ============================================================
+   Événements Sidebar
+   ============================================================ */
+$modeSelect.addEventListener('change', e => {
+  currentMode = e.target.value;
+  renderLayout();
+});
+document.getElementById('speed-select').addEventListener('change', e => {
+  CAM.speed = parseFloat(e.target.value);
+});
+window.addEventListener('resize', fitViz);
+
+/* ============================================================
+   Toast & Téléchargement
+   ============================================================ */
+function showToast(msg){
+  $toast.textContent = msg;
+  $toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>$toast.classList.remove('show'), 2200);
+}
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+/* ============================================================
+   Export Image
+   ============================================================ */
+document.getElementById('export-viz').addEventListener('click', ()=>{
+  if(!vizCanvas) return;
+  vizCanvas.toBlob(blob=>{
+    downloadBlob(blob, `scene-${String(current+1).padStart(2,'0')}-viz.png`);
+    showToast('✓ Figure 3D enregistrée');
+  }, 'image/png');
+});
+
+document.getElementById('export-all').addEventListener('click', ()=>{
+  // Capture du conteneur de gauche uniquement (pas la sidebar)
+  // On utilise html2canvas-free, donc on redessine simplement le layout dans un canvas offscreen.
+  // Pour une capture exacte du DOM, il faudrait html2canvas. 
+  // Ici on va faire une capture simplifiée : on capture le DOM via un fallback de dessin.
+  
+  // NOTE : Pour capturer proprement le DOM sans html2canvas, on ne peut pas le faire en pur JS.
+  // L'astuce est de redessiner dans le canvas, mais ça ne respecte pas le KaTeX.
+  // On va donc charger la librairie via CDN uniquement pour cet export.
+  
+  if(typeof html2canvas === 'undefined'){
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    script.onload = () => captureContent();
+    document.body.appendChild(script);
+  } else {
+    captureContent();
+  }
+});
+
+function captureContent(){
+  showToast('⏳ Génération de l\'image...');
+  html2canvas($content, {
+    backgroundColor: '#0a0c10',
+    scale: 2,
+    useCORS: true,
+    allowTaint: true
+  }).then(canvas => {
+    canvas.toBlob(blob=>{
+      downloadBlob(blob, `scene-${String(current+1).padStart(2,'0')}-full.png`);
+      showToast('✓ Contenu complet enregistré');
+    }, 'image/png');
+  }).catch(err => {
+    showToast('⚠ Erreur de capture : ' + err.message);
+  });
+}
+
+/* ============================================================
+   Enregistrement Vidéo WebM
+   ============================================================ */
+let mediaRecorder = null;
+let recordedChunks = [];
+let recRAF = null;
+const $recordBtn = document.getElementById('record-btn');
+const $recStatus = document.getElementById('rec-status');
+
+$recordBtn.addEventListener('click', ()=>{
+  if(mediaRecorder && mediaRecorder.state === 'recording'){
+    mediaRecorder.stop();
+    return;
+  }
+  startRecording();
+});
+
+function startRecording(){
+  if(typeof MediaRecorder === 'undefined'){
+    showToast('⚠ MediaRecorder non supporté');
+    return;
+  }
+
+  const res = parseInt(document.getElementById('res-select').value, 10);
+  const fps = parseInt(document.getElementById('fps-select').value, 10);
+  const bitrate = parseInt(document.getElementById('bitrate-select').value, 10);
+
+  // On capture tout le contenu de gauche (le panneau $content)
+  // On crée un canvas offscreen à la bonne résolution cible
+  const targetH = res;
+  const ratio = $content.clientWidth / $content.clientHeight;
+  const targetW = Math.round(targetH * ratio);
+  const finalW = targetW % 2 ? targetW+1 : targetW;
+  const finalH = targetH % 2 ? targetH+1 : targetH;
+
+  const recCanvas = document.createElement('canvas');
+  recCanvas.width = finalW;
+  recCanvas.height = finalH;
+  const recCtx = recCanvas.getContext('2d');
+
+  const stream = recCanvas.captureStream(fps);
+  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+    ? 'video/webm;codecs=vp9'
+    : (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
+      ? 'video/webm;codecs=vp8'
+      : 'video/webm');
+
+  try {
+    mediaRecorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: bitrate });
+  } catch(e){
+    showToast('⚠ Erreur MediaRecorder : ' + e.message);
+    return;
+  }
+
+  recordedChunks = [];
+  mediaRecorder.ondataavailable = e => {
+    if(e.data.size > 0) recordedChunks.push(e.data);
+  };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    downloadBlob(blob, `scene-${String(current+1).padStart(2,'0')}-${finalW}x${finalH}-${ts}.webm`);
+    showToast('✓ Vidéo enregistrée : ' + finalW + '×' + finalH);
+    $recordBtn.classList.remove('recording');
+    $recordBtn.textContent = 'Enregistrer';
+    $recStatus.textContent = 'prêt';
+    $recStatus.classList.remove('active');
+    if(recRAF) cancelAnimationFrame(recRAF);
+    mediaRecorder = null;
+  };
+
+  mediaRecorder.start(200);
+  $recordBtn.classList.add('recording');
+  $recordBtn.textContent = 'Arrêter';
+  $recStatus.textContent = '● REC ' + finalW + '×' + finalH + ' @' + fps + 'fps';
+  $recStatus.classList.add('active');
+
+  // On va dessiner le contenu DOM + le canvas 3D à chaque frame
+  // Pour le DOM, on utilise html2canvas en boucle (lent mais fonctionnel)
+  // Astuce : on ne redessine le DOM que toutes les 10 frames pour la performance
+  
+  if(typeof html2canvas === 'undefined'){
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    script.onload = () => startVideoLoop(recCtx, finalW, finalH);
+    document.body.appendChild(script);
+  } else {
+    startVideoLoop(recCtx, finalW, finalH);
+  }
+}
+
+let frameCountRec = 0;
+function startVideoLoop(recCtx, finalW, finalH){
+  frameCountRec = 0;
+  
+  async function drawFrame(){
+    if(!mediaRecorder || mediaRecorder.state !== 'recording') return;
+    
+    // Remplir le fond
+    recCtx.fillStyle = '#0a0c10';
+    recCtx.fillRect(0, 0, finalW, finalH);
+
+    // Dessiner le contenu DOM via html2canvas (toutes les 6 frames)
+    if(frameCountRec % 6 === 0){
+      try {
+        const domCanvas = await html2canvas($content, {
+          backgroundColor: '#0a0c10',
+          scale: 1,
+          logging: false
+        });
+        // On garde en cache
+        startVideoLoop.cacheCanvas = domCanvas;
+      } catch(e){}
+    }
+    
+    if(startVideoLoop.cacheCanvas){
+      recCtx.drawImage(startVideoLoop.cacheCanvas, 0, 0, finalW, finalH);
+    }
+    
+    // Le canvas de viz est déjà inclus dans $content, donc le rendu DOM l'inclut.
+    // Mais le DOM rend le canvas figé. On force la mise à jour du canvas 3D
+    // dans le DOM via le RAF normal, et html2canvas capture le frame courant.
+    
+    frameCountRec++;
+    recRAF = requestAnimationFrame(drawFrame);
+  }
+  drawFrame();
+}
+
+/* ============================================================
+   Init
+   ============================================================ */
+goTo(0);
+</script>
+</body>
+</html>
