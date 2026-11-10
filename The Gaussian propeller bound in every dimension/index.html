@@ -1,0 +1,2164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gaussian Propeller — Cinéma</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  :root {
+    --bg: #050508;
+    --text-main: #e8e6e3;
+    --text-muted: #a0a0b0;
+    --panel-bg: rgba(15, 15, 22, 0.85);
+    --panel-border: rgba(150, 150, 255, 0.25);
+    --accent-purple: #a855f7;
+    --accent-cyan: #06b6d4;
+    --accent-gold: #eab308;
+    --accent-red: #ef4444;
+    --accent-green: #22c55e;
+    --font-title: clamp(2.2rem, 4vw, 3.5rem);
+    --font-eq: clamp(1.4rem, 2.2vw, 2rem);
+    --font-desc: clamp(1.1rem, 1.5vw, 1.35rem);
+    --font-legend: 1.1rem;
+    --panel-width: 380px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Times New Roman", Times, serif;
+    background-color: var(--bg);
+    color: var(--text-main);
+    overflow: hidden;
+  }
+
+  /* ============ STAGE & LAYOUT ============ */
+  #stage {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  #stage.panel-open {
+    padding-left: var(--panel-width);
+  }
+  #particles-canvas {
+    position: absolute; inset: 0;
+    pointer-events: none; z-index: 1;
+  }
+
+  /* ---------- HEADER ---------- */
+  #stage-header {
+    position: relative; z-index: 5;
+    padding: 24px 40px 5px;
+    text-align: center;
+    flex: 0 0 auto;
+  }
+  #scene-title {
+    font-size: var(--font-title);
+    font-weight: 400;
+    margin: 0;
+    letter-spacing: 1px;
+    color: #ffffff;
+    text-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+  }
+  #scene-eq {
+    margin: 15px auto 0;
+    font-size: var(--font-eq);
+    color: #ffffff;
+    display: inline-block;
+    min-height: 1.2em;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+  }
+
+  /* ---------- MAIN CANVAS AREA ---------- */
+  #canvas-wrap {
+    position: relative; z-index: 2;
+    flex: 1 1 auto;
+    margin: 10px 0 20px;
+    min-height: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  #canvas-wrap canvas {
+    width: 100%; height: 100%; display: block;
+    cursor: grab;
+    touch-action: none;
+  }
+  #canvas-wrap canvas:active { cursor: grabbing; }
+
+  /* ---------- FLOATING LEGENDS ---------- */
+  .floating-legend {
+    position: absolute; z-index: 10;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    font-size: var(--font-legend);
+    line-height: 1.5;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    pointer-events: none;
+    max-width: 340px;
+    transition: all 0.3s ease;
+  }
+  .floating-legend.left { left: 3%; top: 50%; transform: translateY(-50%); }
+  .floating-legend.right { right: 3%; top: 50%; transform: translateY(-50%); }
+  #stage.panel-open .floating-legend.left { left: 2%; }
+  
+  .floating-legend h4 {
+    margin: 0 0 14px;
+    font-family: "Consolas", monospace;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent-purple);
+    border-bottom: 2px solid rgba(168, 85, 247, 0.4);
+    padding-bottom: 8px;
+  }
+  .floating-legend ul { list-style: none; margin: 0; padding: 0; }
+  .floating-legend li {
+    display: flex; align-items: flex-start; gap: 12px;
+    margin-bottom: 10px;
+  }
+  .floating-legend .swatch {
+    flex: 0 0 auto; width: 16px; height: 16px;
+    border-radius: 4px; margin-top: 4px;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .floating-legend .eq {
+    margin-top: 16px; padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    font-style: italic;
+    color: #ffffff;
+    font-size: 1.2rem;
+    text-align: center;
+  }
+
+  /* ---------- DESCRIPTION BOTTOM ---------- */
+  #description-wrap {
+    position: absolute; bottom: 25px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    width: 85%; max-width: 1100px;
+    pointer-events: none;
+    transition: all 0.3s ease;
+  }
+  #description {
+    background: rgba(10, 10, 15, 0.95);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 20px 30px;
+    font-size: var(--font-desc);
+    line-height: 1.6;
+    color: #e0e0e5;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+    pointer-events: auto;
+  }
+  #description strong { color: #fff; font-weight: 700; }
+  #description em { color: var(--accent-cyan); font-style: italic; }
+
+  /* ---------- TOOLBAR & PANEL ---------- */
+  #toolbar {
+    position: absolute; top: 16px; left: 16px;
+    display: flex; gap: 12px; z-index: 40;
+    transition: transform 0.3s ease;
+  }
+  #toolbar button {
+    font-family: inherit; font-size: 1rem;
+    padding: 10px 18px; border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: rgba(15, 15, 22, 0.85);
+    color: var(--text-main); cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+  }
+  #toolbar button:hover { background: rgba(40, 40, 60, 0.95); border-color: var(--accent-purple); }
+  #toolbar button.on { background: var(--accent-purple); color: #fff; border-color: var(--accent-purple); }
+
+  #panel {
+    position: fixed; top: 0; left: 0;
+    width: var(--panel-width); height: 100vh;
+    background: rgba(12, 12, 18, 0.98);
+    border-right: 1px solid var(--panel-border);
+    overflow-y: auto; padding: 24px;
+    z-index: 60; transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(20px);
+    box-shadow: 10px 0 50px rgba(0,0,0,0.5);
+  }
+  #panel.open { transform: translateX(0); }
+  #panel h2 { font-size: 1.4rem; margin: 0 0 24px; color: var(--accent-purple); font-weight: 400; }
+  
+  .scene-list { list-style: none; padding: 0; margin: 0 0 24px; }
+  .scene-list li {
+    padding: 12px 16px; border-radius: 8px; cursor: pointer;
+    font-size: 1.05rem; margin-bottom: 8px;
+    border: 1px solid transparent; transition: all 0.2s;
+    background: rgba(255,255,255,0.02);
+  }
+  .scene-list li:hover { background: rgba(255,255,255,0.08); }
+  .scene-list li.active {
+    background: rgba(168, 85, 247, 0.15);
+    border-color: var(--accent-purple);
+  }
+  .scene-list li .tag {
+    display: inline-block; font-family: "Consolas", monospace;
+    font-size: 0.8rem; background: #333; padding: 3px 8px;
+    border-radius: 4px; margin-right: 12px; color: #fff;
+  }
+  .scene-list li .tag.thm { background: #8e44ad; }
+  .scene-list li .tag.lem { background: #2980b9; }
+  .scene-list li .tag.cor { background: #d68910; }
+  .scene-list li .tag.app { background: #b03a6b; }
+  .scene-list li .tag.ex { background: #27ae60; }
+
+  .params { margin-bottom: 24px; }
+  .params h3 {
+    font-size: 0.9rem; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--text-muted);
+    margin: 0 0 14px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 8px;
+  }
+  .param { margin-bottom: 16px; font-size: 1rem; }
+  .param label { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .param input[type=range] { width: 100%; accent-color: var(--accent-purple); height: 6px; }
+
+  /* Toggle buttons */
+  .toggle-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .toggle-row button {
+    font-family: inherit; font-size: 0.9rem;
+    padding: 10px 14px; border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    background: rgba(255,255,255,0.05); color: var(--text-main);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .toggle-row button.on { background: var(--accent-purple); color: #fff; border-color: var(--accent-purple); }
+
+  .shape-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .shape-toggle {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 6px;
+    background: rgba(255,255,255,0.03); border: 1px solid transparent;
+    cursor: pointer; font-size: 0.95rem; transition: all 0.15s;
+  }
+  .shape-toggle.on { background: rgba(168, 85, 247, 0.2); border-color: var(--accent-purple); }
+  .shape-toggle input { accent-color: var(--accent-purple); width: 16px; height: 16px; }
+  .shape-toggle .mini { display: inline-block; width: 14px; height: 14px; border-radius: 4px; }
+
+  #rec-badge {
+    display: none; position: fixed; top: 20px; right: 20px;
+    background: #ef4444; color: #fff; padding: 10px 20px;
+    border-radius: 30px; font-family: "Consolas", monospace;
+    font-size: 1.1rem; z-index: 200; box-shadow: 0 0 30px #ef4444;
+    animation: pulse 1.5s infinite;
+  }
+  #rec-badge.show { display: block; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+  /* ============ MODAL FOR RECORDING ============ */
+  #rec-modal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.9); z-index: 100;
+    justify-content: center; align-items: center;
+    backdrop-filter: blur(5px);
+  }
+  #rec-modal.show { display: flex; }
+  #rec-modal .box {
+    background: #15151e; border: 1px solid var(--panel-border);
+    padding: 40px; border-radius: 16px; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+  }
+  #rec-modal h3 { font-size: 1.8rem; margin: 0 0 15px; font-weight: 400; }
+  #rec-modal p { color: #aaa; margin-bottom: 25px; font-size: 1.1rem; }
+  #rec-modal select {
+    padding: 12px; margin: 10px 0; background: #222; color: #fff;
+    border: 1px solid #444; border-radius: 8px; font-family: inherit; font-size: 1.1rem;
+    width: 100%;
+  }
+  #rec-modal button {
+    padding: 12px 24px; background: var(--accent-red); color: #fff;
+    border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 1.1rem;
+    margin-top: 15px; width: 100%; transition: background 0.2s;
+  }
+  #rec-modal button:hover { background: #dc2626; }
+  #rec-modal button.cancel { background: #333; margin-top: 10px; }
+  #rec-modal button.cancel:hover { background: #444; }
+</style>
+</head>
+<body>
+
+<div id="rec-badge">● REC</div>
+
+<main id="stage">
+  <canvas id="particles-canvas"></canvas>
+
+  <div id="toolbar">
+    <button id="btn-panel">☰ Scènes & Paramètres</button>
+    <button id="btn-full">⛶ Plein écran</button>
+  </div>
+
+  <header id="stage-header">
+    <h1 id="scene-title">Gaussian Propeller</h1>
+    <div id="scene-eq"></div>
+  </header>
+
+  <div id="canvas-wrap">
+    <canvas id="view"></canvas>
+    <div id="legend-left" class="floating-legend left"></div>
+    <div id="legend-right" class="floating-legend right"></div>
+  </div>
+
+  <div id="description-wrap">
+    <div id="description"></div>
+  </div>
+</main>
+
+<aside id="panel">
+  <h2>Gaussian Propeller</h2>
+  <ul class="scene-list" id="scene-list"></ul>
+
+  <div class="params">
+    <h3>Paramètres de la figure</h3>
+    <div id="param-box"></div>
+  </div>
+
+  <div class="params">
+    <h3>Rendu & Physique</h3>
+    <div class="param">
+      <label><span>Inertie</span><span id="damp-val">0.92</span></label>
+      <input type="range" id="damp" min="0.80" max="0.99" step="0.005" value="0.92">
+    </div>
+    <div class="param">
+      <label><span>Vitesse</span><span id="speed-val">0.55</span></label>
+      <input type="range" id="speed" min="0" max="2" step="0.01" value="0.55">
+    </div>
+    <div class="toggle-row">
+      <button id="btn-auto" class="on">↻ Auto</button>
+      <button id="btn-wireframe">🕸 Fil de Fer</button>
+      <button id="btn-labels" class="on">🏷 Labels</button>
+      <button id="btn-particles" class="on">✦ Particules</button>
+    </div>
+  </div>
+
+  <div class="params">
+    <h3>Polyèdres (Easter Eggs)</h3>
+    <div class="shape-grid" id="shape-grid"></div>
+  </div>
+
+  <div class="params">
+    <h3>Enregistrement</h3>
+    <button id="btn-record" style="width:100%; padding:14px; background:var(--accent-red); color:#fff; border:none; border-radius:8px; font-family:inherit; font-size:1.1rem; cursor:pointer; font-weight:bold;">● Enregistrer la scène</button>
+  </div>
+</aside>
+
+<div id="rec-modal">
+  <div class="box">
+    <h3>Enregistrement Vidéo</h3>
+    <p>Choisir la résolution de la vidéo</p>
+    <select id="res-select">
+      <option value="1080">1920×1080 (Full HD)</option>
+      <option value="720">1280×720 (HD)</option>
+      <option value="2160">3840×2160 (4K)</option>
+    </select>
+    <button id="btn-start-rec">Démarrer l'enregistrement</button>
+    <button id="btn-cancel-rec" class="cancel">Annuler</button>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   1. PARTICULES DE FOND
+   ===================================================================== */
+const particlesCanvas = document.getElementById('particles-canvas');
+const pctx = particlesCanvas.getContext('2d');
+let particles = [];
+let particlesActive = true;
+
+function resizeParticles() {
+  const dpr = window.devicePixelRatio || 1;
+  particlesCanvas.width = window.innerWidth * dpr;
+  particlesCanvas.height = window.innerHeight * dpr;
+  particlesCanvas.style.width = window.innerWidth + 'px';
+  particlesCanvas.style.height = window.innerHeight + 'px';
+  pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  particles = [];
+  const n = Math.round((window.innerWidth * window.innerHeight) / 25000);
+  for (let i = 0; i < n; i++) {
+    particles.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: (Math.random() - 0.5) * 0.2 - 0.02,
+      r: Math.random() * 1.5 + 0.5,
+      alpha: Math.random() * 0.3 + 0.05,
+      hue: Math.random() < 0.8 ? '168,85,247' : '234,179,8'
+    });
+  }
+}
+
+function drawParticles() {
+  if (!particlesActive) { pctx.clearRect(0, 0, window.innerWidth, window.innerHeight); return; }
+  const W = window.innerWidth, H = window.innerHeight;
+  pctx.clearRect(0, 0, W, H);
+  for (const p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x < -10) p.x = W + 10;
+    if (p.x > W + 10) p.x = -10;
+    if (p.y < -10) p.y = H + 10;
+    if (p.y > H + 10) p.y = -10;
+    
+    pctx.beginPath();
+    pctx.arc(p.x, p.y, p.r, 0, 2 * Math.PI);
+    pctx.fillStyle = `rgba(${p.hue},${p.alpha})`;
+    pctx.fill();
+  }
+}
+
+/* =====================================================================
+   2. MOTEUR 3D ET OUTILS
+   ===================================================================== */
+const canvas = document.getElementById('view');
+const ctx = canvas.getContext('2d');
+
+const view = {
+  W: 0, H: 0, dpr: 1,
+  yaw: 0.5, pitch: 0.3, zoom: 1,
+  vyaw: 0, vpitch: 0,
+  autoRotate: true,
+  physics: true,
+  labels: true,
+  wireframe: false,
+  damping: 0.92,
+  gravity: 0.35,
+  speed: 0.55,
+  time: 0,
+  shapes: {
+    cube: false, octahedron: false, icosahedron: false,
+    torus: false, helicoid: false, spiral: false,
+    tetrahedron: false, dodecahedron: false
+  }
+};
+
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  const dpr = window.devicePixelRatio || 1;
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  view.W = w; view.H = h; view.dpr = dpr;
+  canvas.width = Math.max(2, Math.round(w * dpr));
+  canvas.height = Math.max(2, Math.round(h * dpr));
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function project(p, opt) {
+  opt = opt || {};
+  const W = view.W, H = view.H;
+  const yaw = opt.yaw !== undefined ? opt.yaw : view.yaw;
+  const pitch = opt.pitch !== undefined ? opt.pitch : view.pitch;
+  const scale = (opt.scale || 1) * Math.min(W, H) * 0.3 * view.zoom;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  let x1 = p.x * cy - p.z * sy;
+  let z1 = p.x * sy + p.z * cy;
+  let y1 = p.y;
+  let y2 = y1 * cp - z1 * sp;
+  let z2 = y1 * sp + z1 * cp;
+  let x2 = x1;
+  const d = 7.5;
+  const f = d / (d + z2);
+  return { x: W / 2 + x2 * scale * f, y: H / 2 - y2 * scale * f, depth: z2, f };
+}
+
+function clearCanvas() {
+  ctx.clearRect(0, 0, view.W, view.H);
+}
+
+function drawPoly(pts, fill, alpha, stroke, lineWidth = 2) {
+  ctx.beginPath();
+  pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+  ctx.closePath();
+  if (fill && !view.wireframe) {
+    ctx.globalAlpha = alpha == null ? 1 : alpha;
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+}
+
+function drawLine(a, b, color, width, dash) {
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.strokeStyle = color || '#fff';
+  ctx.lineWidth = width || 3;
+  if (dash) ctx.setLineDash(dash); else ctx.setLineDash([]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawArrow(a, b, color, width) {
+  drawLine(a, b, color, width || 3);
+  const ang = Math.atan2(b.y - a.y, b.x - a.x);
+  const L = 16;
+  ctx.beginPath();
+  ctx.moveTo(b.x, b.y);
+  ctx.lineTo(b.x - L * Math.cos(ang - 0.4), b.y - L * Math.sin(ang - 0.4));
+  ctx.lineTo(b.x - L * Math.cos(ang + 0.4), b.y - L * Math.sin(ang + 0.4));
+  ctx.closePath();
+  ctx.fillStyle = color || '#fff';
+  ctx.fill();
+}
+
+function label(text, p, color, size, italic) {
+  if (!view.labels) return;
+  ctx.save();
+  ctx.font = (italic ? 'italic ' : '') + (size || 22) + 'px "Times New Roman", serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,1)';
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = color || '#fff';
+  ctx.fillText(text, p.x, p.y);
+  ctx.restore();
+}
+
+function rot3(p, ax, ay, az) {
+  let { x, y, z } = p;
+  let cy = Math.cos(ay), sy = Math.sin(ay);
+  let cx = Math.cos(ax), sx = Math.sin(ax);
+  let cz = Math.cos(az), sz = Math.sin(az);
+  let y1 = y * cx - z * sx;
+  let z1 = y * sx + z * cx;
+  let x2 = x * cy + z1 * sy;
+  let z2 = -x * sy + z1 * cy;
+  let x3 = x2 * cz - y1 * sz;
+  let y3 = x2 * sz + y1 * cz;
+  return { x: x3, y: y3, z: z2 };
+}
+
+function shade(hex, factor) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.min(255, Math.max(0, Math.round(r * factor)));
+  g = Math.min(255, Math.max(0, Math.round(g * factor)));
+  b = Math.min(255, Math.max(0, Math.round(b * factor)));
+  return `rgb(${r},${g},${b})`;
+}
+
+function cross(a, b) { return { x: a.y*b.z - a.z*b.y, y: a.z*b.x - a.x*b.z, z: a.x*b.y - a.y*b.x }; }
+function normalize(v) { const n = Math.hypot(v.x, v.y, v.z) || 1; return { x: v.x/n, y: v.y/n, z: v.z/n }; }
+
+/* =====================================================================
+   3. GÉOMÉTRIE DES FORMES (Easter Eggs)
+   ===================================================================== */
+function makeCube(size) {
+  const s = size || 0.7;
+  const v = [
+    [-s,-s,-s],[ s,-s,-s],[ s, s,-s],[-s, s,-s],
+    [-s,-s, s],[ s,-s, s],[ s, s, s],[-s, s, s]
+  ].map(a => ({ x: a[0], y: a[1], z: a[2] }));
+  const f = [[0,1,2,3],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]];
+  return { verts: v, faces: f, color: '#ef4444' };
+}
+function makeOctahedron(size) {
+  const s = size || 0.9;
+  const v = [[ s,0,0],[-s,0,0],[0, s,0],[0,-s,0],[0,0, s],[0,0,-s]]
+    .map(a => ({ x: a[0], y: a[1], z: a[2] }));
+  const f = [[0,2,4],[2,1,4],[1,3,4],[3,0,4],[2,0,5],[1,2,5],[3,1,5],[0,3,5]];
+  return { verts: v, faces: f, color: '#3b82f6' };
+}
+function makeIcosahedron(size) {
+  const s = size || 0.8;
+  const t = (1 + Math.sqrt(5)) / 2;
+  const raw = [[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],[0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]];
+  const norm = Math.hypot(1, t);
+  const v = raw.map(a => ({ x: a[0]/norm*s, y: a[1]/norm*s, z: a[2]/norm*s }));
+  const f = [[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+  return { verts: v, faces: f, color: '#a855f7' };
+}
+function makeTorus(R, r, nu, nv) {
+  R = R || 0.9; r = r || 0.35; nu = nu || 24; nv = nv || 14;
+  const verts = [], faces = [];
+  for (let i = 0; i < nu; i++) {
+    const u = 2 * Math.PI * i / nu;
+    for (let j = 0; j < nv; j++) {
+      const v = 2 * Math.PI * j / nv;
+      verts.push({
+        x: (R + r * Math.cos(v)) * Math.cos(u),
+        y: r * Math.sin(v),
+        z: (R + r * Math.cos(v)) * Math.sin(u)
+      });
+    }
+  }
+  for (let i = 0; i < nu; i++) {
+    for (let j = 0; j < nv; j++) {
+      const a = i * nv + j;
+      const b = ((i + 1) % nu) * nv + j;
+      const c = ((i + 1) % nu) * nv + (j + 1) % nv;
+      const d = i * nv + (j + 1) % nv;
+      faces.push([a, b, c, d]);
+    }
+  }
+  return { verts, faces, color: '#06b6d4' };
+}
+function makeHelicoid(turns, N) {
+  turns = turns || 2.2; N = N || 60;
+  const verts = [], faces = [];
+  const segs = 24;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const ang = turns * 2 * Math.PI * t;
+    const rad = 0.15 + 0.75 * t;
+    for (let j = 0; j <= segs; j++) {
+      const u = j / segs;
+      verts.push({
+        x: rad * Math.cos(ang + u * 2.4),
+        y: -0.6 + 1.2 * t + 0.18 * Math.sin(u * Math.PI * 2),
+        z: rad * Math.sin(ang + u * 2.4)
+      });
+    }
+  }
+  const row = segs + 1;
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < segs; j++) {
+      const a = i * row + j;
+      const b = (i + 1) * row + j;
+      const c = (i + 1) * row + j + 1;
+      const d = i * row + j + 1;
+      faces.push([a, b, c, d]);
+    }
+  }
+  return { verts, faces, color: '#eab308' };
+}
+function makeSpiral(turns, N) {
+  turns = turns || 3; N = N || 140;
+  const verts = [], faces = [];
+  const segs = 10;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const ang = turns * 2 * Math.PI * t;
+    const rad = 0.15 + 0.7 * t;
+    const cx = rad * Math.cos(ang);
+    const cz = rad * Math.sin(ang);
+    const cy = -0.6 + 1.2 * t;
+    for (let j = 0; j <= segs; j++) {
+      const a = 2 * Math.PI * j / segs;
+      const rr = 0.06 + 0.04 * (1 - t);
+      verts.push({
+        x: cx + rr * Math.cos(a),
+        y: cy + rr * Math.sin(a),
+        z: cz + rr * Math.sin(a) * 0.5
+      });
+    }
+  }
+  const row = segs + 1;
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < segs; j++) {
+      const a = i * row + j;
+      const b = (i + 1) * row + j;
+      const c = (i + 1) * row + j + 1;
+      const d = i * row + j + 1;
+      faces.push([a, b, c, d]);
+    }
+  }
+  return { verts, faces, color: '#e67e22' };
+}
+
+function drawMesh(mesh, opts) {
+  opts = opts || {};
+  const ax = opts.ax || 0, ay = opts.ay || 0, az = opts.az || 0;
+  const scale = opts.scale || 1;
+  const pos = opts.pos || { x: 0, y: 0, z: 0 };
+  const color = opts.color || mesh.color;
+  const alpha = opts.alpha != null ? opts.alpha : 0.85;
+  const transformed = mesh.verts.map(v => {
+    let p = rot3(v, ax, ay, az);
+    p.x = p.x * scale + pos.x;
+    p.y = p.y * scale + pos.y;
+    p.z = p.z * scale + pos.z;
+    return p;
+  });
+  const light = normalize({ x: 0.4, y: 0.7, z: 0.6 });
+  const faces = mesh.faces.map(f => {
+    const pts = f.map(idx => project(transformed[idx]));
+    const depth = pts.reduce((s, p) => s + p.depth, 0) / pts.length;
+    let n = { x: 0, y: 0, z: 0 };
+    if (f.length >= 3) {
+      const a = transformed[f[0]], b = transformed[f[1]], c = transformed[f[2]];
+      const u = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+      const w = { x: c.x - a.x, y: c.y - a.y, z: c.z - a.z };
+      n = cross(u, w);
+      const ln = Math.hypot(n.x, n.y, n.z) || 1;
+      n = { x: n.x / ln, y: n.y / ln, z: n.z / ln };
+    }
+    const dot = Math.max(0, n.x * light.x + n.y * light.y + n.z * light.z);
+    const shadeF = 0.35 + 0.65 * dot;
+    return { pts, depth, color: shade(color, shadeF), alpha };
+  }).sort((a, b) => b.depth - a.depth);
+  faces.forEach(f => drawPoly(f.pts, f.color, f.alpha, 'rgba(0,0,0,.35)'));
+}
+
+/* =====================================================================
+   4. SCÈNES (DESSINS)
+   ===================================================================== */
+
+function drawPropeller2D(params) {
+  clearCanvas();
+  const t = view.time;
+  const m = params.m || 3;
+  const R = 1.45, N = 80;
+  const step = 2 * Math.PI / m;
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#eab308', '#06b6d4'];
+  
+  for (let s = 0; s < m; s++) {
+    const pulse = 1 + Math.sin(t * 1.5 + s) * 0.03;
+    const a0 = s * step - Math.PI / 2 + Math.sin(t * view.speed + s) * 0.05;
+    const a1 = a0 + step;
+    const pts = [{ x: 0, y: 0, z: 0 }];
+    for (let k = 0; k <= N; k++) {
+      const a = a0 + (a1 - a0) * (k / N);
+      pts.push({ x: R * pulse * Math.cos(a), y: 0, z: R * pulse * Math.sin(a) });
+    }
+    drawPoly(pts.map(p => project(p)), colors[s % colors.length], params.opacity ?? 0.2, colors[s % colors.length], 3);
+  }
+
+  if (params.showCentroids !== false) {
+    for (let s = 0; s < m; s++) {
+      const am = s * step - Math.PI / 2 + step / 2 + Math.sin(t * view.speed + s) * 0.05;
+      const o = project({ x: 0, y: 0, z: 0 });
+      const e = project({ x: 0.75 * Math.cos(am), y: 0, z: 0.75 * Math.sin(am) });
+      drawArrow(o, e, colors[s % colors.length], 4);
+      label('ẑ' + (s + 1), { x: e.x + 15, y: e.y - 15 }, colors[s % colors.length], 22, true);
+    }
+  }
+
+  if (params.showLabels !== false) {
+    for (let s = 0; s < m; s++) {
+      const am = s * step - Math.PI / 2 + step / 2;
+      const p = project({ x: 1.15 * Math.cos(am), y: 0, z: 1.15 * Math.sin(am) });
+      label('S' + (s + 1), p, colors[s % colors.length], 24, false);
+    }
+  }
+}
+
+function drawKernelStrategy(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+
+  const boxes = [
+    { x: 0.2, y: 0.5, w: 0.22, h: 0.15, text: "Partition A", color: '#ef4444' },
+    { x: 0.5, y: 0.5, w: 0.22, h: 0.15, text: "Scores Gaussiens", color: '#3b82f6' },
+    { x: 0.8, y: 0.5, w: 0.22, h: 0.15, text: "Moments z_i", color: '#22c55e' }
+  ];
+
+  boxes.forEach((b, i) => {
+    const px = W * b.x, py = H * b.y;
+    const pw = W * b.w, ph = H * b.h;
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.roundRect(px - pw/2, py - ph/2, pw, ph, 12);
+    ctx.fill();
+    ctx.stroke();
+    label(b.text, { x: px, y: py }, '#fff', 26, false);
+
+    if (i < boxes.length - 1) {
+      const n = boxes[i+1];
+      const ax = px + pw/2, ay = py;
+      const bx = W * n.x - (W * n.w)/2, by = H * n.y;
+      drawArrow({x: ax, y: ay}, {x: bx, y: by}, '#eab308', 4);
+      const u = (t * 0.5 + i * 0.3) % 1;
+      ctx.beginPath(); ctx.arc(ax + (bx-ax)*u, ay + (by-ay)*u, 8, 0, 2*Math.PI);
+      ctx.fillStyle = '#fff'; ctx.fill();
+    }
+  });
+
+  label("Réduction Extrémale", { x: W/2, y: H*0.2 }, '#a855f7', 36, false);
+  label("Convergence vers des listes finies de vecteurs", { x: W/2, y: H*0.8 }, '#a0a0b0', 24, true);
+}
+
+function drawProofStrategy(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+
+  const steps = [
+    { text: "1. Bornes de Probabilité", sub: "Lemme 3.1", x: 0.5, y: 0.25, color: '#3b82f6' },
+    { text: "2. Compétition à 2 scores", sub: "Lemme 4.1", x: 0.25, y: 0.75, color: '#ef4444' },
+    { text: "3. Contraintes Géométriques", sub: "Cor. 4.2", x: 0.75, y: 0.75, color: '#22c55e' }
+  ];
+
+  steps.forEach(s => {
+    const px = W * s.x, py = H * s.y;
+    ctx.beginPath();
+    ctx.arc(px, py, 90, 0, 2*Math.PI);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fill();
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    label(s.text, { x: px, y: py - 15 }, '#fff', 24, false);
+    label(s.sub, { x: px, y: py + 20 }, s.color, 22, true);
+  });
+
+  drawLine({x: W*0.5, y: H*0.25 + 90}, {x: W*0.25, y: H*0.75 - 90}, 'rgba(255,255,255,0.2)', 4, [8,8]);
+  drawLine({x: W*0.5, y: H*0.25 + 90}, {x: W*0.75, y: H*0.75 - 90}, 'rgba(255,255,255,0.2)', 4, [8,8]);
+  drawLine({x: W*0.25, y: H*0.75}, {x: W*0.75, y: H*0.75}, 'rgba(255,255,255,0.2)', 4, [8,8]);
+
+  const cx = W * 0.5, cy = H * 0.6;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 40 + Math.sin(t*3)*8, 0, 2*Math.PI);
+  ctx.fillStyle = 'rgba(168,85,247,0.3)';
+  ctx.fill();
+  label("C > 9/8π", { x: cx, y: cy }, '#fff', 28, true);
+}
+
+function drawKernelClustering(params) {
+  clearCanvas();
+  const t = view.time;
+  const k = params.k ?? 3;
+  const N = params.N ?? 24;
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#eab308'];
+
+  const nodes = [];
+  const clusterCenters = [];
+  for (let c = 0; c < k; c++) {
+    const a = 2 * Math.PI * c / k;
+    clusterCenters.push({ x: 1.0 * Math.cos(a), y: 1.0 * Math.sin(a), z: 0.3 * Math.cos(2*a) });
+  }
+  for (let i = 0; i < N; i++) {
+    const c = i % k;
+    const center = clusterCenters[c];
+    const angle = (i / N) * Math.PI * 8 + t * view.speed * 0.5;
+    const r = 0.35;
+    nodes.push({
+      x: center.x + r * Math.cos(angle),
+      y: center.y + r * Math.sin(angle),
+      z: center.z + 0.15 * Math.sin(angle * 2),
+      cluster: c
+    });
+  }
+
+  for (let i = 0; i < N; i++) {
+    for (let j = i + 1; j < N; j++) {
+      if (nodes[i].cluster === nodes[j].cluster) {
+        const d = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y, nodes[i].z - nodes[j].z);
+        if (d < 0.75) {
+          const a = project(nodes[i]);
+          const b = project(nodes[j]);
+          drawLine(a, b, 'rgba(234, 179, 8, 0.4)', 2);
+        }
+      }
+    }
+  }
+
+  nodes.forEach(n => {
+    const p = project(n);
+    ctx.beginPath();
+    ctx.arc(p.x + 3, p.y + 3, 8, 0, 2*Math.PI);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 8, 0, 2*Math.PI);
+    ctx.fillStyle = colors[n.cluster % colors.length];
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  clusterCenters.forEach((c, i) => {
+    const p = project(c);
+    label('C' + (i + 1), { x: p.x, y: p.y - 25 }, colors[i % colors.length], 24, true);
+  });
+
+  label("Graphe de Clusters", { x: view.W / 2, y: 40 }, '#fff', 28, false);
+  label("Arêtes dorées : paires intra-cluster", { x: view.W / 2, y: view.H - 40 }, '#eab308', 20, true);
+}
+
+function drawLowInfluence(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+  const nBars = 20;
+  const barW = (W * 0.7) / nBars;
+  const baseY = H * 0.75;
+  const maxH = H * 0.5;
+
+  for (let i = 0; i <= 4; i++) {
+    const y = baseY - i * maxH / 4;
+    drawLine({x: W*0.15, y}, {x: W*0.85, y}, 'rgba(255,255,255,0.1)', 2);
+    label((i/4).toFixed(2), { x: W*0.12, y }, '#a0a0b0', 18, false);
+  }
+
+  for (let i = 0; i < nBars; i++) {
+    const influence = (Math.sin(i * 0.7 + t * 0.5) * 0.5 + 0.5) * (1 - i / nBars) * 0.8 + 0.05;
+    const h = influence * maxH;
+    const x = W * 0.15 + i * barW;
+    
+    const grad = ctx.createLinearGradient(0, baseY - h, 0, baseY);
+    grad.addColorStop(0, '#a855f7');
+    grad.addColorStop(1, 'rgba(168,85,247,0.1)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, baseY - h, barW - 4, h);
+  }
+
+  const yTau = baseY - 0.25 * maxH;
+  drawLine({x: W*0.14, y: yTau}, {x: W*0.86, y: yTau}, '#ef4444', 4, [10, 5]);
+  label('Seuil τ', { x: W*0.87, y: yTau }, '#ef4444', 22, true);
+
+  label('Influences de Fourier', { x: W / 2, y: 40 }, '#fff', 28, false);
+  label('OBJ(f) ≤ C_k + η', { x: W / 2, y: H * 0.9 }, '#a855f7', 24, true);
+}
+
+function drawPropeller3D(params) {
+  clearCanvas();
+  const t = view.time;
+  const h = (params.height ?? 80) / 100 * 1.0;
+  const colors = ['#e74c3c', '#3498db', '#2ecc71'];
+  const step = 2 * Math.PI / 3;
+  if (view.shapes.cube) {
+    for (let s = 0; s < 3; s++) {
+      const am = s * step - Math.PI / 2 + step / 2 + Math.sin(t * view.speed + s) * 0.08;
+      const dist = 0.75;
+      const pos = { x: dist * Math.cos(am), y: Math.sin(t * view.speed * 1.3 + s * 2) * 0.12, z: dist * Math.sin(am) };
+      const cube = makeCube(0.28);
+      drawMesh(cube, {
+        ax: t * view.speed * 0.9 + s,
+        ay: t * view.speed * 0.7 + s * 1.5,
+        az: t * view.speed * 0.4,
+        pos, color: colors[s], alpha: params.opacity ?? 0.85
+      });
+    }
+  }
+  const top = project({ x: 0, y: h * 1.6, z: 0 });
+  const bot = project({ x: 0, y: -h * 1.6, z: 0 });
+  drawLine(bot, top, '#555', 2.2, [7, 6]);
+  label('ℝ', { x: top.x + 14, y: top.y - 6 }, '#d4af37', 18, true);
+  label('d−2', { x: top.x + 32, y: top.y + 8 }, '#d4af37', 12, false);
+  for (let i = 0; i < 5; i++) {
+    const y = -h + (2 * h) * i / 4 + Math.sin(t * 2 + i) * 0.05;
+    const pts = [];
+    for (let k = 0; k <= 40; k++) {
+      const a = 2 * Math.PI * k / 40;
+      pts.push(project({ x: 1.0 * Math.cos(a), y, z: 1.0 * Math.sin(a) }));
+    }
+    ctx.beginPath();
+    pts.forEach((p, j) => j ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.strokeStyle = 'rgba(212,175,55,.18)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  }
+}
+
+function drawMinimalCells(params) {
+  clearCanvas();
+  const t = view.time;
+  const m = params.m ?? 5;
+  const colors = ['#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#f1c40f', '#1abc9c'];
+  if (view.shapes.octahedron) {
+    const bounce = view.physics ? Math.abs(Math.sin(t * view.speed * 1.5)) * view.gravity * 0.25 : 0;
+    const oct = makeOctahedron(0.55);
+    drawMesh(oct, {
+      ax: t * view.speed * 0.8, ay: t * view.speed * 1.1, az: t * view.speed * 0.5,
+      pos: { x: 0, y: bounce, z: 0 }, color: '#e74c3c', alpha: 0.9
+    });
+  }
+  const o = project({ x: 0, y: 0, z: 0 });
+  for (let i = 0; i < m; i++) {
+    const a0 = 2 * Math.PI * i / m + t * view.speed * 0.3;
+    const a1 = 2 * Math.PI * (i + 1) / m + t * view.speed * 0.3;
+    const N = 40, R = 1.5;
+    const pts = [o];
+    for (let k = 0; k <= N; k++) {
+      const a = a0 + (a1 - a0) * (k / N);
+      pts.push(project({ x: R * Math.cos(a), y: 0, z: R * Math.sin(a) }));
+    }
+    drawPoly(pts, colors[i % colors.length], 0.12, 'rgba(255,255,255,.06)');
+    const am = (a0 + a1) / 2;
+    const e = project({ x: 0.85 * R * Math.cos(am), y: 0, z: 0.85 * R * Math.sin(am) });
+    drawArrow(o, e, colors[i % colors.length], 2.2);
+    label('z' + (i + 1), { x: e.x + 10, y: e.y - 10 }, colors[i % colors.length], 14, true);
+  }
+}
+
+function drawScoreCones(params) {
+  clearCanvas();
+  const t = view.time;
+  const m = params.m ?? 5;
+  const colors = ['#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#f1c40f'];
+  if (view.shapes.torus) {
+    const torus = makeTorus(0.85, 0.3, 28, 16);
+    drawMesh(torus, { ax: t * view.speed * 0.6 + 0.4, ay: t * view.speed * 0.9, az: 0, color: '#1abc9c', alpha: 0.8 });
+  }
+  const o = project({ x: 0, y: 0, z: 0 });
+  for (let i = 0; i < m; i++) {
+    const baseAng = 2 * Math.PI * i / m + t * view.speed * 0.25;
+    const spread = params.spread ?? 0.45;
+    const coneR = params.coneR ?? 1.5;
+    const dir = normalize({ x: Math.cos(baseAng), y: 0.15 * Math.sin(t + i), z: Math.sin(baseAng) });
+    const up = Math.abs(dir.y) > 0.9 ? { x: 0, y: 0, z: 1 } : { x: 0, y: 1, z: 0 };
+    const right = normalize(cross(dir, up));
+    const up2 = cross(right, dir);
+    const pts = [o];
+    for (let k = 0; k <= 28; k++) {
+      const a = 2 * Math.PI * k / 28;
+      const rr = Math.tan(spread) * coneR;
+      pts.push(project({
+        x: dir.x * coneR + rr * (Math.cos(a) * right.x + Math.sin(a) * up2.x),
+        y: dir.y * coneR + rr * (Math.cos(a) * right.y + Math.sin(a) * up2.y),
+        z: dir.z * coneR + rr * (Math.cos(a) * right.z + Math.sin(a) * up2.z)
+      }));
+    }
+    if (params.showCones !== false) drawPoly(pts, colors[i % colors.length], 0.15, 'rgba(255,255,255,.08)');
+  }
+}
+
+function drawProbabilityBound(params) {
+  clearCanvas();
+  const t = view.time;
+  if (view.shapes.helicoid) {
+    const hel = makeHelicoid(2.2, 50);
+    drawMesh(hel, {
+      ax: 0.3 + t * view.speed * 0.2, ay: t * view.speed * 0.5, az: 0,
+      pos: { x: 0.6, y: 0, z: 0 }, color: '#f1c40f', alpha: 0.35
+    });
+  }
+  const W = view.W, H = view.H;
+  const padY = 60;
+  const plotW = W * 0.5, plotH = H - 2 * padY;
+  const ox = W * 0.42, oy = padY;
+  ctx.strokeStyle = 'rgba(255,255,255,.3)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(ox, oy + plotH); ctx.lineTo(ox + plotW, oy + plotH);
+  ctx.moveTo(ox, oy + plotH); ctx.lineTo(ox, oy);
+  ctx.stroke();
+  const A = params.A ?? 0.929;
+  function plotCurve(fn, color, width) {
+    ctx.beginPath();
+    let first = true;
+    for (let i = 0; i <= 200; i++) {
+      const r = (2/3) * i / 200;
+      const p = fn(r);
+      const x = ox + plotW * (r / (2/3));
+      const y = oy + plotH - plotH * Math.min(1, Math.max(0, p / 0.6));
+      if (first) { ctx.moveTo(x, y); first = false; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = color; ctx.lineWidth = width || 2.4; ctx.stroke();
+  }
+  if (params.showQuad !== false) plotCurve(r => A * r * r, '#e74c3c');
+  if (params.showLin !== false) plotCurve(r => 0.415 * r + 0.15 * r * r, '#3498db');
+  plotCurve(r => r * r, '#555');
+  for (let k = 0; k < 3; k++) {
+    const u = ((t * 0.4 + k / 3) % 1);
+    const r = (2/3) * u;
+    const p = A * r * r;
+    const x = ox + plotW * u;
+    const y = oy + plotH - plotH * Math.min(1, p / 0.6);
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, 2 * Math.PI);
+    ctx.fillStyle = '#f1c40f'; ctx.fill();
+  }
+  label('r_i', { x: ox + plotW + 20, y: oy + plotH }, '#e8ecf2', 14, true);
+  label('P_i', { x: ox - 20, y: oy + 10 }, '#e8ecf2', 14, true);
+  label('P ≥ A r²', { x: ox + plotW * 0.7, y: oy + 30 }, '#e74c3c', 14, false);
+  label('P ≥ 0.415 r + 0.15 r²', { x: ox + plotW * 0.55, y: oy + 55 }, '#3498db', 14, false);
+}
+
+function drawTwoScores(params) {
+  clearCanvas();
+  const t = view.time;
+  const tt = params.t ?? 0.11;
+  const aj = params.aj ?? 0.35;
+  const ak = params.ak ?? 0.25;
+  if (view.shapes.spiral) {
+    const sp = makeSpiral(3, 100);
+    drawMesh(sp, {
+      ax: 0.2 + t * view.speed * 0.3, ay: t * view.speed * 0.6, az: 0,
+      pos: { x: -0.3, y: 0, z: 0 }, color: '#e67e22', alpha: 0.4
+    });
+  }
+  const axes = [
+    { from: { x: -1.2, y: 0, z: 0 }, to: { x: 1.2, y: 0, z: 0 }, label: 'T', color: '#888' },
+    { from: { x: 0, y: -1.2, z: 0 }, to: { x: 0, y: 1.2, z: 0 }, label: 'Y_j', color: '#3498db' },
+    { from: { x: 0, y: 0, z: -1.2 }, to: { x: 0, y: 0, z: 1.2 }, label: 'Y_k', color: '#2ecc71' }
+  ];
+  axes.forEach(ax => {
+    const a = project(ax.from), b = project(ax.to);
+    drawLine(a, b, ax.color, 1.2, [4, 4]);
+    label(ax.label, { x: b.x + 12, y: b.y - 6 }, ax.color, 14, true);
+  });
+  const T0 = 1.0;
+  const yjMax = (1 + aj) * tt * T0;
+  const ykMax = (1 + ak) * tt * T0;
+  const p1 = project({ x: T0, y: yjMax, z: ykMax });
+  const p2 = project({ x: T0, y: -2 * yjMax, z: ykMax });
+  const p3 = project({ x: T0, y: yjMax, z: -2 * ykMax });
+  drawPoly([p1, p2, p3], '#e74c3c', 0.2, 'rgba(255,255,255,.1)');
+  const sigmaJ = Math.sqrt(Math.max(0.01, tt * tt * (1 + aj) * (1 + aj) / 2));
+  const sigmaK = Math.sqrt(Math.max(0.01, tt * tt * (1 + ak) * (1 + ak) / 2));
+  const pts = [];
+  for (let k = 0; k <= 40; k++) {
+    const a = 2 * Math.PI * k / 40;
+    pts.push(project({ x: T0, y: sigmaJ * Math.cos(a), z: sigmaK * Math.sin(a) }));
+  }
+  drawPoly(pts, '#3498db', 0.15, 'rgba(52,152,219,.6)');
+  label('Densité (U,V) ≤ M', { x: p1.x, y: p1.y - 24 }, '#3498db', 14, true);
+  const tp = ((t * 0.5) % 2);
+  const pT = project({ x: tp - 1, y: 0, z: 0 });
+  ctx.beginPath(); ctx.arc(pT.x, pT.y, 5, 0, 2 * Math.PI);
+  ctx.fillStyle = '#d4af37'; ctx.fill();
+}
+
+function drawSmallMin(params) {
+  clearCanvas();
+  const t = view.time;
+  if (view.shapes.icosahedron) {
+    const ico = makeIcosahedron(0.5);
+    drawMesh(ico, {
+      ax: t * view.speed * 0.7, ay: t * view.speed * 1.0, az: t * view.speed * 0.3,
+      pos: { x: -0.9, y: Math.sin(t * view.speed) * 0.1, z: 0 },
+      color: '#9b59b6', alpha: 0.85
+    });
+  }
+  const W = view.W, H = view.H;
+  const padY = 70;
+  const plotW = W * 0.45, plotH = H - 2 * padY;
+  const ox = W * 0.42, oy = padY;
+  ctx.strokeStyle = 'rgba(255,255,255,.3)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(ox, oy + plotH); ctx.lineTo(ox + plotW, oy + plotH);
+  ctx.moveTo(ox, oy + plotH); ctx.lineTo(ox, oy);
+  ctx.stroke();
+  const A = params.A ?? 0.929;
+  const d = A - 0.15;
+  function e(u) { return 0.415 * u - d * u * u; }
+  ctx.beginPath();
+  let first = true;
+  for (let i = 0; i <= 200; i++) {
+    const u = (i / 200) * 0.8;
+    const x = ox + plotW * (u / 0.8);
+    const y = oy + plotH - plotH * Math.max(0, e(u) / 0.08);
+    if (first) { ctx.moveTo(x, y); first = false; }
+    else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2.4; ctx.stroke();
+  const q0 = 0.066;
+  const xq = ox + plotW * (q0 / 0.8);
+  const yq = oy + plotH - plotH * Math.max(0, e(q0) / 0.08);
+  ctx.beginPath(); ctx.arc(xq, yq, 5, 0, 2 * Math.PI);
+  ctx.fillStyle = '#3498db'; ctx.fill();
+  label('q₀ = .066', { x: xq + 42, y: yq - 12 }, '#3498db', 14, true);
+  const t0 = params.t0 ?? 0.107;
+  const xt = ox + plotW * (t0 / 0.8);
+  const yt = oy + plotH - plotH * Math.max(0, e(t0) / 0.08);
+  ctx.beginPath(); ctx.arc(xt, yt, 5, 0, 2 * Math.PI);
+  ctx.fillStyle = '#2ecc71'; ctx.fill();
+  label('t₀ ≈ ' + t0.toFixed(3), { x: xt + 50, y: yt - 12 }, '#2ecc71', 14, true);
+  const uP = ((t * 0.3) % 0.8);
+  const xP = ox + plotW * (uP / 0.8);
+  const yP = oy + plotH - plotH * Math.max(0, e(uP) / 0.08);
+  ctx.beginPath(); ctx.arc(xP, yP, 4, 0, 2 * Math.PI);
+  ctx.fillStyle = '#d4af37'; ctx.fill();
+  label('e(u) = .415u − du²', { x: ox + plotW / 2, y: oy - 20 }, '#e74c3c', 16, true);
+  label('u', { x: ox + plotW + 18, y: oy + plotH }, '#e8ecf2', 14, true);
+}
+
+function drawGaussianMax(params) {
+  clearCanvas();
+  const t = view.time;
+  const k = params.k ?? 3;
+  const colors = ['#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#f1c40f'];
+  const R = 1.0;
+  if (view.shapes.cube) {
+    const cube = makeCube(0.35);
+    drawMesh(cube, { ax: t * view.speed * 0.6, ay: t * view.speed * 0.9, az: t * view.speed * 0.4, color: '#555', alpha: 0.7 });
+  }
+  const vectors = [];
+  for (let i = 0; i < k; i++) {
+    const a = 2 * Math.PI * i / k - Math.PI / 2 + t * view.speed * 0.2;
+    vectors.push({ x: R * Math.cos(a), y: R * Math.sin(a), z: 0.15 * Math.sin(2 * a + t) });
+  }
+  let mean = { x: 0, y: 0, z: 0 };
+  vectors.forEach(v => { mean.x += v.x / k; mean.y += v.y / k; mean.z += v.z / k; });
+  const o = project({ x: 0, y: 0, z: 0 });
+  const om = project(mean);
+  vectors.forEach((v, i) => {
+    const u = { x: v.x - mean.x, y: v.y - mean.y, z: v.z - mean.z };
+    const e = project(u);
+    drawArrow(o, e, colors[i % colors.length], 2.4);
+    label('u' + (i + 1), { x: e.x + 10, y: e.y - 10 }, colors[i % colors.length], 15, true);
+  });
+  ctx.beginPath(); ctx.arc(om.x, om.y, 5, 0, 2 * Math.PI);
+  ctx.fillStyle = '#d4af37'; ctx.fill();
+  label('v̄', { x: om.x + 14, y: om.y + 14 }, '#d4af37', 15, true);
+  const pts = [];
+  for (let i = 0; i <= 60; i++) {
+    const a = 2 * Math.PI * i / 60;
+    pts.push(project({ x: 1.4 * Math.cos(a), y: 1.4 * Math.sin(a), z: 0 }));
+  }
+  drawPoly(pts, null, 0, 'rgba(255,255,255,.12)');
+  const waveR = 1.4 + Math.sin(t * 2) * 0.05;
+  const pts2 = [];
+  for (let i = 0; i <= 60; i++) {
+    const a = 2 * Math.PI * i / 60;
+    pts2.push(project({ x: waveR * Math.cos(a), y: waveR * Math.sin(a), z: 0 }));
+  }
+  drawPoly(pts2, null, 0, 'rgba(212,175,55,.35)');
+}
+
+function drawMainTheorem(params) {
+  clearCanvas();
+  const t = view.time;
+  const colors = ['#e74c3c', '#3498db', '#2ecc71'];
+  if (view.shapes.torus) {
+    const torus = makeTorus(0.7, 0.25, 24, 14);
+    drawMesh(torus, { ax: t * view.speed * 0.5 + 0.5, ay: t * view.speed * 0.8, az: 0, color: '#d4af37', alpha: 0.75 });
+  }
+  const step = 2 * Math.PI / 3;
+  for (let s = 0; s < 3; s++) {
+    const baseAng = s * step + t * view.speed * 0.3;
+    const N = 50;
+    const pts = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N;
+      const ang = baseAng + u * Math.PI * 1.2;
+      const rad = 1.0 + 0.3 * u;
+      pts.push(project({ x: rad * Math.cos(ang), y: -0.6 + 1.2 * u, z: rad * Math.sin(ang) }));
+    }
+    ctx.beginPath();
+    pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.strokeStyle = colors[s];
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    const pts2 = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N;
+      const ang = baseAng + u * Math.PI * 1.2;
+      const rad = 1.0 + 0.3 * u;
+      pts2.push(project({ x: rad * Math.cos(ang), y: -0.6 + 1.2 * u + 0.15, z: rad * Math.sin(ang) }));
+    }
+    ctx.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const a = pts[i], b = pts2[i];
+      if (i === 0) { ctx.moveTo(a.x, a.y); }
+      ctx.lineTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    }
+    for (let i = N; i >= 0; i--) {
+      ctx.lineTo(pts2[i].x, pts2[i].y);
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = colors[s];
+    ctx.globalAlpha = 0.18;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawUniqueGames(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+  const n = 7;
+  const leftX = W * 0.25, rightX = W * 0.75;
+  const topY = H * 0.2, botY = H * 0.8;
+
+  const left = [], right = [];
+  for (let i = 0; i < n; i++) {
+    left.push({ x: leftX, y: topY + (botY - topY) * i / (n - 1) });
+    right.push({ x: rightX, y: topY + (botY - topY) * i / (n - 1) });
+  }
+
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if ((i * 3 + j * 7) % 4 === 0 || (i === j)) {
+        const isSat = (i + j + Math.floor(t * 2)) % 3 !== 0;
+        ctx.beginPath();
+        ctx.moveTo(left[i].x, left[i].y);
+        ctx.lineTo(right[j].x, right[j].y);
+        ctx.strokeStyle = isSat ? 'rgba(46,204,113,.55)' : 'rgba(231,76,60,.35)';
+        ctx.lineWidth = isSat ? 1.6 : 1;
+        ctx.stroke();
+      }
+    }
+  }
+
+  left.forEach((p, i) => {
+    ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
+    ctx.fillStyle = '#2ecc71'; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    label('v' + (i + 1), { x: p.x - 22, y: p.y }, '#e8ecf2', 12, true);
+  });
+  right.forEach((p, i) => {
+    ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
+    ctx.fillStyle = '#e74c3c'; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    label('w' + (i + 1), { x: p.x + 22, y: p.y }, '#e8ecf2', 12, true);
+  });
+
+  label('Complétude ≥ 1 − ε', { x: W / 2, y: H * 0.94 }, '#2ecc71', 14, true);
+  label('Soundness ≤ δ', { x: W / 2, y: H * 0.97 }, '#e74c3c', 14, true);
+  label('Théorème 6.3 — Unique Games input', { x: W / 2, y: 30 }, '#d4af37', 15, true);
+}
+
+function drawReduction(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+
+  const steps = [
+    { label: '3SAT', color: '#e74c3c', x: 0.10, y: 0.5 },
+    { label: 'Unique Games', color: '#2ecc71', x: 0.30, y: 0.5 },
+    { label: 'Matrice A', color: '#3498db', x: 0.50, y: 0.5 },
+    { label: 'Clust(A|I_k)', color: '#9b59b6', x: 0.70, y: 0.5 },
+    { label: 'θ', color: '#d4af37', x: 0.90, y: 0.5 }
+  ];
+
+  steps.forEach((s, i) => {
+    const x = W * s.x, y = H * s.y;
+    ctx.save();
+    ctx.translate(x, y);
+    const pulse = 1 + Math.sin(t * 2 + i) * 0.03;
+    ctx.scale(pulse, pulse);
+    ctx.beginPath();
+    ctx.roundRect(-55, -25, 110, 50, 8);
+    ctx.fillStyle = 'rgba(18,22,28,.9)';
+    ctx.fill();
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+    ctx.restore();
+    label(s.label, { x, y }, s.color, 15, false);
+  });
+
+  for (let i = 0; i < steps.length - 1; i++) {
+    const a = { x: W * steps[i].x + 55, y: H * steps[i].y };
+    const b = { x: W * steps[i + 1].x - 55, y: H * steps[i + 1].y };
+    drawArrow(a, b, '#d4af37', 2.2);
+    const u = ((t * 0.5 + i * 0.2) % 1);
+    const px = a.x + (b.x - a.x) * u;
+    const py = a.y + (b.y - a.y) * u;
+    ctx.beginPath(); ctx.arc(px, py, 3, 0, 2 * Math.PI);
+    ctx.fillStyle = '#f1c40f'; ctx.fill();
+  }
+
+  const gx = W * 0.5, gy = H * 0.78;
+  ctx.beginPath();
+  ctx.moveTo(W * 0.25, gy);
+  ctx.lineTo(W * 0.75, gy);
+  ctx.strokeStyle = '#e74c3c';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(W * 0.5, gy);
+  ctx.lineTo(W * 0.5, gy + 30);
+  ctx.stroke();
+  label('S < H/α', { x: W * 0.5, y: gy + 46 }, '#e74c3c', 14, true);
+
+  label('Théorème 6.1 — hardness gap', { x: W / 2, y: 30 }, '#d4af37', 15, true);
+}
+
+function drawCertificates(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+
+  const lx = W * 0.28, ly = H * 0.5;
+  ctx.beginPath();
+  ctx.arc(lx, ly, 60, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(212,175,55,.4)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  label('π ∈ (3.14159, 3.14160)', { x: lx, y: ly - 80 }, '#d4af37', 13, true);
+
+  const bars = [
+    { label: '√x', l: 0.3, u: 0.7 },
+    { label: 'e^{-y}', l: 0.2, u: 0.8 },
+    { label: 'Φ(x)', l: 0.25, u: 0.75 },
+    { label: 'arcsin x', l: 0.35, u: 0.65 }
+  ];
+  const bx = W * 0.55, by = H * 0.25, bw = W * 0.3, bh = H * 0.5 / bars.length;
+  bars.forEach((b, i) => {
+    const y = by + i * bh;
+    ctx.fillStyle = 'rgba(255,255,255,.05)';
+    ctx.fillRect(bx, y, bw, bh - 8);
+    ctx.fillStyle = 'rgba(212,175,55,.3)';
+    ctx.fillRect(bx + bw * b.l, y, bw * (b.u - b.l), bh - 8);
+    ctx.beginPath(); ctx.arc(bx + bw * b.l, y + (bh-8)/2, 4, 0, 2*Math.PI);
+    ctx.fillStyle = '#2ecc71'; ctx.fill();
+    ctx.beginPath(); ctx.arc(bx + bw * b.u, y + (bh-8)/2, 4, 0, 2*Math.PI);
+    ctx.fillStyle = '#e74c3c'; ctx.fill();
+    label(b.label, { x: bx - 30, y: y + (bh-8)/2 }, '#e8ecf2', 12, true);
+  });
+
+  const u = ((t * 0.4) % 1);
+  const px = bx + bw * u;
+  ctx.beginPath(); ctx.arc(px, by + 20, 4, 0, 2*Math.PI);
+  ctx.fillStyle = '#f1c40f'; ctx.fill();
+
+  label('Enceintes rationnelles', { x: W / 2, y: H * 0.9 }, '#d4af37', 14, true);
+  label('Appendice A — certificats', { x: W / 2, y: 30 }, '#d4af37', 15, true);
+}
+
+/* =====================================================================
+   5. SCÈNES (DONNÉES)
+   ===================================================================== */
+const SCENES = [
+  {
+    id: 'prop2d', tag: 'EX', title: "L'hélice 2D",
+    tex: String.raw`\int_{P} x\, d\gamma_2(x) = \frac{\sin\alpha}{\sqrt{2\pi}}\,(1,0)`,
+    desc: "L'hélice est formée de <strong>m secteurs plans de 2π/m</strong> (3 secteurs de 120° par défaut). Pour m=3 et α = π/3, leurs longueurs de centroïde au carré s'additionnent en 3 sin²(π/3)/(2π) = 9/(8π). C'est la configuration qui <strong>atteint la borne</strong> de la conjecture.",
+    draw: drawPropeller2D,
+    params: [
+      { key: 'm', label: 'Nombre de pales m', min: 3, max: 8, step: 1, value: 3 },
+      { key: 'opacity', label: 'Opacité', min: 0.05, max: 0.9, step: 0.01, value: 0.2 },
+      { key: 'showCentroids', label: 'Centroïdes ẑᵢ', type: 'bool', value: true },
+      { key: 'showLabels', label: 'Étiquettes Sᵢ', type: 'bool', value: true }
+    ],
+    legendLeft: {
+      title: "Secteurs & Centroïdes",
+      items: [
+        { color: '#ef4444', text: "<strong>ẑ₁</strong> — Centroïde du secteur S₁" },
+        { color: '#3b82f6', text: "<strong>ẑ₂</strong> — Centroïde du secteur S₂" },
+        { color: '#22c55e', text: "<strong>ẑ₃</strong> — Centroïde du secteur S₃" }
+      ],
+      eq: String.raw`\sum \hat{z}_i = 0`
+    },
+    legendRight: {
+      title: "Propriétés",
+      items: [
+        { color: '#a855f7', text: "Angle entre secteurs : <strong>2π/m</strong>" },
+        { color: '#fff', text: "Atteint la borne supérieure" },
+        { color: '#fff', text: "Invariant en dimension d ≥ 2" }
+      ],
+      eq: String.raw`A_i = S_i \times \mathbb{R}^{d-2}`
+    }
+  },
+  {
+    id: 'prop3d', tag: 'THM', title: "Extension orthogonale en dimension d",
+    tex: String.raw`A_i = S_i \times \mathbb{R}^{d-2} \;\Longrightarrow\; \|z(A_i)\| = \|z(S_i)\|`,
+    desc: "Pour passer en dimension d ≥ 2, on multiplie chaque secteur par le <strong>facteur euclidien orthogonal</strong> ℝ^{d−2}. La composante orthogonale du centroïde est nulle en espérance, donc la <strong>norme du moment est préservée</strong> : la borne 9/(8π) reste atteinte. Les trois cubes tournent sur eux-mêmes et flottent le long de l'axe.",
+    draw: drawPropeller3D,
+    params: [
+      { key: 'height', label: "Hauteur d'extension", min: 20, max: 160, step: 1, value: 80 },
+      { key: 'opacity', label: 'Opacité des cubes', min: 0.2, max: 1, step: 0.01, value: 0.85 }
+    ],
+    legendLeft: {
+      title: "Formes",
+      items: [
+        { color: '#ef4444', text: "Cube S₁" },
+        { color: '#3b82f6', text: "Cube S₂" },
+        { color: '#22c55e', text: "Cube S₃" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Axe",
+      items: [
+        { color: '#555', text: "Axe pointillé — extension ℝ^{d−2}" },
+        { color: '#d4af37', text: "Anneaux dorés — guidage" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'lemma22', tag: 'LEM', title: "Lemme 2.2 — Structure des centroïdes",
+    tex: String.raw`\langle z_i, z_j \rangle < 0,\quad \dim V = m-1,\quad m \geq 5`,
+    desc: "Les centroïdes d'une partition extrémale ont des <strong>produits scalaires strictement négatifs</strong>. Leur span V est de dimension m−1, et les cellules optimales sont les <strong>cônes de score</strong> K_i. Le théorème de Heilman–Jagannath–Naor exclut m ≤ 4, d'où <strong>m ≥ 5</strong>. L'octaèdre rebondit au centre.",
+    draw: drawMinimalCells,
+    params: [
+      { key: 'm', label: "Nombre de cellules m", min: 5, max: 8, step: 1, value: 5 }
+    ],
+    legendLeft: {
+      title: "Cônes K_i",
+      items: [
+        { color: '#ef4444', text: "Cône 1" },
+        { color: '#3b82f6', text: "Cône 2" },
+        { color: '#22c55e', text: "Cône 3" },
+        { color: '#a855f7', text: "Cône 4" },
+        { color: '#eab308', text: "Cône 5" }
+      ],
+      eq: String.raw`\langle z_i, z_j \rangle < 0`
+    },
+    legendRight: {
+      title: "Origine",
+      items: [
+        { color: '#ef4444', text: "Octaèdre — rebond physique" },
+        { color: '#fff', text: "Flèches z_i — centroïdes normalisés" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'scorecones', tag: 'LEM', title: "Cônes de score et partition",
+    tex: String.raw`K_i = \{ x : \langle z_i - z_j,\, x\rangle \geq 0 \;\; \forall j \neq i \}`,
+    desc: "La partition optimale coïncide presque partout avec les <strong>cônes où le score ⟨z_i, x⟩ est maximal</strong>. Chaque K_i est un cône convexe fermé, et la somme des scores est nulle, ce qui force K_i ⊆ {X_i ≥ 0} et donc <strong>P_i ≤ 1/2</strong>. Les cônes orbitent autour du tore.",
+    draw: drawScoreCones,
+    params: [
+      { key: 'm', label: 'Nombre de cônes', min: 5, max: 7, step: 1, value: 5 },
+      { key: 'spread', label: 'Ouverture', min: 0.15, max: 0.8, step: 0.01, value: 0.45 },
+      { key: 'coneR', label: 'Rayon', min: 0.8, max: 2.2, step: 0.05, value: 1.5 },
+      { key: 'showCones', label: 'Cônes K_i', type: 'bool', value: true }
+    ],
+    legendLeft: {
+      title: "Cônes",
+      items: [
+        { color: '#ef4444', text: "Cône K₁" },
+        { color: '#3b82f6', text: "Cône K₂" },
+        { color: '#22c55e', text: "Cône K₃" },
+        { color: '#a855f7', text: "Cône K₄" },
+        { color: '#eab308', text: "Cône K₅" }
+      ],
+      eq: String.raw`P_i \leq 1/2`
+    },
+    legendRight: {
+      title: "Tore",
+      items: [
+        { color: '#06b6d4', text: "Span V ≅ ℝ^{m−1}" },
+        { color: '#fff', text: "Rotation lente des cônes" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'lemma31', tag: 'LEM', title: "Lemme 3.1 — Bornes de probabilité",
+    tex: String.raw`P_i \geq A r_i^2,\quad P_i \geq 0.415\, r_i + 0.15\, r_i^2,\quad r_i \leq \tfrac{2}{3}`,
+    desc: "Chaque probabilité de cellule est minorée en fonction de son <strong>rayon normalisé</strong> r_i = ‖z_i‖/√C. La borne quadratique vient du réarrangement demi-espace ; la borne linéaire-quadratique combine la perte d'un score (inégalité d'Ehrhard) et la monotonie de G. Pour m = 5, le réarrangement sphérique améliore la constante à <strong>A = 0,929</strong>. L'hélicoïde tourne en arrière-plan.",
+    draw: drawProbabilityBound,
+    params: [
+      { key: 'A', label: 'Constante A', min: 0.88, max: 0.94, step: 0.001, value: 0.929 },
+      { key: 'showQuad', label: 'Borne quadratique', type: 'bool', value: true },
+      { key: 'showLin', label: 'Borne linéaire', type: 'bool', value: true }
+    ],
+    legendLeft: {
+      title: "Courbes",
+      items: [
+        { color: '#ef4444', text: "<strong>P ≥ A r²</strong> — Quadratique" },
+        { color: '#3b82f6', text: "<strong>P ≥ 0.415r + 0.15r²</strong>" },
+        { color: '#555', text: "<strong>P = r²</strong> — Référence" }
+      ],
+      eq: String.raw`r_i \leq \frac{2}{3}`
+    },
+    legendRight: {
+      title: "Contexte",
+      items: [
+        { color: '#eab308', text: "Hélicoïde — surface de référence" },
+        { color: '#eab308', text: "Particules — suivent la courbe rouge" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'lemma41', tag: 'LEM', title: "Lemme 4.1 — Deux scores concurrents",
+    tex: String.raw`D_{jk} \leq \frac{3}{\pi}\, t\,(1+a_j)(1+a_k)`,
+    desc: "En prenant la cellule de <strong>plus petit rayon normalisé</strong> t, on projette les autres scores orthogonalement. Le résidu Y est indépendant de T, et l'intégrale de la partie positive est majorée par la <strong>densité gaussienne maximale</strong> M. Le triangle d'intégration donne un facteur 27/6. Une particule dorée parcourt l'axe T.",
+    draw: drawTwoScores,
+    params: [
+      { key: 't', label: 'Plus petit rayon t', min: 0.05, max: 0.2, step: 0.001, value: 0.11 },
+      { key: 'aj', label: 'Coefficient a_j', min: 0.05, max: 0.6, step: 0.01, value: 0.35 },
+      { key: 'ak', label: 'Coefficient a_k', min: 0.05, max: 0.6, step: 0.01, value: 0.25 }
+    ],
+    legendLeft: {
+      title: "Axes",
+      items: [
+        { color: '#888', text: "<strong>T</strong> — Score principal" },
+        { color: '#3b82f6', text: "<strong>Y_j</strong> — Résidu j" },
+        { color: '#22c55e', text: "<strong>Y_k</strong> — Résidu k" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Régions",
+      items: [
+        { color: '#ef4444', text: "Triangle — T ≥ 0, Y ≤ (1+a)tT" },
+        { color: '#3b82f6', text: "Ellipse — Densité gaussienne" },
+        { color: '#e67e22', text: "Spirale — guide du score minimal" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'cor42', tag: 'COR', title: "Corollaire 4.2 — Contraintes sur les rayons",
+    tex: String.raw`(c - t^2)(L - c - 2t^2) \leq 8\left(\tfrac{3}{\pi}\right)^2 t^2`,
+    desc: "Les covariances négatives empêchent tous les déterminants D_jk d'être petits simultanément. En sommant les inégalités du Lemme 4.1 sur les trois plus grands rayons, on obtient deux <strong>contraintes scalaires</strong> reliant L = r₁² + r₂², c = r₃² et t = r_m. L'icosaèdre tourne, une particule suit e(u).",
+    draw: drawSmallMin,
+    params: [
+      { key: 'A', label: 'Constante A', min: 0.88, max: 0.94, step: 0.001, value: 0.929 },
+      { key: 't0', label: 'Racine t₀', min: 0.09, max: 0.13, step: 0.001, value: 0.107 }
+    ],
+    legendLeft: {
+      title: "Courbe",
+      items: [
+        { color: '#ef4444', text: "e(u) = 0.415u − du²" },
+        { color: '#3b82f6', text: "Point q₀ = 0.066" },
+        { color: '#22c55e', text: "Point t₀ ≈ 0.107" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Contexte",
+      items: [
+        { color: '#a855f7', text: "Icosaèdre — rotation" },
+        { color: '#d4af37', text: "Particule — suit e(u)" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'cor51', tag: 'COR', title: "Corollaire 5.1 — Maximum gaussien",
+    tex: String.raw`\mathbb{E}\max_i \langle v_i, g\rangle \leq \frac{3}{2\sqrt{2\pi}}\left(\sum_i \|v_i - \bar v\|^2\right)^{1/2}`,
+    desc: "En centrant les vecteurs par leur moyenne v̄, on obtient une <strong>inégalité sharp pour le maximum gaussien</strong>. La constante est atteinte par les trois vecteurs centroïdes de l'hélice plane. Les vecteurs tournent et l'onde gaussienne pulse.",
+    draw: drawGaussianMax,
+    params: [
+      { key: 'k', label: 'Nombre de vecteurs k', min: 3, max: 5, step: 1, value: 3 }
+    ],
+    legendLeft: {
+      title: "Vecteurs",
+      items: [
+        { color: '#ef4444', text: "u₁ — v₁ − v̄" },
+        { color: '#3b82f6', text: "u₂ — v₂ − v̄" },
+        { color: '#22c55e', text: "u₃ — v₃ − v̄" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Moyenne",
+      items: [
+        { color: '#d4af37', text: "Point v̄" },
+        { color: '#fff', text: "Cercle blanc — enveloppe" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'mainthm', tag: 'THM', title: "Théorème 1.1 — Borne universelle",
+    tex: String.raw`\sum_{i=1}^{k}\left\|\int_{A_i} x\, d\gamma_d(x)\right\|^2 \leq \frac{9}{8\pi}`,
+    desc: "Pour toute partition mesurable finie de ℝ^d, la somme des carrés des longueurs des premiers moments gaussiens est majorée par <strong>9/(8π)</strong>. La borne est atteinte pour d ≥ 2 et k ≥ 3 par les trois secteurs plans de 120° étendus orthogonalement. Le tore et les trois rubans tournent.",
+    draw: drawMainTheorem,
+    params: [],
+    legendLeft: {
+      title: "Rubans",
+      items: [
+        { color: '#ef4444', text: "Ruban S₁ — contribue ‖z₁‖²" },
+        { color: '#3b82f6', text: "Ruban S₂ — contribue ‖z₂‖²" },
+        { color: '#22c55e', text: "Ruban S₃ — contribue ‖z₃‖²" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Tore",
+      items: [
+        { color: '#d4af37', text: "Tore — espace ambiant ℝ^d" },
+        { color: '#fff', text: "Somme = 9/(8π)" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'kernel', tag: 'THM', title: "Théorème 6.1 — Clustering NP-dur",
+    tex: String.raw`\alpha_k = \frac{1 - 1/k}{c_*},\qquad \mathrm{val}_A(\sigma) \geq \frac{\mathrm{Clust}(A \mid I_k)}{\alpha}`,
+    desc: "Pour k ≥ 3 fixé et 1 ≤ α < α_k, il est <strong>NP-dur</strong> de trouver une partition σ telle que val_A(σ) ≥ Clust(A|I_k)/α. Le graphe illustre les clusters et les arêtes intra-cluster (dorées).",
+    draw: drawKernelClustering,
+    params: [
+      { key: 'k', label: 'Nombre de clusters', min: 3, max: 5, step: 1, value: 3 },
+      { key: 'N', label: 'Nombre de sommets', min: 15, max: 45, step: 3, value: 30 }
+    ],
+    legendLeft: {
+      title: "Clusters",
+      items: [
+        { color: '#ef4444', text: "C₁ (rouge)" },
+        { color: '#3b82f6', text: "C₂ (bleu)" },
+        { color: '#22c55e', text: "C₃ (vert)" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Arêtes",
+      items: [
+        { color: '#eab308', text: "Intra-cluster (fortes)" },
+        { color: '#fff', text: "α_k — seuil de dureté" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'lowinfluence', tag: 'THM', title: "Théorème 6.2 — Borne de low-influence",
+    tex: String.raw`\mathrm{OBJ}(f) \leq C_k + \eta \quad \text{si } \mathrm{Inf}_j^{\leq \log(1/\tau_0)}(f_i) \leq \tau_0`,
+    desc: "Pour k fixé et tout η > 0, il existe τ₀ tel que toute fonction f vérifiant des influences de Fourier Inf_j ≤ τ₀ satisfait OBJ(f) ≤ C_k + η. Les barres violettes montrent ces influences.",
+    draw: drawLowInfluence,
+    params: [],
+    legendLeft: {
+      title: "Influences",
+      items: [
+        { color: '#a855f7', text: "Barres — Inf_j(f_i)" },
+        { color: '#ef4444', text: "Ligne rouge — seuil τ" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Borne",
+      items: [
+        { color: '#fff', text: "OBJ(f) ≤ C_k + η" },
+        { color: '#a0a0b0', text: "Principe d'invariance" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'uniquegames', tag: 'THM', title: "Théorème 6.3 — Unique Games input",
+    tex: String.raw`\text{3SAT} \longrightarrow \text{Unique Games over } \mathbb{F}_2^s,\quad (1-\varepsilon,\,\delta)`,
+    desc: "Pour tous ε, δ ∈ (0, 1/2) fixés, il existe s ≥ 1 et une réduction déterministe polynomiale de 3SAT vers des instances Unique Games bipartites simples non pondérées sur F₂^s. Si la formule est satisfiable, le jeu a un étiquetage satisfaisant ≥ 1 − ε des arêtes ; sinon, tout étiquetage en satisfait ≤ δ.",
+    draw: drawUniqueGames,
+    params: [],
+    legendLeft: {
+      title: "Sommets",
+      items: [
+        { color: '#22c55e', text: "v_i — Variables" },
+        { color: '#ef4444', text: "w_j — Contraintes" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Arêtes",
+      items: [
+        { color: '#22c55e', text: "Satisfaites (≥ 1 − ε)" },
+        { color: '#ef4444', text: "Violées (≤ δ)" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'reduction', tag: 'THM', title: "Section 6.5 — Réduction complète",
+    tex: String.raw`\varphi \text{ sat.} \Rightarrow \mathrm{Clust}(A_\varphi|I_k) \geq H,\quad \varphi \text{ unsat.} \Rightarrow \leq S,\quad S < H/\alpha`,
+    desc: "On choisit ε, η petits tels que α < (1 − 1/k)(1 − ε)²/(c* + 2η), puis τ, D, δ. On applique le Théorème 6.3, puis le Lemme 6.4. Les Lemmes 6.5 et 6.6 donnent le gap H = (1 − 1/k)(1 − ε)² et S = c* + 2η avec S < H/α. Un algorithme de perte α déciderait 3SAT en temps polynomial.",
+    draw: drawReduction,
+    params: [],
+    legendLeft: {
+      title: "Étapes",
+      items: [
+        { color: '#ef4444', text: "3SAT" },
+        { color: '#22c55e', text: "Unique Games" },
+        { color: '#3b82f6', text: "Matrice A" },
+        { color: '#a855f7', text: "Clust(A|I_k)" },
+        { color: '#d4af37', text: "θ" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Gap",
+      items: [
+        { color: '#ef4444', text: "S < H/α — séparation" },
+        { color: '#eab308', text: "Particules — propagation" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'certificates', tag: 'APP', title: "Appendice A — Certificats",
+    tex: String.raw`3.14159 < \pi < 3.14160,\qquad l \leq \sqrt{x} \leq u \text{ via } l^2 \leq x \leq u^2`,
+    desc: "Toutes les comparaisons numériques de la preuve sont certifiées par des enceintes rationnelles : π par la série arctan, √x par encadrement l² ≤ x ≤ u², e^{−y} et Φ(x) par séries tronquées, arcsin x par série binomiale. Aucune optimisation ni quadrature numérique n'est nécessaire.",
+    draw: drawCertificates,
+    params: [],
+    legendLeft: {
+      title: "Enceintes",
+      items: [
+        { color: '#d4af37', text: "π ∈ (3.14159, 3.14160)" },
+        { color: '#22c55e', text: "Borne inférieure l" },
+        { color: '#ef4444', text: "Borne supérieure u" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Vérification",
+      items: [
+        { color: '#eab308', text: "Particule — vérifie x ∈ [l, u]" },
+        { color: '#fff', text: "Arithmétique rationnelle pure" }
+      ],
+      eq: ""
+    }
+  }
+];
+
+/* =====================================================================
+   6. UI LOGIC
+   ===================================================================== */
+let currentScene = SCENES[0];
+let currentParams = {};
+
+function renderSceneList() {
+  const ul = document.getElementById('scene-list');
+  ul.innerHTML = '';
+  SCENES.forEach((s, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="tag ${s.tag.toLowerCase()}">${s.tag}</span>${s.title}`;
+    li.addEventListener('click', () => selectScene(i));
+    if (s === currentScene) li.classList.add('active');
+    ul.appendChild(li);
+  });
+}
+
+function renderParams() {
+  const box = document.getElementById('param-box');
+  box.innerHTML = '';
+  if (currentScene.params.length === 0) {
+    box.innerHTML = '<div style="color:#666;font-style:italic;font-size:0.9rem;">Aucun paramètre.</div>';
+    return;
+  }
+  currentScene.params.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'param';
+    if (p.type === 'bool') {
+      const btn = document.createElement('button');
+      btn.textContent = (currentParams[p.key] ? '✓ ' : '✗ ') + p.label;
+      btn.className = currentParams[p.key] ? 'on' : '';
+      btn.style.cssText = 'width:100%;text-align:left;font-size:0.9rem;padding:8px 12px;border-radius:6px;border:1px solid var(--panel-border);background:' + (currentParams[p.key] ? 'var(--accent-purple)' : 'rgba(255,255,255,0.05)') + ';color:white;cursor:pointer;';
+      btn.addEventListener('click', () => {
+        currentParams[p.key] = !currentParams[p.key];
+        renderParams();
+        if (currentScene) currentScene.draw(currentParams);
+      });
+      div.appendChild(btn);
+    } else {
+      const lab = document.createElement('label');
+      lab.innerHTML = `<span>${p.label}</span><span style="color:var(--accent-gold);">${currentParams[p.key]}</span>`;
+      const inp = document.createElement('input');
+      inp.type = 'range';
+      inp.min = p.min; inp.max = p.max; inp.step = p.step;
+      inp.value = currentParams[p.key];
+      inp.addEventListener('input', () => {
+        currentParams[p.key] = parseFloat(inp.value);
+        lab.querySelector('span:last-child').textContent = inp.value;
+        if (currentScene) currentScene.draw(currentParams);
+      });
+      div.appendChild(lab);
+      div.appendChild(inp);
+    }
+    box.appendChild(div);
+  });
+}
+
+function renderShapeToggles() {
+  const grid = document.getElementById('shape-grid');
+  grid.innerHTML = '';
+  const shapes = [
+    { key: 'cube', name: 'Cube', color: '#ef4444' },
+    { key: 'octahedron', name: 'Octaèdre', color: '#3b82f6' },
+    { key: 'icosahedron', name: 'Icosaèdre', color: '#a855f7' },
+    { key: 'torus', name: 'Tore', color: '#06b6d4' },
+    { key: 'helicoid', name: 'Hélicoïde', color: '#eab308' },
+    { key: 'spiral', name: 'Spirale', color: '#e67e22' }
+  ];
+  shapes.forEach(s => {
+    const lab = document.createElement('label');
+    lab.className = 'shape-toggle' + (view.shapes[s.key] ? ' on' : '');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = view.shapes[s.key];
+    cb.addEventListener('change', () => {
+      view.shapes[s.key] = cb.checked;
+      lab.classList.toggle('on', cb.checked);
+    });
+    const sw = document.createElement('span');
+    sw.className = 'mini';
+    sw.style.cssText = `background:${s.color};`;
+    const txt = document.createElement('span');
+    txt.textContent = s.name;
+    lab.appendChild(cb);
+    lab.appendChild(sw);
+    lab.appendChild(txt);
+    grid.appendChild(lab);
+  });
+}
+
+function renderLegends() {
+  const lBox = document.getElementById('legend-left');
+  const rBox = document.getElementById('legend-right');
+  
+  lBox.innerHTML = `<h4>${currentScene.legendLeft.title}</h4><ul>` + 
+    currentScene.legendLeft.items.map(it => 
+      `<li><span class="swatch" style="background:${it.color}"></span><span>${it.text}</span></li>`
+    ).join('') + `</ul>` +
+    (currentScene.legendLeft.eq ? `<div class="eq" id="eq-left"></div>` : '');
+    
+  rBox.innerHTML = `<h4>${currentScene.legendRight.title}</h4><ul>` + 
+    currentScene.legendRight.items.map(it => 
+      `<li><span class="swatch" style="background:${it.color}"></span><span>${it.text}</span></li>`
+    ).join('') + `</ul>` +
+    (currentScene.legendRight.eq ? `<div class="eq" id="eq-right"></div>` : '');
+
+  if (window.katex) {
+    if (currentScene.legendLeft.eq) katex.render(currentScene.legendLeft.eq, document.getElementById('eq-left'), {throwOnError: false});
+    if (currentScene.legendRight.eq) katex.render(currentScene.legendRight.eq, document.getElementById('eq-right'), {throwOnError: false});
+  }
+}
+
+function selectScene(index) {
+  currentScene = SCENES[index];
+  currentParams = {};
+  currentScene.params.forEach(p => currentParams[p.key] = p.value);
+  
+  document.getElementById('scene-title').textContent = currentScene.title;
+  
+  const eqEl = document.getElementById('scene-eq');
+  if (window.katex) katex.render(currentScene.tex, eqEl, {throwOnError: false, displayMode: true});
+  else eqEl.textContent = currentScene.tex;
+  
+  document.getElementById('description').innerHTML = currentScene.desc;
+  
+  renderSceneList();
+  renderParams();
+  renderLegends();
+  
+  view.yaw = 0.5; view.pitch = 0.3; view.zoom = 1;
+  view.vyaw = 0; view.vpitch = 0;
+}
+
+/* =====================================================================
+   7. BOUCLE & ÉVÉNEMENTS
+   ===================================================================== */
+let lastTime = performance.now();
+function loop(now) {
+  try {
+    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
+    view.time += dt * view.speed;
+    
+    if (view.physics) {
+      if (view.autoRotate) {
+        view.vyaw += (0.15 - view.vyaw) * dt * 2;
+      } else {
+        view.vyaw *= Math.pow(view.damping, dt * 60);
+        view.vpitch *= Math.pow(view.damping, dt * 60);
+      }
+      view.yaw += view.vyaw * dt;
+      view.pitch += view.vpitch * dt;
+    }
+    
+    if (view.W === 0) resizeCanvas();
+    
+    currentScene.draw(currentParams);
+    drawParticles();
+  } catch (e) {
+    console.error("Erreur d'affichage :", e);
+  }
+  
+  requestAnimationFrame(loop);
+}
+
+let dragging = false, lastX = 0, lastY = 0;
+canvas.addEventListener('pointerdown', e => {
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  canvas.setPointerCapture(e.pointerId);
+  view.vyaw = 0; view.vpitch = 0;
+});
+canvas.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  view.yaw += dx * 0.005;
+  view.pitch = Math.max(-1.2, Math.min(1.2, view.pitch + dy * 0.005));
+  view.vyaw = dx * 0.005 / 0.016;
+  view.vpitch = dy * 0.005 / 0.016;
+});
+canvas.addEventListener('pointerup', e => {
+  dragging = false;
+  try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  view.zoom = Math.max(0.3, Math.min(4, view.zoom * (e.deltaY > 0 ? 0.92 : 1.08)));
+}, { passive: false });
+
+document.getElementById('damp').addEventListener('input', function () {
+  view.damping = parseFloat(this.value);
+  document.getElementById('damp-val').textContent = this.value;
+});
+document.getElementById('speed').addEventListener('input', function () {
+  view.speed = parseFloat(this.value);
+  document.getElementById('speed-val').textContent = this.value;
+});
+document.getElementById('btn-auto').addEventListener('click', function () {
+  view.autoRotate = !view.autoRotate;
+  this.classList.toggle('on', view.autoRotate);
+});
+document.getElementById('btn-wireframe').addEventListener('click', function () {
+  view.wireframe = !view.wireframe;
+  this.classList.toggle('on', view.wireframe);
+});
+document.getElementById('btn-labels').addEventListener('click', function () {
+  view.labels = !view.labels;
+  this.classList.toggle('on', view.labels);
+});
+document.getElementById('btn-particles').addEventListener('click', function () {
+  particlesActive = !particlesActive;
+  this.classList.toggle('on', particlesActive);
+});
+document.getElementById('btn-panel').addEventListener('click', function () {
+  const panel = document.getElementById('panel');
+  const stage = document.getElementById('stage');
+  panel.classList.toggle('open');
+  stage.classList.toggle('panel-open', panel.classList.contains('open'));
+  this.classList.toggle('on', panel.classList.contains('open'));
+  
+  setTimeout(() => {
+    resizeCanvas();
+    resizeParticles();
+  }, 320);
+});
+document.getElementById('btn-full').addEventListener('click', function () {
+  const stage = document.getElementById('stage');
+  if (!document.fullscreenElement) stage.requestFullscreen().catch(() => {});
+  else document.exitFullscreen().catch(() => {});
+});
+document.addEventListener('fullscreenchange', () => {
+  setTimeout(() => {
+    resizeCanvas();
+    resizeParticles();
+  }, 150);
+});
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  resizeParticles();
+});
+
+/* =====================================================================
+   8. ENREGISTREMENT
+   ===================================================================== */
+const recModal = document.getElementById('rec-modal');
+let mediaRecorder = null, recordedChunks = [], recCanvas = null, recCtx = null, recRaf = null;
+
+document.getElementById('btn-record').addEventListener('click', () => {
+  document.getElementById('panel').classList.remove('open');
+  document.getElementById('btn-panel').classList.remove('on');
+  document.getElementById('stage').classList.remove('panel-open');
+  setTimeout(() => { resizeCanvas(); resizeParticles(); }, 320);
+  
+  recModal.classList.add('show');
+});
+document.getElementById('btn-cancel-rec').addEventListener('click', () => {
+  recModal.classList.remove('show');
+});
+document.getElementById('btn-start-rec').addEventListener('click', () => {
+  recModal.classList.remove('show');
+  startRecording(parseInt(document.getElementById('res-select').value));
+});
+
+function startRecording(resHeight) {
+  const ratio = 16 / 9;
+  const RH = resHeight;
+  const RW = Math.round(RH * ratio);
+  
+  if (!recCanvas) { recCanvas = document.createElement('canvas'); recCtx = recCanvas.getContext('2d'); }
+  recCanvas.width = RW; recCanvas.height = RH;
+  
+  const stream = recCanvas.captureStream(30);
+  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+  mediaRecorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8_000_000 });
+  recordedChunks = [];
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `gaussian-${currentScene.id}-${Date.now()}.webm`;
+    a.click(); URL.revokeObjectURL(url);
+  };
+  mediaRecorder.start();
+  
+  const badge = document.getElementById('rec-badge');
+  badge.classList.add('show');
+  
+  function recLoop() {
+    buildRecordFrame(RW, RH);
+    recRaf = requestAnimationFrame(recLoop);
+  }
+  recLoop();
+  
+  canvas.addEventListener('click', function stop() {
+    if(mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      cancelAnimationFrame(recRaf);
+      badge.classList.remove('show');
+      canvas.removeEventListener('click', stop);
+    }
+  }, { once: true });
+}
+
+function buildRecordFrame(RW, RH) {
+  recCtx.fillStyle = '#050508';
+  recCtx.fillRect(0, 0, RW, RH);
+  
+  recCtx.fillStyle = '#e8e6f0';
+  recCtx.font = `bold 56px "Times New Roman"`;
+  recCtx.textAlign = 'center';
+  recCtx.textBaseline = 'middle';
+  recCtx.fillText(currentScene.title, RW/2, RH*0.1);
+  
+  const figH = RH * 0.55;
+  const figW = RW * 0.8;
+  const figX = RW * 0.1;
+  const figY = RH * 0.18;
+  
+  recCtx.save();
+  recCtx.beginPath();
+  recCtx.rect(figX, figY, figW, figH);
+  recCtx.clip();
+  recCtx.drawImage(canvas, figX, figY, figW, figH);
+  recCtx.restore();
+  
+  const descY = RH * 0.76;
+  recCtx.fillStyle = '#111';
+  recCtx.fillRect(RW * 0.1, descY, RW * 0.8, RH * 0.18);
+  
+  recCtx.fillStyle = '#fff';
+  recCtx.font = `28px "Times New Roman"`;
+  const words = currentScene.desc.replace(/<[^>]+>/g, '').split(' ');
+  let line = '';
+  let y = descY + 35;
+  for (let i = 0; i < words.length; i++) {
+    const test = line + words[i] + ' ';
+    if (recCtx.measureText(test).width > RW * 0.75 && i > 0) {
+      recCtx.fillText(line, RW * 0.15, y);
+      line = words[i] + ' ';
+      y += 36;
+    } else {
+      line = test;
+    }
+  }
+  recCtx.fillText(line, RW * 0.15, y);
+}
+
+/* =====================================================================
+   9. BOOT
+   ===================================================================== */
+function boot() {
+  resizeCanvas();
+  resizeParticles();
+  renderShapeToggles();
+  selectScene(0);
+  requestAnimationFrame(loop);
+}
+
+if (window.katex) boot();
+else window.addEventListener('load', boot);
+</script>
+</body>
+</html>
