@@ -1,28 +1,29 @@
 <!DOCTYPE html>
 <html lang="fr">
+<!-- Language toggleable: FR / EN via left panel -->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gaussian Propeller — Cinéma</title>
+<title>Gaussian Propeller — Cinéma & Storytelling</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
   :root {
-    --bg: #050508;
-    --text-main: #e8e6e3;
-    --text-muted: #a0a0b0;
-    --panel-bg: rgba(15, 15, 22, 0.85);
-    --panel-border: rgba(150, 150, 255, 0.25);
+    --bg: #000000;
+    --text-main: #ffffff;
+    --text-muted: #b0b0c0;
+    --panel-bg: rgba(10, 10, 15, 0.92);
+    --panel-border: rgba(150, 150, 255, 0.3);
     --accent-purple: #a855f7;
     --accent-cyan: #06b6d4;
     --accent-gold: #eab308;
     --accent-red: #ef4444;
     --accent-green: #22c55e;
-    --font-title: clamp(2.2rem, 4vw, 3.5rem);
-    --font-eq: clamp(1.4rem, 2.2vw, 2rem);
-    --font-desc: clamp(1.1rem, 1.5vw, 1.35rem);
-    --font-legend: 1.1rem;
-    --panel-width: 380px;
+    --font-title: clamp(2.6rem, 5vw, 4.2rem);
+    --font-eq: clamp(1.6rem, 2.8vw, 2.4rem);
+    --font-desc: clamp(1.25rem, 1.8vw, 1.55rem);
+    --font-legend: 1.25rem;
+    --panel-width: 400px;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -43,44 +44,77 @@
   #stage.panel-open {
     padding-left: var(--panel-width);
   }
+  /*
+   Absolute children ignore parent padding for their coordinate origin.
+   When the panel is open we shift them explicitly into the right zone.
+  */
+  #stage.panel-open #description-wrap {
+    left: var(--panel-width);
+    right: 0;
+  }
+  /* Légendes ancrées aux bords de la zone de droite + centrage vertical */
+  #stage.panel-open .floating-legend.left {
+    left: calc(var(--panel-width) + 12px);
+    right: auto;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  #stage.panel-open .floating-legend.right {
+    right: 12px;
+    left: auto;
+    top: 50%;
+    transform: translateY(-50%);
+  }
   #particles-canvas {
     position: absolute; inset: 0;
     pointer-events: none; z-index: 1;
   }
+  #stage.panel-open #particles-canvas {
+    left: var(--panel-width);
+  }
 
   /* ---------- HEADER ---------- */
   #stage-header {
-    position: relative; z-index: 5;
-    padding: 24px 40px 5px;
+    position: relative; z-index: 4;
+    padding: 22px 40px 6px;
     text-align: center;
     flex: 0 0 auto;
+    pointer-events: none;
+    background: transparent;
   }
   #scene-title {
     font-size: var(--font-title);
     font-weight: 400;
     margin: 0;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     color: #ffffff;
-    text-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+    text-shadow: 0 0 40px rgba(255, 255, 255, 0.25), 0 2px 12px rgba(0,0,0,0.9);
+    pointer-events: auto;
+    background: transparent;
   }
   #scene-eq {
-    margin: 15px auto 0;
+    margin: 14px auto 0;
     font-size: var(--font-eq);
     color: #ffffff;
     display: inline-block;
-    min-height: 1.2em;
-    text-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+    min-height: 1.3em;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.2), 0 2px 10px rgba(0,0,0,0.85);
+    background: transparent !important;
+    pointer-events: auto;
   }
+  #scene-eq .katex { background: transparent !important; }
 
   /* ---------- MAIN CANVAS AREA ---------- */
   #canvas-wrap {
     position: relative; z-index: 2;
     flex: 1 1 auto;
-    margin: 10px 0 20px;
+    margin: 0;
     min-height: 0;
     display: flex;
     justify-content: center;
     align-items: center;
+    padding-bottom: 170px;
+    /* no mask — figures can overlap title area cleanly */
   }
   #canvas-wrap canvas {
     width: 100%; height: 100%; display: block;
@@ -91,32 +125,44 @@
 
   /* ---------- FLOATING LEGENDS ---------- */
   .floating-legend {
-    position: absolute; z-index: 10;
+    position: absolute; z-index: 15;
     background: var(--panel-bg);
     border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    padding: 20px 24px;
+    border-radius: 14px;
+    padding: 18px 22px;
     font-size: var(--font-legend);
-    line-height: 1.5;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-    pointer-events: none;
-    max-width: 340px;
-    transition: all 0.3s ease;
+    line-height: 1.55;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 12px 48px rgba(0,0,0,0.85);
+    pointer-events: auto;
+    max-width: 280px;
+    cursor: grab;
+    user-select: none;
+    /* vertical center on the stage / figure */
+    top: 50%;
+    transform: translateY(-50%);
+    transition: box-shadow 0.2s ease, left 0.3s cubic-bezier(0.4, 0, 0.2, 1), right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .floating-legend.left { left: 3%; top: 50%; transform: translateY(-50%); }
-  .floating-legend.right { right: 3%; top: 50%; transform: translateY(-50%); }
-  #stage.panel-open .floating-legend.left { left: 2%; }
+  .floating-legend:active { cursor: grabbing; box-shadow: 0 16px 56px rgba(168,85,247,0.4); }
+  .floating-legend.left {
+    left: 12px;
+    right: auto;
+  }
+  .floating-legend.right {
+    right: 12px;
+    left: auto;
+  }
   
   .floating-legend h4 {
     margin: 0 0 14px;
     font-family: "Consolas", monospace;
-    font-size: 1rem;
+    font-size: 1.05rem;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 2px;
     color: var(--accent-purple);
-    border-bottom: 2px solid rgba(168, 85, 247, 0.4);
+    border-bottom: 2px solid rgba(168, 85, 247, 0.5);
     padding-bottom: 8px;
+    cursor: grab;
   }
   .floating-legend ul { list-style: none; margin: 0; padding: 0; }
   .floating-legend li {
@@ -125,41 +171,55 @@
   }
   .floating-legend .swatch {
     flex: 0 0 auto; width: 16px; height: 16px;
-    border-radius: 4px; margin-top: 4px;
-    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px; margin-top: 3px;
+    border: 1px solid rgba(255,255,255,0.25);
   }
   .floating-legend .eq {
-    margin-top: 16px; padding-top: 12px;
-    border-top: 1px solid rgba(255,255,255,0.15);
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.2);
     font-style: italic;
     color: #ffffff;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     text-align: center;
   }
 
   /* ---------- DESCRIPTION BOTTOM ---------- */
   #description-wrap {
-    position: absolute; bottom: 25px; left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
-    width: 85%; max-width: 1100px;
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    z-index: 12;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     pointer-events: none;
-    transition: all 0.3s ease;
+    padding: 0 32px;
+    box-sizing: border-box;
   }
   #description {
-    background: rgba(10, 10, 15, 0.95);
+    background: rgba(5, 5, 10, 0.97);
     border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    padding: 20px 30px;
+    border-radius: 14px;
+    padding: 18px 28px;
     font-size: var(--font-desc);
-    line-height: 1.6;
-    color: #e0e0e5;
+    line-height: 1.55;
+    color: #f0f0f5;
     text-align: center;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 12px 48px rgba(0,0,0,0.95);
     pointer-events: auto;
+    transition: max-width 0.3s ease, padding 0.3s ease;
+    max-width: min(780px, 85%);
+    width: auto;
+    margin: 0 auto;
   }
-  #description strong { color: #fff; font-weight: 700; }
+  /* Panneau ouvert : description plus large → moins de hauteur (moins de retours à la ligne) */
+  #stage.panel-open #description {
+    max-width: min(1100px, 94%);
+    padding: 14px 28px;
+  }
+  #description strong { color: #ffffff; font-weight: 700; }
   #description em { color: var(--accent-cyan); font-style: italic; }
 
   /* ---------- TOOLBAR & PANEL ---------- */
@@ -169,92 +229,92 @@
     transition: transform 0.3s ease;
   }
   #toolbar button {
-    font-family: inherit; font-size: 1rem;
-    padding: 10px 18px; border-radius: 8px;
+    font-family: inherit; font-size: 1.1rem;
+    padding: 12px 20px; border-radius: 10px;
     border: 1px solid var(--panel-border);
-    background: rgba(15, 15, 22, 0.85);
+    background: rgba(10, 10, 18, 0.9);
     color: var(--text-main); cursor: pointer;
     transition: all 0.2s;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(10px);
   }
-  #toolbar button:hover { background: rgba(40, 40, 60, 0.95); border-color: var(--accent-purple); }
+  #toolbar button:hover { background: rgba(40, 40, 65, 0.98); border-color: var(--accent-purple); }
   #toolbar button.on { background: var(--accent-purple); color: #fff; border-color: var(--accent-purple); }
 
   #panel {
     position: fixed; top: 0; left: 0;
     width: var(--panel-width); height: 100vh;
-    background: rgba(12, 12, 18, 0.98);
+    background: rgba(8, 8, 14, 0.99);
     border-right: 1px solid var(--panel-border);
-    overflow-y: auto; padding: 24px;
+    overflow-y: auto; padding: 28px;
     z-index: 60; transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(20px);
-    box-shadow: 10px 0 50px rgba(0,0,0,0.5);
+    backdrop-filter: blur(24px);
+    box-shadow: 12px 0 60px rgba(0,0,0,0.6);
   }
   #panel.open { transform: translateX(0); }
-  #panel h2 { font-size: 1.4rem; margin: 0 0 24px; color: var(--accent-purple); font-weight: 400; }
+  #panel h2 { font-size: 1.6rem; margin: 0 0 28px; color: var(--accent-purple); font-weight: 400; }
   
-  .scene-list { list-style: none; padding: 0; margin: 0 0 24px; }
+  .scene-list { list-style: none; padding: 0; margin: 0 0 28px; }
   .scene-list li {
-    padding: 12px 16px; border-radius: 8px; cursor: pointer;
-    font-size: 1.05rem; margin-bottom: 8px;
+    padding: 14px 18px; border-radius: 10px; cursor: pointer;
+    font-size: 1.15rem; margin-bottom: 10px;
     border: 1px solid transparent; transition: all 0.2s;
-    background: rgba(255,255,255,0.02);
+    background: rgba(255,255,255,0.03);
   }
-  .scene-list li:hover { background: rgba(255,255,255,0.08); }
+  .scene-list li:hover { background: rgba(255,255,255,0.09); }
   .scene-list li.active {
-    background: rgba(168, 85, 247, 0.15);
+    background: rgba(168, 85, 247, 0.18);
     border-color: var(--accent-purple);
   }
   .scene-list li .tag {
     display: inline-block; font-family: "Consolas", monospace;
-    font-size: 0.8rem; background: #333; padding: 3px 8px;
-    border-radius: 4px; margin-right: 12px; color: #fff;
+    font-size: 0.85rem; background: #333; padding: 4px 10px;
+    border-radius: 5px; margin-right: 14px; color: #fff;
   }
   .scene-list li .tag.thm { background: #8e44ad; }
   .scene-list li .tag.lem { background: #2980b9; }
   .scene-list li .tag.cor { background: #d68910; }
   .scene-list li .tag.app { background: #b03a6b; }
   .scene-list li .tag.ex { background: #27ae60; }
+  .scene-list li .tag.ext { background: #0d9488; } /* théorèmes externes */
 
-  .params { margin-bottom: 24px; }
+  .params { margin-bottom: 28px; }
   .params h3 {
-    font-size: 0.9rem; text-transform: uppercase;
-    letter-spacing: 1.5px; color: var(--text-muted);
-    margin: 0 0 14px; border-bottom: 1px solid rgba(255,255,255,0.1);
-    padding-bottom: 8px;
+    font-size: 1rem; text-transform: uppercase;
+    letter-spacing: 1.8px; color: var(--text-muted);
+    margin: 0 0 16px; border-bottom: 1px solid rgba(255,255,255,0.12);
+    padding-bottom: 10px;
   }
-  .param { margin-bottom: 16px; font-size: 1rem; }
-  .param label { display: flex; justify-content: space-between; margin-bottom: 8px; }
-  .param input[type=range] { width: 100%; accent-color: var(--accent-purple); height: 6px; }
+  .param { margin-bottom: 18px; font-size: 1.1rem; }
+  .param label { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .param input[type=range] { width: 100%; accent-color: var(--accent-purple); height: 7px; }
 
-  /* Toggle buttons */
-  .toggle-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .toggle-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
   .toggle-row button {
-    font-family: inherit; font-size: 0.9rem;
-    padding: 10px 14px; border-radius: 6px;
+    font-family: inherit; font-size: 1rem;
+    padding: 12px 16px; border-radius: 8px;
     border: 1px solid var(--panel-border);
-    background: rgba(255,255,255,0.05); color: var(--text-main);
+    background: rgba(255,255,255,0.06); color: var(--text-main);
     cursor: pointer; transition: all 0.2s;
   }
   .toggle-row button.on { background: var(--accent-purple); color: #fff; border-color: var(--accent-purple); }
 
-  .shape-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .shape-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
   .shape-toggle {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 12px; border-radius: 6px;
-    background: rgba(255,255,255,0.03); border: 1px solid transparent;
-    cursor: pointer; font-size: 0.95rem; transition: all 0.15s;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 8px;
+    background: rgba(255,255,255,0.04); border: 1px solid transparent;
+    cursor: pointer; font-size: 1rem; transition: all 0.15s;
   }
-  .shape-toggle.on { background: rgba(168, 85, 247, 0.2); border-color: var(--accent-purple); }
-  .shape-toggle input { accent-color: var(--accent-purple); width: 16px; height: 16px; }
-  .shape-toggle .mini { display: inline-block; width: 14px; height: 14px; border-radius: 4px; }
+  .shape-toggle.on { background: rgba(168, 85, 247, 0.22); border-color: var(--accent-purple); }
+  .shape-toggle input { accent-color: var(--accent-purple); width: 18px; height: 18px; }
+  .shape-toggle .mini { display: inline-block; width: 16px; height: 16px; border-radius: 5px; }
 
   #rec-badge {
     display: none; position: fixed; top: 20px; right: 20px;
-    background: #ef4444; color: #fff; padding: 10px 20px;
+    background: #ef4444; color: #fff; padding: 12px 24px;
     border-radius: 30px; font-family: "Consolas", monospace;
-    font-size: 1.1rem; z-index: 200; box-shadow: 0 0 30px #ef4444;
+    font-size: 1.2rem; z-index: 200; box-shadow: 0 0 30px #ef4444;
     animation: pulse 1.5s infinite;
   }
   #rec-badge.show { display: block; }
@@ -263,31 +323,76 @@
   /* ============ MODAL FOR RECORDING ============ */
   #rec-modal {
     display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.9); z-index: 100;
+    background: rgba(0,0,0,0.92); z-index: 100;
     justify-content: center; align-items: center;
-    backdrop-filter: blur(5px);
+    backdrop-filter: blur(6px);
   }
   #rec-modal.show { display: flex; }
   #rec-modal .box {
     background: #15151e; border: 1px solid var(--panel-border);
-    padding: 40px; border-radius: 16px; text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+    padding: 44px; border-radius: 18px; text-align: center;
+    box-shadow: 0 24px 72px rgba(0,0,0,0.95);
   }
-  #rec-modal h3 { font-size: 1.8rem; margin: 0 0 15px; font-weight: 400; }
-  #rec-modal p { color: #aaa; margin-bottom: 25px; font-size: 1.1rem; }
+  #rec-modal h3 { font-size: 2rem; margin: 0 0 18px; font-weight: 400; }
+  #rec-modal p { color: #aaa; margin-bottom: 28px; font-size: 1.2rem; }
   #rec-modal select {
-    padding: 12px; margin: 10px 0; background: #222; color: #fff;
-    border: 1px solid #444; border-radius: 8px; font-family: inherit; font-size: 1.1rem;
+    padding: 14px; margin: 12px 0; background: #222; color: #fff;
+    border: 1px solid #444; border-radius: 10px; font-family: inherit; font-size: 1.2rem;
     width: 100%;
   }
   #rec-modal button {
-    padding: 12px 24px; background: var(--accent-red); color: #fff;
-    border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 1.1rem;
-    margin-top: 15px; width: 100%; transition: background 0.2s;
+    padding: 14px 26px; background: var(--accent-red); color: #fff;
+    border: none; border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 1.2rem;
+    margin-top: 18px; width: 100%; transition: background 0.2s;
   }
   #rec-modal button:hover { background: #dc2626; }
-  #rec-modal button.cancel { background: #333; margin-top: 10px; }
+  #rec-modal button.cancel { background: #333; margin-top: 12px; }
   #rec-modal button.cancel:hover { background: #444; }
+
+  /* ============ TIMELINE IN PANEL ============ */
+  #timeline-panel {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+  }
+  #timeline-panel h3 {
+    font-size: 1rem; text-transform: uppercase;
+    letter-spacing: 1.8px; color: var(--text-muted);
+    margin: 0 0 16px;
+  }
+  #timeline-panel .timeline-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  #timeline-panel input[type=range] {
+    flex: 1;
+    accent-color: var(--accent-purple);
+    height: 7px;
+  }
+  #timeline-panel .step-label {
+    font-size: 0.95rem;
+    color: var(--accent-gold);
+    font-family: "Consolas", monospace;
+    white-space: nowrap;
+  }
+  #btn-cinema {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent-gold);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 12px;
+  }
+  #btn-cinema:hover { background: #fbbf24; }
+  #btn-cinema.playing { background: var(--accent-red); color: #fff; }
 </style>
 </head>
 <body>
@@ -300,6 +405,7 @@
   <div id="toolbar">
     <button id="btn-panel">☰ Scènes & Paramètres</button>
     <button id="btn-full">⛶ Plein écran</button>
+    <!-- labels updated by applyLanguage() -->
   </div>
 
   <header id="stage-header">
@@ -309,9 +415,11 @@
 
   <div id="canvas-wrap">
     <canvas id="view"></canvas>
-    <div id="legend-left" class="floating-legend left"></div>
-    <div id="legend-right" class="floating-legend right"></div>
   </div>
+
+  <!-- Légendes en enfants directs de #stage pour un positionnement correct -->
+  <div id="legend-left" class="floating-legend left"></div>
+  <div id="legend-right" class="floating-legend right"></div>
 
   <div id="description-wrap">
     <div id="description"></div>
@@ -320,25 +428,44 @@
 
 <aside id="panel">
   <h2>Gaussian Propeller</h2>
+
+  <div class="params" style="margin-bottom:18px;">
+    <h3 id="lbl-lang">Langue / Language</h3>
+    <div class="toggle-row" id="lang-toggle">
+      <button id="btn-lang-fr" class="on">🇫🇷 Français</button>
+      <button id="btn-lang-en">🇺🇸 English</button>
+    </div>
+  </div>
+
   <ul class="scene-list" id="scene-list"></ul>
 
   <div class="params">
-    <h3>Paramètres de la figure</h3>
+    <h3 id="lbl-params">Paramètres de la figure</h3>
     <div id="param-box"></div>
   </div>
 
   <div class="params">
-    <h3>Rendu & Physique</h3>
+    <h3 id="lbl-render">Rendu & Physique</h3>
     <div class="param">
-      <label><span>Inertie</span><span id="damp-val">0.92</span></label>
+      <label><span id="lbl-damp">Inertie</span><span id="damp-val">0.92</span></label>
       <input type="range" id="damp" min="0.80" max="0.99" step="0.005" value="0.92">
     </div>
     <div class="param">
-      <label><span>Vitesse</span><span id="speed-val">0.55</span></label>
+      <label><span id="lbl-speed">Vitesse</span><span id="speed-val">0.55</span></label>
       <input type="range" id="speed" min="0" max="2" step="0.01" value="0.55">
+    </div>
+    <div class="param">
+      <label><span id="lbl-light">Angle d'éclairage</span><span id="light-val">0°</span></label>
+      <input type="range" id="light-angle" min="0" max="360" step="1" value="0">
+    </div>
+    <div class="param">
+      <label><span id="lbl-bg">Opacité du fond</span><span id="bg-val">1.0</span></label>
+      <input type="range" id="bg-opacity" min="0.1" max="1" step="0.05" value="1">
     </div>
     <div class="toggle-row">
       <button id="btn-auto" class="on">↻ Auto</button>
+      <button id="btn-pause">⏸ Pause</button>
+      <button id="btn-grid"># Grille</button>
       <button id="btn-wireframe">🕸 Fil de Fer</button>
       <button id="btn-labels" class="on">🏷 Labels</button>
       <button id="btn-particles" class="on">✦ Particules</button>
@@ -346,20 +473,30 @@
   </div>
 
   <div class="params">
-    <h3>Polyèdres (Easter Eggs)</h3>
+    <h3 id="lbl-shapes">Polyèdres & Formes (Easter Eggs)</h3>
     <div class="shape-grid" id="shape-grid"></div>
   </div>
 
-  <div class="params">
-    <h3>Enregistrement</h3>
-    <button id="btn-record" style="width:100%; padding:14px; background:var(--accent-red); color:#fff; border:none; border-radius:8px; font-family:inherit; font-size:1.1rem; cursor:pointer; font-weight:bold;">● Enregistrer la scène</button>
+  <!-- TIMELINE DANS LE PANNEAU -->
+  <div id="timeline-panel">
+    <h3 id="lbl-timeline">⏱ Timeline & Cinéma</h3>
+    <div class="timeline-row">
+      <input type="range" id="timeline-slider" min="0" max="100" value="0" step="1">
+      <span id="step-label" class="step-label">Étape 0 / 0</span>
+    </div>
+    <button id="btn-cinema">▶ Lancer le mode cinéma</button>
+  </div>
+
+  <div class="params" style="margin-top:28px;">
+    <h3 id="lbl-record">Enregistrement</h3>
+    <button id="btn-record" style="width:100%; padding:16px; background:var(--accent-red); color:#fff; border:none; border-radius:10px; font-family:inherit; font-size:1.2rem; cursor:pointer; font-weight:bold;">● Enregistrer la scène</button>
   </div>
 </aside>
 
 <div id="rec-modal">
   <div class="box">
-    <h3>Enregistrement Vidéo</h3>
-    <p>Choisir la résolution de la vidéo</p>
+    <h3 id="lbl-rec-title">Enregistrement Vidéo</h3>
+    <p id="lbl-rec-res">Choisir la résolution de la vidéo</p>
     <select id="res-select">
       <option value="1080">1920×1080 (Full HD)</option>
       <option value="720">1280×720 (HD)</option>
@@ -387,15 +524,15 @@ function resizeParticles() {
   particlesCanvas.style.height = window.innerHeight + 'px';
   pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   particles = [];
-  const n = Math.round((window.innerWidth * window.innerHeight) / 25000);
+  const n = Math.round((window.innerWidth * window.innerHeight) / 22000);
   for (let i = 0; i < n; i++) {
     particles.push({
       x: Math.random() * window.innerWidth,
       y: Math.random() * window.innerHeight,
       vx: (Math.random() - 0.5) * 0.2,
       vy: (Math.random() - 0.5) * 0.2 - 0.02,
-      r: Math.random() * 1.5 + 0.5,
-      alpha: Math.random() * 0.3 + 0.05,
+      r: Math.random() * 1.8 + 0.6,
+      alpha: Math.random() * 0.35 + 0.06,
       hue: Math.random() < 0.8 ? '168,85,247' : '234,179,8'
     });
   }
@@ -434,14 +571,18 @@ const view = {
   physics: true,
   labels: true,
   wireframe: false,
+  grid: false,
+  paused: false,
   damping: 0.92,
   gravity: 0.35,
   speed: 0.55,
   time: 0,
+  bgOpacity: 1.0,
+  lightAngle: 0,
   shapes: {
     cube: false, octahedron: false, icosahedron: false,
     torus: false, helicoid: false, spiral: false,
-    tetrahedron: false, dodecahedron: false
+    tesseract: false, gaussianSurface: false, convexHull: false
   }
 };
 
@@ -477,7 +618,29 @@ function project(p, opt) {
 }
 
 function clearCanvas() {
+  // Always clear in identity space so zoom transforms don't break the wipe
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, view.W, view.H);
+  if (view.bgOpacity > 0) {
+    ctx.fillStyle = `rgba(0, 0, 0, ${view.bgOpacity * 0.5})`;
+    ctx.fillRect(0, 0, view.W, view.H);
+  }
+  ctx.restore();
+  if (view.grid) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    const step = 0.5;
+    for (let i = -2; i <= 2; i += step) {
+      const p1 = project({ x: i, y: -1, z: -2 });
+      const p2 = project({ x: i, y: -1, z: 2 });
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      
+      const p3 = project({ x: -2, y: -1, z: i });
+      const p4 = project({ x: 2, y: -1, z: i });
+      ctx.beginPath(); ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y); ctx.stroke();
+    }
+  }
 }
 
 function drawPoly(pts, fill, alpha, stroke, lineWidth = 2) {
@@ -511,7 +674,7 @@ function drawLine(a, b, color, width, dash) {
 function drawArrow(a, b, color, width) {
   drawLine(a, b, color, width || 3);
   const ang = Math.atan2(b.y - a.y, b.x - a.x);
-  const L = 16;
+  const L = 18;
   ctx.beginPath();
   ctx.moveTo(b.x, b.y);
   ctx.lineTo(b.x - L * Math.cos(ang - 0.4), b.y - L * Math.sin(ang - 0.4));
@@ -524,11 +687,11 @@ function drawArrow(a, b, color, width) {
 function label(text, p, color, size, italic) {
   if (!view.labels) return;
   ctx.save();
-  ctx.font = (italic ? 'italic ' : '') + (size || 22) + 'px "Times New Roman", serif';
+  ctx.font = (italic ? 'italic ' : '') + (size || 24) + 'px "Times New Roman", serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(0,0,0,1)';
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 10;
   ctx.fillStyle = color || '#fff';
   ctx.fillText(text, p.x, p.y);
   ctx.restore();
@@ -561,7 +724,7 @@ function cross(a, b) { return { x: a.y*b.z - a.z*b.y, y: a.z*b.x - a.x*b.z, z: a
 function normalize(v) { const n = Math.hypot(v.x, v.y, v.z) || 1; return { x: v.x/n, y: v.y/n, z: v.z/n }; }
 
 /* =====================================================================
-   3. GÉOMÉTRIE DES FORMES (Easter Eggs)
+   3. GÉOMÉTRIE DES FORMES
    ===================================================================== */
 function makeCube(size) {
   const s = size || 0.7;
@@ -675,6 +838,61 @@ function makeSpiral(turns, N) {
   }
   return { verts, faces, color: '#e67e22' };
 }
+function makeTesseract(size, angle) {
+  const s = size || 0.55;
+  const verts = [], edges = [];
+  for (let i = 0; i < 16; i++) {
+    const x = (i & 1) ? s : -s;
+    const y = (i & 2) ? s : -s;
+    const z = (i & 4) ? s : -s;
+    const w = (i & 8) ? s : -s;
+    const cw = Math.cos(angle), sw = Math.sin(angle);
+    const xr = x * cw - w * sw;
+    const wr = x * sw + w * cw;
+    const factor = 1 / (1 + Math.abs(wr) * 0.4);
+    verts.push({ x: xr * factor, y: y * factor, z: z * factor, w: wr });
+  }
+  for (let i = 0; i < 16; i++) {
+    for (let j = i + 1; j < 16; j++) {
+      if (popcount(i ^ j) === 1) edges.push([i, j]);
+    }
+  }
+  return { verts, edges, faces: [], color: '#a855f7' };
+}
+function makeGaussianSurface(N) {
+  N = N || 20;
+  const verts = [], faces = [];
+  for (let i = 0; i <= N; i++) {
+    for (let j = 0; j <= N; j++) {
+      const x = (i / N - 0.5) * 3;
+      const z = (j / N - 0.5) * 3;
+      const y = Math.exp(-(x*x + z*z) * 0.5);
+      verts.push({ x, y, z, c: y });
+    }
+  }
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      const a = i * (N + 1) + j;
+      const b = (i + 1) * (N + 1) + j;
+      const c = (i + 1) * (N + 1) + j + 1;
+      const d = i * (N + 1) + j + 1;
+      faces.push([a, b, c, d]);
+    }
+  }
+  return { verts, faces, color: '#a855f7', isSurface: true };
+}
+function makeConvexHull(points) {
+  const verts = points.map(p => ({ x: p.x, y: p.y, z: p.z }));
+  const faces = [];
+  for (let i = 0; i < verts.length; i++) {
+    for (let j = i + 1; j < verts.length; j++) {
+      for (let k = j + 1; k < verts.length; k++) {
+        faces.push([i, j, k]);
+      }
+    }
+  }
+  return { verts, faces, color: '#ef4444', isHull: true };
+}
 
 function drawMesh(mesh, opts) {
   opts = opts || {};
@@ -683,14 +901,25 @@ function drawMesh(mesh, opts) {
   const pos = opts.pos || { x: 0, y: 0, z: 0 };
   const color = opts.color || mesh.color;
   const alpha = opts.alpha != null ? opts.alpha : 0.85;
-  const transformed = mesh.verts.map(v => {
+  
+  let transformed = mesh.verts.map(v => {
     let p = rot3(v, ax, ay, az);
     p.x = p.x * scale + pos.x;
     p.y = p.y * scale + pos.y;
     p.z = p.z * scale + pos.z;
     return p;
   });
-  const light = normalize({ x: 0.4, y: 0.7, z: 0.6 });
+
+  if (mesh.edges) {
+    mesh.edges.forEach(e => {
+      const a = project(transformed[e[0]]);
+      const b = project(transformed[e[1]]);
+      drawLine(a, b, color, 2);
+    });
+    return;
+  }
+
+  const light = normalize({ x: Math.cos(view.lightAngle), y: 0.7, z: Math.sin(view.lightAngle) });
   const faces = mesh.faces.map(f => {
     const pts = f.map(idx => project(transformed[idx]));
     const depth = pts.reduce((s, p) => s + p.depth, 0) / pts.length;
@@ -705,9 +934,21 @@ function drawMesh(mesh, opts) {
     }
     const dot = Math.max(0, n.x * light.x + n.y * light.y + n.z * light.z);
     const shadeF = 0.35 + 0.65 * dot;
-    return { pts, depth, color: shade(color, shadeF), alpha };
+    let faceColor = shade(color, shadeF);
+    if (mesh.isSurface) {
+      const avgC = f.reduce((s, idx) => s + mesh.verts[idx].c, 0) / f.length;
+      faceColor = shade(color, 0.2 + avgC * 0.8);
+    }
+    return { pts, depth, color: faceColor, alpha };
   }).sort((a, b) => b.depth - a.depth);
-  faces.forEach(f => drawPoly(f.pts, f.color, f.alpha, 'rgba(0,0,0,.35)'));
+  
+  faces.forEach(f => drawPoly(f.pts, f.color, f.alpha, 'rgba(0,0,0,.4)'));
+}
+
+function popcount(n) {
+  let c = 0;
+  while(n) { c += n & 1; n >>= 1; }
+  return c;
 }
 
 /* =====================================================================
@@ -718,37 +959,37 @@ function drawPropeller2D(params) {
   clearCanvas();
   const t = view.time;
   const m = params.m || 3;
-  const R = 1.45, N = 80;
+  const R = 1.5, N = 100;
   const step = 2 * Math.PI / m;
-  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#eab308', '#06b6d4'];
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#eab308', '#06b6d4', '#f97316', '#ec4899'];
   
   for (let s = 0; s < m; s++) {
-    const pulse = 1 + Math.sin(t * 1.5 + s) * 0.03;
-    const a0 = s * step - Math.PI / 2 + Math.sin(t * view.speed + s) * 0.05;
+    const pulse = 1 + Math.sin(t * 1.5 + s) * 0.02;
+    const a0 = s * step - Math.PI / 2 + Math.sin(t * view.speed + s) * 0.03;
     const a1 = a0 + step;
     const pts = [{ x: 0, y: 0, z: 0 }];
     for (let k = 0; k <= N; k++) {
       const a = a0 + (a1 - a0) * (k / N);
       pts.push({ x: R * pulse * Math.cos(a), y: 0, z: R * pulse * Math.sin(a) });
     }
-    drawPoly(pts.map(p => project(p)), colors[s % colors.length], params.opacity ?? 0.2, colors[s % colors.length], 3);
+    drawPoly(pts.map(p => project(p)), colors[s % colors.length], params.opacity ?? 0.18, colors[s % colors.length], 3);
   }
 
   if (params.showCentroids !== false) {
     for (let s = 0; s < m; s++) {
-      const am = s * step - Math.PI / 2 + step / 2 + Math.sin(t * view.speed + s) * 0.05;
+      const am = s * step - Math.PI / 2 + step / 2 + Math.sin(t * view.speed + s) * 0.03;
       const o = project({ x: 0, y: 0, z: 0 });
-      const e = project({ x: 0.75 * Math.cos(am), y: 0, z: 0.75 * Math.sin(am) });
+      const e = project({ x: 0.8 * Math.cos(am), y: 0, z: 0.8 * Math.sin(am) });
       drawArrow(o, e, colors[s % colors.length], 4);
-      label('ẑ' + (s + 1), { x: e.x + 15, y: e.y - 15 }, colors[s % colors.length], 22, true);
+      label('ẑ' + (s + 1), { x: e.x + 18, y: e.y - 18 }, colors[s % colors.length], 24, true);
     }
   }
 
   if (params.showLabels !== false) {
     for (let s = 0; s < m; s++) {
       const am = s * step - Math.PI / 2 + step / 2;
-      const p = project({ x: 1.15 * Math.cos(am), y: 0, z: 1.15 * Math.sin(am) });
-      label('S' + (s + 1), p, colors[s % colors.length], 24, false);
+      const p = project({ x: 1.2 * Math.cos(am), y: 0, z: 1.2 * Math.sin(am) });
+      label('S' + (s + 1), p, colors[s % colors.length], 26, false);
     }
   }
 }
@@ -767,14 +1008,14 @@ function drawKernelStrategy(params) {
   boxes.forEach((b, i) => {
     const px = W * b.x, py = H * b.y;
     const pw = W * b.w, ph = H * b.h;
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
     ctx.strokeStyle = b.color;
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.roundRect(px - pw/2, py - ph/2, pw, ph, 12);
+    ctx.roundRect(px - pw/2, py - ph/2, pw, ph, 14);
     ctx.fill();
     ctx.stroke();
-    label(b.text, { x: px, y: py }, '#fff', 26, false);
+    label(b.text, { x: px, y: py }, '#fff', 28, false);
 
     if (i < boxes.length - 1) {
       const n = boxes[i+1];
@@ -782,13 +1023,13 @@ function drawKernelStrategy(params) {
       const bx = W * n.x - (W * n.w)/2, by = H * n.y;
       drawArrow({x: ax, y: ay}, {x: bx, y: by}, '#eab308', 4);
       const u = (t * 0.5 + i * 0.3) % 1;
-      ctx.beginPath(); ctx.arc(ax + (bx-ax)*u, ay + (by-ay)*u, 8, 0, 2*Math.PI);
+      ctx.beginPath(); ctx.arc(ax + (bx-ax)*u, ay + (by-ay)*u, 9, 0, 2*Math.PI);
       ctx.fillStyle = '#fff'; ctx.fill();
     }
   });
 
-  label("Réduction Extrémale", { x: W/2, y: H*0.2 }, '#a855f7', 36, false);
-  label("Convergence vers des listes finies de vecteurs", { x: W/2, y: H*0.8 }, '#a0a0b0', 24, true);
+  label("Réduction Extrémale", { x: W/2, y: H*0.2 }, '#a855f7', 40, false);
+  label("Convergence vers des listes finies de vecteurs", { x: W/2, y: H*0.8 }, '#b0b0c0', 26, true);
 }
 
 function drawProofStrategy(params) {
@@ -805,26 +1046,26 @@ function drawProofStrategy(params) {
   steps.forEach(s => {
     const px = W * s.x, py = H * s.y;
     ctx.beginPath();
-    ctx.arc(px, py, 90, 0, 2*Math.PI);
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.arc(px, py, 100, 0, 2*Math.PI);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
     ctx.fill();
     ctx.strokeStyle = s.color;
     ctx.lineWidth = 5;
     ctx.stroke();
-    label(s.text, { x: px, y: py - 15 }, '#fff', 24, false);
-    label(s.sub, { x: px, y: py + 20 }, s.color, 22, true);
+    label(s.text, { x: px, y: py - 18 }, '#fff', 26, false);
+    label(s.sub, { x: px, y: py + 22 }, s.color, 24, true);
   });
 
-  drawLine({x: W*0.5, y: H*0.25 + 90}, {x: W*0.25, y: H*0.75 - 90}, 'rgba(255,255,255,0.2)', 4, [8,8]);
-  drawLine({x: W*0.5, y: H*0.25 + 90}, {x: W*0.75, y: H*0.75 - 90}, 'rgba(255,255,255,0.2)', 4, [8,8]);
-  drawLine({x: W*0.25, y: H*0.75}, {x: W*0.75, y: H*0.75}, 'rgba(255,255,255,0.2)', 4, [8,8]);
+  drawLine({x: W*0.5, y: H*0.25 + 100}, {x: W*0.25, y: H*0.75 - 100}, 'rgba(255,255,255,0.2)', 4, [10,10]);
+  drawLine({x: W*0.5, y: H*0.25 + 100}, {x: W*0.75, y: H*0.75 - 100}, 'rgba(255,255,255,0.2)', 4, [10,10]);
+  drawLine({x: W*0.25, y: H*0.75}, {x: W*0.75, y: H*0.75}, 'rgba(255,255,255,0.2)', 4, [10,10]);
 
   const cx = W * 0.5, cy = H * 0.6;
   ctx.beginPath();
-  ctx.arc(cx, cy, 40 + Math.sin(t*3)*8, 0, 2*Math.PI);
+  ctx.arc(cx, cy, 45 + Math.sin(t*3)*10, 0, 2*Math.PI);
   ctx.fillStyle = 'rgba(168,85,247,0.3)';
   ctx.fill();
-  label("C > 9/8π", { x: cx, y: cy }, '#fff', 28, true);
+  label("C > 9/8π", { x: cx, y: cy }, '#fff', 32, true);
 }
 
 function drawKernelClustering(params) {
@@ -860,7 +1101,7 @@ function drawKernelClustering(params) {
         if (d < 0.75) {
           const a = project(nodes[i]);
           const b = project(nodes[j]);
-          drawLine(a, b, 'rgba(234, 179, 8, 0.4)', 2);
+          drawLine(a, b, 'rgba(234, 179, 8, 0.45)', 2);
         }
       }
     }
@@ -869,12 +1110,12 @@ function drawKernelClustering(params) {
   nodes.forEach(n => {
     const p = project(n);
     ctx.beginPath();
-    ctx.arc(p.x + 3, p.y + 3, 8, 0, 2*Math.PI);
+    ctx.arc(p.x + 3, p.y + 3, 9, 0, 2*Math.PI);
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fill();
     
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 8, 0, 2*Math.PI);
+    ctx.arc(p.x, p.y, 9, 0, 2*Math.PI);
     ctx.fillStyle = colors[n.cluster % colors.length];
     ctx.fill();
     ctx.strokeStyle = '#fff';
@@ -884,11 +1125,11 @@ function drawKernelClustering(params) {
 
   clusterCenters.forEach((c, i) => {
     const p = project(c);
-    label('C' + (i + 1), { x: p.x, y: p.y - 25 }, colors[i % colors.length], 24, true);
+    label('C' + (i + 1), { x: p.x, y: p.y - 28 }, colors[i % colors.length], 26, true);
   });
 
-  label("Graphe de Clusters", { x: view.W / 2, y: 40 }, '#fff', 28, false);
-  label("Arêtes dorées : paires intra-cluster", { x: view.W / 2, y: view.H - 40 }, '#eab308', 20, true);
+  label("Graphe de Clusters", { x: view.W / 2, y: 50 }, '#fff', 32, false);
+  label("Arêtes dorées : paires intra-cluster", { x: view.W / 2, y: view.H - 50 }, '#eab308', 22, true);
 }
 
 function drawLowInfluence(params) {
@@ -902,8 +1143,8 @@ function drawLowInfluence(params) {
 
   for (let i = 0; i <= 4; i++) {
     const y = baseY - i * maxH / 4;
-    drawLine({x: W*0.15, y}, {x: W*0.85, y}, 'rgba(255,255,255,0.1)', 2);
-    label((i/4).toFixed(2), { x: W*0.12, y }, '#a0a0b0', 18, false);
+    drawLine({x: W*0.15, y}, {x: W*0.85, y}, 'rgba(255,255,255,0.12)', 2);
+    label((i/4).toFixed(2), { x: W*0.12, y }, '#b0b0c0', 20, false);
   }
 
   for (let i = 0; i < nBars; i++) {
@@ -919,51 +1160,63 @@ function drawLowInfluence(params) {
   }
 
   const yTau = baseY - 0.25 * maxH;
-  drawLine({x: W*0.14, y: yTau}, {x: W*0.86, y: yTau}, '#ef4444', 4, [10, 5]);
-  label('Seuil τ', { x: W*0.87, y: yTau }, '#ef4444', 22, true);
+  drawLine({x: W*0.14, y: yTau}, {x: W*0.86, y: yTau}, '#ef4444', 4, [12, 6]);
+  label('Seuil τ', { x: W*0.87, y: yTau }, '#ef4444', 24, true);
 
-  label('Influences de Fourier', { x: W / 2, y: 40 }, '#fff', 28, false);
-  label('OBJ(f) ≤ C_k + η', { x: W / 2, y: H * 0.9 }, '#a855f7', 24, true);
+  label('Influences de Fourier', { x: W / 2, y: 50 }, '#fff', 32, false);
+  label('OBJ(f) ≤ C_k + η', { x: W / 2, y: H * 0.9 }, '#a855f7', 28, true);
 }
 
 function drawPropeller3D(params) {
   clearCanvas();
   const t = view.time;
-  const h = (params.height ?? 80) / 100 * 1.0;
-  const colors = ['#e74c3c', '#3498db', '#2ecc71'];
-  const step = 2 * Math.PI / 3;
-  if (view.shapes.cube) {
-    for (let s = 0; s < 3; s++) {
-      const am = s * step - Math.PI / 2 + step / 2 + Math.sin(t * view.speed + s) * 0.08;
-      const dist = 0.75;
-      const pos = { x: dist * Math.cos(am), y: Math.sin(t * view.speed * 1.3 + s * 2) * 0.12, z: dist * Math.sin(am) };
-      const cube = makeCube(0.28);
-      drawMesh(cube, {
-        ax: t * view.speed * 0.9 + s,
-        ay: t * view.speed * 0.7 + s * 1.5,
-        az: t * view.speed * 0.4,
-        pos, color: colors[s], alpha: params.opacity ?? 0.85
-      });
+  const d = Math.max(2, Math.min(8, params.dim ?? 3));
+  const m = params.m ?? 3;
+  const showExtrusion = params.showExtrusion !== false;
+  const R = 1.15, step = 2 * Math.PI / m;
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#eab308'];
+  
+  // Base planar propeller (flat)
+  for (let s = 0; s < m; s++) {
+    const a0 = s * step - Math.PI / 2;
+    const a1 = a0 + step;
+    const pts = [project({ x: 0, y: 0, z: 0 })];
+    for (let i = 0; i <= 48; i++) {
+      const a = a0 + (a1 - a0) * (i / 48);
+      pts.push(project({ x: R * Math.cos(a), y: 0, z: R * Math.sin(a) }));
     }
+    drawPoly(pts, colors[s % colors.length], 0.5, colors[s % colors.length], 2.5);
+    const am = (a0 + a1) / 2;
+    const o = project({ x: 0, y: 0, z: 0 });
+    const tip = project({ x: 0.5 * R * Math.cos(am), y: 0, z: 0.5 * R * Math.sin(am) });
+    drawArrow(o, tip, colors[s % colors.length], 3);
   }
-  const top = project({ x: 0, y: h * 1.6, z: 0 });
-  const bot = project({ x: 0, y: -h * 1.6, z: 0 });
-  drawLine(bot, top, '#555', 2.2, [7, 6]);
-  label('ℝ', { x: top.x + 14, y: top.y - 6 }, '#d4af37', 18, true);
-  label('d−2', { x: top.x + 32, y: top.y + 8 }, '#d4af37', 12, false);
-  for (let i = 0; i < 5; i++) {
-    const y = -h + (2 * h) * i / 4 + Math.sin(t * 2 + i) * 0.05;
-    const pts = [];
-    for (let k = 0; k <= 40; k++) {
-      const a = 2 * Math.PI * k / 40;
-      pts.push(project({ x: 1.0 * Math.cos(a), y, z: 1.0 * Math.sin(a) }));
+  
+  // Orthogonal product layers
+  if (showExtrusion && d > 2) {
+    const extrudeLen = 0.85 + 0.12 * Math.min(d - 2, 4);
+    const nLayers = Math.min(4, d - 1);
+    for (let k = 1; k <= nLayers; k++) {
+      const y = (k / nLayers) * extrudeLen;
+      const alpha = 0.06 + 0.1 * (1 - k / nLayers);
+      const rScale = 0.95 - 0.03 * k;
+      for (let s = 0; s < m; s++) {
+        const a0 = s * step - Math.PI / 2;
+        const a1 = a0 + step;
+        const pts = [project({ x: 0, y, z: 0 })];
+        for (let i = 0; i <= 32; i++) {
+          const a = a0 + (a1 - a0) * (i / 32);
+          pts.push(project({ x: R * rScale * Math.cos(a), y, z: R * rScale * Math.sin(a) }));
+        }
+        drawPoly(pts, colors[s % colors.length], alpha, colors[s % colors.length], 1);
+      }
     }
-    ctx.beginPath();
-    pts.forEach((p, j) => j ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
-    ctx.strokeStyle = 'rgba(212,175,55,.18)';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
+    const top = project({ x: 0, y: extrudeLen * 1.05, z: 0 });
+    const bot = project({ x: 0, y: -0.08, z: 0 });
+    drawLine(bot, top, 'rgba(255,255,255,0.4)', 2, [5, 5]);
+    label(`ℝ^{${d - 2}}`, { x: top.x + 26, y: top.y - 6 }, '#eab308', 22, true);
   }
+  label(`d = ${d}`, project({ x: -1.5, y: 1.0, z: 0 }), '#fff', 26);
 }
 
 function drawMinimalCells(params) {
@@ -971,7 +1224,9 @@ function drawMinimalCells(params) {
   const t = view.time;
   const m = params.m ?? 5;
   const colors = ['#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#f1c40f', '#1abc9c'];
-  if (view.shapes.octahedron) {
+  // Scene param takes priority; global shape toggle is an easter-egg fallback
+  const showOcta = params.showOcta !== undefined ? params.showOcta : view.shapes.octahedron;
+  if (showOcta) {
     const bounce = view.physics ? Math.abs(Math.sin(t * view.speed * 1.5)) * view.gravity * 0.25 : 0;
     const oct = makeOctahedron(0.55);
     drawMesh(oct, {
@@ -979,21 +1234,22 @@ function drawMinimalCells(params) {
       pos: { x: 0, y: bounce, z: 0 }, color: '#e74c3c', alpha: 0.9
     });
   }
+  if (params.showCones === false) return;
   const o = project({ x: 0, y: 0, z: 0 });
   for (let i = 0; i < m; i++) {
     const a0 = 2 * Math.PI * i / m + t * view.speed * 0.3;
     const a1 = 2 * Math.PI * (i + 1) / m + t * view.speed * 0.3;
-    const N = 40, R = 1.5;
+    const N = 50, R = 1.6;
     const pts = [o];
     for (let k = 0; k <= N; k++) {
       const a = a0 + (a1 - a0) * (k / N);
       pts.push(project({ x: R * Math.cos(a), y: 0, z: R * Math.sin(a) }));
     }
-    drawPoly(pts, colors[i % colors.length], 0.12, 'rgba(255,255,255,.06)');
+    drawPoly(pts, colors[i % colors.length], 0.14, 'rgba(255,255,255,.08)');
     const am = (a0 + a1) / 2;
-    const e = project({ x: 0.85 * R * Math.cos(am), y: 0, z: 0.85 * R * Math.sin(am) });
-    drawArrow(o, e, colors[i % colors.length], 2.2);
-    label('z' + (i + 1), { x: e.x + 10, y: e.y - 10 }, colors[i % colors.length], 14, true);
+    const e = project({ x: 0.9 * R * Math.cos(am), y: 0, z: 0.9 * R * Math.sin(am) });
+    drawArrow(o, e, colors[i % colors.length], 2.5);
+    label('z' + (i + 1), { x: e.x + 12, y: e.y - 12 }, colors[i % colors.length], 16, true);
   }
 }
 
@@ -1016,8 +1272,8 @@ function drawScoreCones(params) {
     const right = normalize(cross(dir, up));
     const up2 = cross(right, dir);
     const pts = [o];
-    for (let k = 0; k <= 28; k++) {
-      const a = 2 * Math.PI * k / 28;
+    for (let k = 0; k <= 32; k++) {
+      const a = 2 * Math.PI * k / 32;
       const rr = Math.tan(spread) * coneR;
       pts.push(project({
         x: dir.x * coneR + rr * (Math.cos(a) * right.x + Math.sin(a) * up2.x),
@@ -1025,60 +1281,86 @@ function drawScoreCones(params) {
         z: dir.z * coneR + rr * (Math.cos(a) * right.z + Math.sin(a) * up2.z)
       }));
     }
-    if (params.showCones !== false) drawPoly(pts, colors[i % colors.length], 0.15, 'rgba(255,255,255,.08)');
+    if (params.showCones !== false) drawPoly(pts, colors[i % colors.length], 0.16, 'rgba(255,255,255,.1)');
   }
 }
 
 function drawProbabilityBound(params) {
   clearCanvas();
   const t = view.time;
-  if (view.shapes.helicoid) {
-    const hel = makeHelicoid(2.2, 50);
-    drawMesh(hel, {
-      ax: 0.3 + t * view.speed * 0.2, ay: t * view.speed * 0.5, az: 0,
-      pos: { x: 0.6, y: 0, z: 0 }, color: '#f1c40f', alpha: 0.35
-    });
-  }
   const W = view.W, H = view.H;
-  const padY = 60;
-  const plotW = W * 0.5, plotH = H - 2 * padY;
-  const ox = W * 0.42, oy = padY;
-  ctx.strokeStyle = 'rgba(255,255,255,.3)';
-  ctx.lineWidth = 1.2;
+  // Centered plot
+  const plotW = Math.min(W * 0.55, 520);
+  const plotH = Math.min(H * 0.48, 340);
+  const ox = (W - plotW) / 2;
+  const oy = (H - plotH) / 2 - 20;
+  const A = params.A ?? 0.929;
+  const rMax = 2 / 3;
+  const pMax = 0.55;
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(ox, oy + plotH); ctx.lineTo(ox + plotW, oy + plotH);
   ctx.moveTo(ox, oy + plotH); ctx.lineTo(ox, oy);
   ctx.stroke();
-  const A = params.A ?? 0.929;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 4; i++) {
+    const yy = oy + plotH - (plotH * i) / 4;
+    ctx.beginPath(); ctx.moveTo(ox, yy); ctx.lineTo(ox + plotW, yy); ctx.stroke();
+  }
+
+  function toXY(r, p) {
+    return {
+      x: ox + plotW * (r / rMax),
+      y: oy + plotH - plotH * Math.min(1, Math.max(0, p / pMax))
+    };
+  }
+
   function plotCurve(fn, color, width) {
     ctx.beginPath();
     let first = true;
-    for (let i = 0; i <= 200; i++) {
-      const r = (2/3) * i / 200;
-      const p = fn(r);
-      const x = ox + plotW * (r / (2/3));
-      const y = oy + plotH - plotH * Math.min(1, Math.max(0, p / 0.6));
-      if (first) { ctx.moveTo(x, y); first = false; }
-      else ctx.lineTo(x, y);
+    for (let i = 0; i <= 180; i++) {
+      const r = rMax * i / 180;
+      const pt = toXY(r, fn(r));
+      if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
+      else ctx.lineTo(pt.x, pt.y);
     }
-    ctx.strokeStyle = color; ctx.lineWidth = width || 2.4; ctx.stroke();
+    ctx.strokeStyle = color; ctx.lineWidth = width || 3.5; ctx.stroke();
   }
-  if (params.showQuad !== false) plotCurve(r => A * r * r, '#e74c3c');
-  if (params.showLin !== false) plotCurve(r => 0.415 * r + 0.15 * r * r, '#3498db');
-  plotCurve(r => r * r, '#555');
-  for (let k = 0; k < 3; k++) {
-    const u = ((t * 0.4 + k / 3) % 1);
-    const r = (2/3) * u;
-    const p = A * r * r;
-    const x = ox + plotW * u;
-    const y = oy + plotH - plotH * Math.min(1, p / 0.6);
-    ctx.beginPath(); ctx.arc(x, y, 4, 0, 2 * Math.PI);
-    ctx.fillStyle = '#f1c40f'; ctx.fill();
+
+  // Reference r²
+  plotCurve(r => r * r, 'rgba(255,255,255,0.2)', 2);
+  if (params.showQuad !== false) plotCurve(r => A * r * r, '#ef4444', 3.5);
+  if (params.showLin !== false) plotCurve(r => 0.415 * r + 0.15 * r * r, '#3b82f6', 3.5);
+
+  // Animated dots on the red curve
+  for (let k = 0; k < 4; k++) {
+    const u = ((t * 0.35 + k / 4) % 1);
+    const r = rMax * u;
+    const pt = toXY(r, A * r * r);
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = '#eab308'; ctx.fill();
   }
-  label('r_i', { x: ox + plotW + 20, y: oy + plotH }, '#e8ecf2', 14, true);
-  label('P_i', { x: ox - 20, y: oy + 10 }, '#e8ecf2', 14, true);
-  label('P ≥ A r²', { x: ox + plotW * 0.7, y: oy + 30 }, '#e74c3c', 14, false);
-  label('P ≥ 0.415 r + 0.15 r²', { x: ox + plotW * 0.55, y: oy + 55 }, '#3498db', 14, false);
+
+  // Axis labels
+  label('rᵢ', { x: ox + plotW + 22, y: oy + plotH }, '#e8ecf2', 20, true);
+  label('Pᵢ', { x: ox - 22, y: oy + 10 }, '#e8ecf2', 20, true);
+  // Curve labels near the right end
+  const qEnd = toXY(rMax * 0.92, A * (rMax * 0.92) ** 2);
+  label('P ≥ A r²', { x: qEnd.x - 10, y: qEnd.y - 18 }, '#ef4444', 18, false);
+  const lEnd = toXY(rMax * 0.92, 0.415 * rMax * 0.92 + 0.15 * (rMax * 0.92) ** 2);
+  label('P ≥ 0.415r + 0.15r²', { x: lEnd.x - 10, y: lEnd.y + 22 }, '#3b82f6', 18, false);
+  // Vertical line at r=2/3
+  const v = toXY(rMax, 0);
+  ctx.beginPath(); ctx.moveTo(v.x, oy); ctx.lineTo(v.x, oy + plotH);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.stroke();
+  ctx.setLineDash([]);
+  label('2/3', { x: v.x, y: oy + plotH + 18 }, '#aaa', 16, true);
 }
 
 function drawTwoScores(params) {
@@ -1095,14 +1377,14 @@ function drawTwoScores(params) {
     });
   }
   const axes = [
-    { from: { x: -1.2, y: 0, z: 0 }, to: { x: 1.2, y: 0, z: 0 }, label: 'T', color: '#888' },
-    { from: { x: 0, y: -1.2, z: 0 }, to: { x: 0, y: 1.2, z: 0 }, label: 'Y_j', color: '#3498db' },
-    { from: { x: 0, y: 0, z: -1.2 }, to: { x: 0, y: 0, z: 1.2 }, label: 'Y_k', color: '#2ecc71' }
+    { from: { x: -1.4, y: 0, z: 0 }, to: { x: 1.4, y: 0, z: 0 }, label: 'T', color: '#999' },
+    { from: { x: 0, y: -1.4, z: 0 }, to: { x: 0, y: 1.4, z: 0 }, label: 'Y_j', color: '#3498db' },
+    { from: { x: 0, y: 0, z: -1.4 }, to: { x: 0, y: 0, z: 1.4 }, label: 'Y_k', color: '#2ecc71' }
   ];
   axes.forEach(ax => {
     const a = project(ax.from), b = project(ax.to);
-    drawLine(a, b, ax.color, 1.2, [4, 4]);
-    label(ax.label, { x: b.x + 12, y: b.y - 6 }, ax.color, 14, true);
+    drawLine(a, b, ax.color, 2.5, [6, 6]);
+    label(ax.label, { x: b.x + 16, y: b.y - 10 }, ax.color, 22, true);
   });
   const T0 = 1.0;
   const yjMax = (1 + aj) * tt * T0;
@@ -1110,75 +1392,84 @@ function drawTwoScores(params) {
   const p1 = project({ x: T0, y: yjMax, z: ykMax });
   const p2 = project({ x: T0, y: -2 * yjMax, z: ykMax });
   const p3 = project({ x: T0, y: yjMax, z: -2 * ykMax });
-  drawPoly([p1, p2, p3], '#e74c3c', 0.2, 'rgba(255,255,255,.1)');
+  drawPoly([p1, p2, p3], '#e74c3c', 0.25, 'rgba(255,255,255,.2)', 2);
   const sigmaJ = Math.sqrt(Math.max(0.01, tt * tt * (1 + aj) * (1 + aj) / 2));
   const sigmaK = Math.sqrt(Math.max(0.01, tt * tt * (1 + ak) * (1 + ak) / 2));
   const pts = [];
-  for (let k = 0; k <= 40; k++) {
-    const a = 2 * Math.PI * k / 40;
+  for (let k = 0; k <= 50; k++) {
+    const a = 2 * Math.PI * k / 50;
     pts.push(project({ x: T0, y: sigmaJ * Math.cos(a), z: sigmaK * Math.sin(a) }));
   }
-  drawPoly(pts, '#3498db', 0.15, 'rgba(52,152,219,.6)');
-  label('Densité (U,V) ≤ M', { x: p1.x, y: p1.y - 24 }, '#3498db', 14, true);
+  drawPoly(pts, '#3498db', 0.2, 'rgba(52,152,219,.8)', 2);
+  label('Densité (U,V) ≤ M', { x: p1.x, y: p1.y - 32 }, '#3498db', 22, true);
+  
   const tp = ((t * 0.5) % 2);
   const pT = project({ x: tp - 1, y: 0, z: 0 });
-  ctx.beginPath(); ctx.arc(pT.x, pT.y, 5, 0, 2 * Math.PI);
+  ctx.beginPath(); ctx.arc(pT.x, pT.y, 8, 0, 2 * Math.PI);
   ctx.fillStyle = '#d4af37'; ctx.fill();
+  ctx.beginPath(); ctx.arc(pT.x, pT.y, 14 + Math.sin(t*10)*4, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(212,175,55,0.5)'; ctx.lineWidth = 2; ctx.stroke();
 }
 
 function drawSmallMin(params) {
   clearCanvas();
   const t = view.time;
-  if (view.shapes.icosahedron) {
-    const ico = makeIcosahedron(0.5);
-    drawMesh(ico, {
-      ax: t * view.speed * 0.7, ay: t * view.speed * 1.0, az: t * view.speed * 0.3,
-      pos: { x: -0.9, y: Math.sin(t * view.speed) * 0.1, z: 0 },
-      color: '#9b59b6', alpha: 0.85
-    });
-  }
   const W = view.W, H = view.H;
-  const padY = 70;
-  const plotW = W * 0.45, plotH = H - 2 * padY;
-  const ox = W * 0.42, oy = padY;
-  ctx.strokeStyle = 'rgba(255,255,255,.3)';
-  ctx.lineWidth = 1.2;
+  const plotW = Math.min(W * 0.5, 480);
+  const plotH = Math.min(H * 0.45, 300);
+  const ox = (W - plotW) / 2;
+  const oy = (H - plotH) / 2 - 10;
+  const A = params.A ?? 0.929;
+  const d = A - 0.15;
+  function e(u) { return 0.415 * u - d * u * u; }
+  const uMax = 0.55;
+  const eMax = 0.09;
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(ox, oy + plotH); ctx.lineTo(ox + plotW, oy + plotH);
   ctx.moveTo(ox, oy + plotH); ctx.lineTo(ox, oy);
   ctx.stroke();
-  const A = params.A ?? 0.929;
-  const d = A - 0.15;
-  function e(u) { return 0.415 * u - d * u * u; }
+
+  function toXY(u, val) {
+    return {
+      x: ox + plotW * (u / uMax),
+      y: oy + plotH - plotH * Math.max(0, Math.min(1, val / eMax))
+    };
+  }
+
+  // Curve e(u)
   ctx.beginPath();
   let first = true;
   for (let i = 0; i <= 200; i++) {
-    const u = (i / 200) * 0.8;
-    const x = ox + plotW * (u / 0.8);
-    const y = oy + plotH - plotH * Math.max(0, e(u) / 0.08);
-    if (first) { ctx.moveTo(x, y); first = false; }
-    else ctx.lineTo(x, y);
+    const u = (i / 200) * uMax;
+    const pt = toXY(u, e(u));
+    if (first) { ctx.moveTo(pt.x, pt.y); first = false; }
+    else ctx.lineTo(pt.x, pt.y);
   }
-  ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 2.4; ctx.stroke();
-  const q0 = 0.066;
-  const xq = ox + plotW * (q0 / 0.8);
-  const yq = oy + plotH - plotH * Math.max(0, e(q0) / 0.08);
-  ctx.beginPath(); ctx.arc(xq, yq, 5, 0, 2 * Math.PI);
-  ctx.fillStyle = '#3498db'; ctx.fill();
-  label('q₀ = .066', { x: xq + 42, y: yq - 12 }, '#3498db', 14, true);
-  const t0 = params.t0 ?? 0.107;
-  const xt = ox + plotW * (t0 / 0.8);
-  const yt = oy + plotH - plotH * Math.max(0, e(t0) / 0.08);
-  ctx.beginPath(); ctx.arc(xt, yt, 5, 0, 2 * Math.PI);
-  ctx.fillStyle = '#2ecc71'; ctx.fill();
-  label('t₀ ≈ ' + t0.toFixed(3), { x: xt + 50, y: yt - 12 }, '#2ecc71', 14, true);
-  const uP = ((t * 0.3) % 0.8);
-  const xP = ox + plotW * (uP / 0.8);
-  const yP = oy + plotH - plotH * Math.max(0, e(uP) / 0.08);
-  ctx.beginPath(); ctx.arc(xP, yP, 4, 0, 2 * Math.PI);
-  ctx.fillStyle = '#d4af37'; ctx.fill();
-  label('e(u) = .415u − du²', { x: ox + plotW / 2, y: oy - 20 }, '#e74c3c', 16, true);
-  label('u', { x: ox + plotW + 18, y: oy + plotH }, '#e8ecf2', 14, true);
+  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3.5; ctx.stroke();
+
+  // Points q0 and t0
+  const q0 = 0.066, t0 = params.t0 ?? 0.107;
+  const pq = toXY(q0, e(q0));
+  const pt0 = toXY(t0, e(t0));
+  ctx.beginPath(); ctx.arc(pq.x, pq.y, 7, 0, 2 * Math.PI);
+  ctx.fillStyle = '#3b82f6'; ctx.fill();
+  label('q₀ = 0.066', { x: pq.x + 48, y: pq.y - 14 }, '#3b82f6', 18, true);
+  ctx.beginPath(); ctx.arc(pt0.x, pt0.y, 7, 0, 2 * Math.PI);
+  ctx.fillStyle = '#22c55e'; ctx.fill();
+  label('t₀ ≈ ' + t0.toFixed(3), { x: pt0.x + 52, y: pt0.y - 14 }, '#22c55e', 18, true);
+
+  // Animated particle
+  const uP = 0.02 + ((t * 0.25) % (uMax - 0.04));
+  const pP = toXY(uP, e(uP));
+  ctx.beginPath(); ctx.arc(pP.x, pP.y, 6, 0, 2 * Math.PI);
+  ctx.fillStyle = '#eab308'; ctx.fill();
+
+  label('e(u) = 0.415u − d u²', { x: ox + plotW / 2, y: oy - 22 }, '#ef4444', 20, true);
+  label('u', { x: ox + plotW + 18, y: oy + plotH }, '#e8ecf2', 18, true);
 }
 
 function drawGaussianMax(params) {
@@ -1203,39 +1494,43 @@ function drawGaussianMax(params) {
   vectors.forEach((v, i) => {
     const u = { x: v.x - mean.x, y: v.y - mean.y, z: v.z - mean.z };
     const e = project(u);
-    drawArrow(o, e, colors[i % colors.length], 2.4);
-    label('u' + (i + 1), { x: e.x + 10, y: e.y - 10 }, colors[i % colors.length], 15, true);
+    drawArrow(o, e, colors[i % colors.length], 3.5);
+    label('u' + (i + 1), { x: e.x + 16, y: e.y - 16 }, colors[i % colors.length], 22, true);
   });
-  ctx.beginPath(); ctx.arc(om.x, om.y, 5, 0, 2 * Math.PI);
+  ctx.beginPath(); ctx.arc(om.x, om.y, 7, 0, 2 * Math.PI);
   ctx.fillStyle = '#d4af37'; ctx.fill();
-  label('v̄', { x: om.x + 14, y: om.y + 14 }, '#d4af37', 15, true);
+  label('v̄', { x: om.x + 20, y: om.y + 20 }, '#d4af37', 22, true);
   const pts = [];
   for (let i = 0; i <= 60; i++) {
     const a = 2 * Math.PI * i / 60;
-    pts.push(project({ x: 1.4 * Math.cos(a), y: 1.4 * Math.sin(a), z: 0 }));
+    pts.push(project({ x: 1.6 * Math.cos(a), y: 1.6 * Math.sin(a), z: 0 }));
   }
-  drawPoly(pts, null, 0, 'rgba(255,255,255,.12)');
-  const waveR = 1.4 + Math.sin(t * 2) * 0.05;
+  drawPoly(pts, null, 0, 'rgba(255,255,255,.2)', 2);
+  const waveR = 1.6 + Math.sin(t * 2) * 0.08;
   const pts2 = [];
   for (let i = 0; i <= 60; i++) {
     const a = 2 * Math.PI * i / 60;
     pts2.push(project({ x: waveR * Math.cos(a), y: waveR * Math.sin(a), z: 0 }));
   }
-  drawPoly(pts2, null, 0, 'rgba(212,175,55,.35)');
+  drawPoly(pts2, null, 0, 'rgba(212,175,55,.5)', 2);
 }
 
 function drawMainTheorem(params) {
   clearCanvas();
   const t = view.time;
   const colors = ['#e74c3c', '#3498db', '#2ecc71'];
-  if (view.shapes.torus) {
+  const showTorus = params.showTorus !== undefined ? params.showTorus : view.shapes.torus;
+  const showRibbons = params.showRibbons !== false;
+  const ribbonWidth = params.ribbonWidth ?? 0.3;
+  if (showTorus) {
     const torus = makeTorus(0.7, 0.25, 24, 14);
     drawMesh(torus, { ax: t * view.speed * 0.5 + 0.5, ay: t * view.speed * 0.8, az: 0, color: '#d4af37', alpha: 0.75 });
   }
+  if (!showRibbons) return;
   const step = 2 * Math.PI / 3;
   for (let s = 0; s < 3; s++) {
     const baseAng = s * step + t * view.speed * 0.3;
-    const N = 50;
+    const N = 60;
     const pts = [];
     for (let i = 0; i <= N; i++) {
       const u = i / N;
@@ -1246,14 +1541,14 @@ function drawMainTheorem(params) {
     ctx.beginPath();
     pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
     ctx.strokeStyle = colors[s];
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3.5;
     ctx.stroke();
     const pts2 = [];
     for (let i = 0; i <= N; i++) {
       const u = i / N;
       const ang = baseAng + u * Math.PI * 1.2;
       const rad = 1.0 + 0.3 * u;
-      pts2.push(project({ x: rad * Math.cos(ang), y: -0.6 + 1.2 * u + 0.15, z: rad * Math.sin(ang) }));
+      pts2.push(project({ x: rad * Math.cos(ang), y: -0.6 + 1.2 * u + ribbonWidth * 0.6, z: rad * Math.sin(ang) }));
     }
     ctx.beginPath();
     for (let i = 0; i <= N; i++) {
@@ -1267,7 +1562,7 @@ function drawMainTheorem(params) {
     }
     ctx.closePath();
     ctx.fillStyle = colors[s];
-    ctx.globalAlpha = 0.18;
+    ctx.globalAlpha = 0.22;
     ctx.fill();
     ctx.globalAlpha = 1;
   }
@@ -1277,46 +1572,59 @@ function drawUniqueGames(params) {
   clearCanvas();
   const t = view.time;
   const W = view.W, H = view.H;
-  const n = 7;
+  const n = 6;
   const leftX = W * 0.25, rightX = W * 0.75;
-  const topY = H * 0.2, botY = H * 0.8;
+  const topY = H * 0.25, botY = H * 0.75;
+
+  const chaosFactor = (Math.sin(t * 0.8) + 1) / 2;
 
   const left = [], right = [];
   for (let i = 0; i < n; i++) {
-    left.push({ x: leftX, y: topY + (botY - topY) * i / (n - 1) });
-    right.push({ x: rightX, y: topY + (botY - topY) * i / (n - 1) });
+    const jitter = chaosFactor * Math.sin(t * 3 + i) * 18;
+    left.push({ x: leftX, y: topY + (botY - topY) * i / (n - 1) + jitter });
+    right.push({ x: rightX, y: topY + (botY - topY) * i / (n - 1) - jitter });
   }
 
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      if ((i * 3 + j * 7) % 4 === 0 || (i === j)) {
-        const isSat = (i + j + Math.floor(t * 2)) % 3 !== 0;
-        ctx.beginPath();
-        ctx.moveTo(left[i].x, left[i].y);
-        ctx.lineTo(right[j].x, right[j].y);
-        ctx.strokeStyle = isSat ? 'rgba(46,204,113,.55)' : 'rgba(231,76,60,.35)';
-        ctx.lineWidth = isSat ? 1.6 : 1;
-        ctx.stroke();
-      }
+      const isSatBase = (i === j || (i + j) % 3 === 0);
+      // Deterministic pseudo-random so the figure does not flicker every frame
+      const hash = ((i * 17 + j * 31 + Math.floor(t * 2)) % 10) / 10;
+      const isSat = isSatBase && (chaosFactor < 0.6 || hash > 0.3);
+      
+      ctx.beginPath();
+      ctx.moveTo(left[i].x, left[i].y);
+      
+      const cpx = (leftX + rightX) / 2;
+      const cpy = (left[i].y + right[j].y) / 2 + (chaosFactor * 45 * (i - j));
+      ctx.quadraticCurveTo(cpx, cpy, right[j].x, right[j].y);
+      
+      ctx.strokeStyle = isSat ? 'rgba(46,204,113,.8)' : 'rgba(231,76,60,.35)';
+      ctx.lineWidth = isSat ? 3 : 1.5;
+      ctx.stroke();
     }
   }
 
   left.forEach((p, i) => {
-    ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
+    ctx.beginPath(); ctx.arc(p.x, p.y, 16, 0, 2 * Math.PI);
     ctx.fillStyle = '#2ecc71'; ctx.fill();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-    label('v' + (i + 1), { x: p.x - 22, y: p.y }, '#e8ecf2', 12, true);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    label('v' + (i + 1), { x: p.x - 36, y: p.y }, '#e8ecf2', 22, true);
   });
   right.forEach((p, i) => {
-    ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, 2 * Math.PI);
+    ctx.beginPath(); ctx.arc(p.x, p.y, 16, 0, 2 * Math.PI);
     ctx.fillStyle = '#e74c3c'; ctx.fill();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-    label('w' + (i + 1), { x: p.x + 22, y: p.y }, '#e8ecf2', 12, true);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    label('w' + (i + 1), { x: p.x + 36, y: p.y }, '#e8ecf2', 22, true);
   });
 
-  label('Complétude ≥ 1 − ε', { x: W / 2, y: H * 0.94 }, '#2ecc71', 14, true);
-  label('Soundness ≤ δ', { x: W / 2, y: H * 0.97 }, '#e74c3c', 14, true);
-  label('Théorème 6.3 — Unique Games input', { x: W / 2, y: 30 }, '#d4af37', 15, true);
+  const statusText = chaosFactor > 0.5
+    ? (lang === 'en' ? "NP-hard instance (Conflicts)" : "Instance NP-dure (Conflits)")
+    : (lang === 'en' ? "Satisfiable instance (Large gap)" : "Instance satisfiable (Gap large)");
+  const statusColor = chaosFactor > 0.5 ? '#e74c3c' : '#2ecc71';
+  
+  label(statusText, { x: W / 2, y: H * 0.92 }, statusColor, 26, false);
+  label(lang === 'en' ? 'Oscillation: YES case vs NO case' : 'Oscillation : Cas OUI vs Cas NON', { x: W / 2, y: H * 0.96 }, '#b0b0c0', 20, true);
 }
 
 function drawReduction(params) {
@@ -1324,56 +1632,76 @@ function drawReduction(params) {
   const t = view.time;
   const W = view.W, H = view.H;
 
-  const steps = [
-    { label: '3SAT', color: '#e74c3c', x: 0.10, y: 0.5 },
-    { label: 'Unique Games', color: '#2ecc71', x: 0.30, y: 0.5 },
-    { label: 'Matrice A', color: '#3498db', x: 0.50, y: 0.5 },
-    { label: 'Clust(A|I_k)', color: '#9b59b6', x: 0.70, y: 0.5 },
-    { label: 'θ', color: '#d4af37', x: 0.90, y: 0.5 }
-  ];
+  // Narrow centered band (~60% of width)
+  const bandW = Math.min(W * 0.62, 620);
+  const bandLeft = (W - bandW) / 2;
+  const boxW = Math.min(110, bandW * 0.22);
+  const boxH = 42;
+  const rowY1 = H * 0.34;
+  const rowY2 = H * 0.56;
+  const xs = [0.12, 0.37, 0.62, 0.88].map(f => bandLeft + bandW * f);
 
-  steps.forEach((s, i) => {
-    const x = W * s.x, y = H * s.y;
-    ctx.save();
-    ctx.translate(x, y);
-    const pulse = 1 + Math.sin(t * 2 + i) * 0.03;
-    ctx.scale(pulse, pulse);
+  const topLabels = ['3SAT', 'UG', 'Matrice A', 'Clust'];
+  const botLabels = ['3SAT ⊥', 'UG', 'Matrice A', 'Clust'];
+  const topColors = ['#ef4444', '#22c55e', '#3b82f6', '#a855f7'];
+  const botColors = ['#7f1d1d', '#14532d', '#1e3a5f', '#4c1d95'];
+
+  function drawBox(x, y, text, color) {
     ctx.beginPath();
-    ctx.roundRect(-55, -25, 110, 50, 8);
-    ctx.fillStyle = 'rgba(18,22,28,.9)';
+    ctx.roundRect(x - boxW / 2, y - boxH / 2, boxW, boxH, 8);
+    ctx.fillStyle = 'rgba(12,12,18,0.92)';
     ctx.fill();
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth = 2.4;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.restore();
-    label(s.label, { x, y }, s.color, 15, false);
-  });
-
-  for (let i = 0; i < steps.length - 1; i++) {
-    const a = { x: W * steps[i].x + 55, y: H * steps[i].y };
-    const b = { x: W * steps[i + 1].x - 55, y: H * steps[i + 1].y };
-    drawArrow(a, b, '#d4af37', 2.2);
-    const u = ((t * 0.5 + i * 0.2) % 1);
-    const px = a.x + (b.x - a.x) * u;
-    const py = a.y + (b.y - a.y) * u;
-    ctx.beginPath(); ctx.arc(px, py, 3, 0, 2 * Math.PI);
-    ctx.fillStyle = '#f1c40f'; ctx.fill();
+    label(text, { x, y }, color, 14, false);
   }
 
-  const gx = W * 0.5, gy = H * 0.78;
-  ctx.beginPath();
-  ctx.moveTo(W * 0.25, gy);
-  ctx.lineTo(W * 0.75, gy);
-  ctx.strokeStyle = '#e74c3c';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(W * 0.5, gy);
-  ctx.lineTo(W * 0.5, gy + 30);
-  ctx.stroke();
-  label('S < H/α', { x: W * 0.5, y: gy + 46 }, '#e74c3c', 14, true);
+  function drawConn(x1, y1, x2, y2, color, dashed) {
+    ctx.beginPath();
+    ctx.moveTo(x1 + boxW / 2, y1);
+    ctx.lineTo(x2 - boxW / 2, y2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    if (dashed) ctx.setLineDash([4, 4]);
+    else ctx.setLineDash([]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 
-  label('Théorème 6.1 — hardness gap', { x: W / 2, y: 30 }, '#d4af37', 15, true);
+  for (let i = 0; i < 4; i++) {
+    drawBox(xs[i], rowY1, topLabels[i], topColors[i]);
+    if (i < 3) drawConn(xs[i], rowY1, xs[i + 1], rowY1, 'rgba(234,179,8,0.5)', false);
+  }
+  for (let i = 0; i < 4; i++) {
+    drawBox(xs[i], rowY2, botLabels[i], botColors[i]);
+    if (i < 3) drawConn(xs[i], rowY2, xs[i + 1], rowY2, 'rgba(234,179,8,0.3)', true);
+  }
+
+  // Gap between rows, centered under the last two boxes
+  const gapX = (xs[2] + xs[3]) / 2;
+  const gapY = (rowY1 + rowY2) / 2;
+  ctx.fillStyle = 'rgba(234,179,8,0.08)';
+  ctx.fillRect(gapX - 42, gapY - 22, 84, 44);
+  ctx.strokeStyle = '#eab308';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3, 3]);
+  ctx.strokeRect(gapX - 42, gapY - 22, 84, 44);
+  ctx.setLineDash([]);
+  label('GAP', { x: gapX, y: gapY - 6 }, '#eab308', 15, false);
+  label('S < H/α', { x: gapX, y: gapY + 12 }, '#eab308', 13, true);
+
+  // Particle
+  const u = (t * 0.4) % 1;
+  const seg = Math.min(2, Math.floor(u * 3));
+  const local = (u * 3) % 1;
+  const px = xs[seg] + (xs[seg + 1] - xs[seg]) * local;
+  ctx.beginPath(); ctx.arc(px, rowY1, 4, 0, 2 * Math.PI);
+  ctx.fillStyle = '#22c55e'; ctx.fill();
+
+  // Case labels
+  label('cas OUI (sat.)', { x: xs[0] - 10, y: rowY1 - 32 }, '#22c55e', 13, true);
+  label('cas NON (unsat.)', { x: xs[0] - 10, y: rowY2 + 32 }, '#ef4444', 13, true);
 }
 
 function drawCertificates(params) {
@@ -1381,55 +1709,481 @@ function drawCertificates(params) {
   const t = view.time;
   const W = view.W, H = view.H;
 
-  const lx = W * 0.28, ly = H * 0.5;
-  ctx.beginPath();
-  ctx.arc(lx, ly, 60, 0, 2 * Math.PI);
-  ctx.strokeStyle = 'rgba(212,175,55,.4)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  label('π ∈ (3.14159, 3.14160)', { x: lx, y: ly - 80 }, '#d4af37', 13, true);
+  // Centered layout: left = π series, right = interval bars
+  const midY = H * 0.42;
+  const leftCX = W * 0.32;
+  const rightCX = W * 0.62;
 
+  // --- π enclosure via arctan series ---
+  // Visual: two nested arcs representing lower/upper bounds
+  const rOuter = 70, rInner = 55;
+  ctx.beginPath();
+  ctx.arc(leftCX, midY, rOuter, -0.4, Math.PI + 0.4);
+  ctx.strokeStyle = 'rgba(239,68,68,0.7)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(leftCX, midY, rInner, -0.35, Math.PI + 0.35);
+  ctx.strokeStyle = 'rgba(34,197,94,0.7)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  // π value in the middle
+  label('π', { x: leftCX, y: midY - 8 }, '#eab308', 32, true);
+  label('3.14159 < π < 3.14160', { x: leftCX, y: midY + 28 }, '#eab308', 15, true);
+  label('série arctan', { x: leftCX, y: midY + 50 }, '#a0a0b0', 13, true);
+  // Bound markers
+  label('u', { x: leftCX + rOuter + 14, y: midY - 20 }, '#ef4444', 16, true);
+  label('l', { x: leftCX + rInner + 10, y: midY + 10 }, '#22c55e', 16, true);
+
+  // --- Interval bars for √x, exp, Φ, arcsin ---
   const bars = [
-    { label: '√x', l: 0.3, u: 0.7 },
-    { label: 'e^{-y}', l: 0.2, u: 0.8 },
-    { label: 'Φ(x)', l: 0.25, u: 0.75 },
-    { label: 'arcsin x', l: 0.35, u: 0.65 }
+    { label: '√x', l: 0.28, u: 0.72, method: 'l² ≤ x ≤ u²' },
+    { label: 'e⁻ʸ', l: 0.18, u: 0.78, method: 'Taylor trunc.' },
+    { label: 'Φ(x)', l: 0.22, u: 0.74, method: 'série + reste' },
+    { label: 'arcsin x', l: 0.32, u: 0.68, method: 'série binom.' }
   ];
-  const bx = W * 0.55, by = H * 0.25, bw = W * 0.3, bh = H * 0.5 / bars.length;
+  const bw = Math.min(220, W * 0.28);
+  const bh = 28;
+  const gap = 14;
+  const totalH = bars.length * (bh + gap) - gap;
+  const startY = midY - totalH / 2;
+
   bars.forEach((b, i) => {
-    const y = by + i * bh;
-    ctx.fillStyle = 'rgba(255,255,255,.05)';
-    ctx.fillRect(bx, y, bw, bh - 8);
-    ctx.fillStyle = 'rgba(212,175,55,.3)';
-    ctx.fillRect(bx + bw * b.l, y, bw * (b.u - b.l), bh - 8);
-    ctx.beginPath(); ctx.arc(bx + bw * b.l, y + (bh-8)/2, 4, 0, 2*Math.PI);
-    ctx.fillStyle = '#2ecc71'; ctx.fill();
-    ctx.beginPath(); ctx.arc(bx + bw * b.u, y + (bh-8)/2, 4, 0, 2*Math.PI);
-    ctx.fillStyle = '#e74c3c'; ctx.fill();
-    label(b.label, { x: bx - 30, y: y + (bh-8)/2 }, '#e8ecf2', 12, true);
+    const y = startY + i * (bh + gap);
+    // track
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillRect(rightCX, y, bw, bh);
+    // certified interval
+    ctx.fillStyle = 'rgba(234,179,8,0.35)';
+    ctx.fillRect(rightCX + bw * b.l, y, bw * (b.u - b.l), bh);
+    // endpoints
+    ctx.beginPath(); ctx.arc(rightCX + bw * b.l, y + bh / 2, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = '#22c55e'; ctx.fill();
+    ctx.beginPath(); ctx.arc(rightCX + bw * b.u, y + bh / 2, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = '#ef4444'; ctx.fill();
+    // labels
+    label(b.label, { x: rightCX - 42, y: y + bh / 2 }, '#e8ecf2', 15, true);
+    label(b.method, { x: rightCX + bw + 8, y: y + bh / 2 }, '#888', 12, true);
   });
 
-  const u = ((t * 0.4) % 1);
-  const px = bx + bw * u;
-  ctx.beginPath(); ctx.arc(px, by + 20, 4, 0, 2*Math.PI);
-  ctx.fillStyle = '#f1c40f'; ctx.fill();
+  // Animated verification particle on first bar
+  const u = ((t * 0.35) % 1);
+  const b0 = bars[0];
+  const clamped = b0.l + (b0.u - b0.l) * u;
+  ctx.beginPath();
+  ctx.arc(rightCX + bw * clamped, startY + bh / 2, 6, 0, 2 * Math.PI);
+  ctx.fillStyle = '#eab308'; ctx.fill();
 
-  label('Enceintes rationnelles', { x: W / 2, y: H * 0.9 }, '#d4af37', 14, true);
-  label('Appendice A — certificats', { x: W / 2, y: 30 }, '#d4af37', 15, true);
+  // Footer note
+  label('Toutes les comparaisons sont des enceintes rationnelles (pas de flottants)', { x: W / 2, y: H * 0.78 }, '#a0a0b0', 14, true);
+}
+
+/* ---------- EXTERNAL THEOREMS DRAW ---------- */
+function drawHJNPropeller(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+  const R = 1.15, step = 2 * Math.PI / 3;
+  const colors = ['#ef4444', '#3b82f6', '#22c55e'];
+  // 3 planar sectors extruded (propeller in R³)
+  for (let s = 0; s < 3; s++) {
+    const a0 = s * step - Math.PI / 2;
+    const a1 = a0 + step;
+    const pts = [project({ x: 0, y: 0, z: 0 })];
+    for (let i = 0; i <= 40; i++) {
+      const a = a0 + (a1 - a0) * (i / 40);
+      pts.push(project({ x: R * Math.cos(a), y: 0, z: R * Math.sin(a) }));
+    }
+    drawPoly(pts, colors[s], 0.45, colors[s], 2.5);
+    const am = (a0 + a1) / 2;
+    const o = project({ x: 0, y: 0, z: 0 });
+    const tip = project({ x: 0.5 * R * Math.cos(am), y: 0, z: 0.5 * R * Math.sin(am) });
+    drawArrow(o, tip, colors[s], 3);
+  }
+  // Extrusion axis (R factor)
+  const top = project({ x: 0, y: 1.0, z: 0 });
+  const bot = project({ x: 0, y: -0.2, z: 0 });
+  drawLine(bot, top, 'rgba(255,255,255,0.35)', 2, [5, 5]);
+  label('ℝ (extrusion)', { x: top.x + 20, y: top.y }, '#eab308', 16, true);
+  // Bound badge
+  label('∑ ‖zᵢ‖² ≤ 9/(8π)', project({ x: 0, y: -1.3, z: 0 }), '#fff', 22);
+  label('HJN 2013 — R³', project({ x: -1.4, y: 1.1, z: 0 }), '#a855f7', 18);
+  // 4th cell empty hint
+  if (params.showEmpty) {
+    label('A₄ = ∅ … Aₖ = ∅', project({ x: 1.2, y: 0.9, z: 0 }), '#888', 14);
+  }
+}
+
+function drawEhrhard(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+  const λ = params.lambda ?? 0.5;
+  // Two sets A, B as half-planes / blobs and their Minkowski combination
+  const cx = W * 0.5, cy = H * 0.42;
+  // A (left)
+  ctx.beginPath();
+  ctx.ellipse(cx - 160, cy, 70, 90, 0, 0, 2 * Math.PI);
+  ctx.fillStyle = 'rgba(239,68,68,0.25)';
+  ctx.fill();
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  label('A', { x: cx - 160, y: cy }, '#ef4444', 22);
+  // B (right)
+  ctx.beginPath();
+  ctx.ellipse(cx + 160, cy + 20, 80, 60, 0.2, 0, 2 * Math.PI);
+  ctx.fillStyle = 'rgba(59,130,246,0.25)';
+  ctx.fill();
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  label('B', { x: cx + 160, y: cy + 20 }, '#3b82f6', 22);
+  // λA + (1-λ)B (center, interpolated)
+  const mx = cx + (1 - 2 * λ) * 40;
+  const my = cy + (1 - λ) * 15;
+  ctx.beginPath();
+  ctx.ellipse(mx, my, 70 * λ + 80 * (1 - λ), 90 * λ + 60 * (1 - λ), 0.1 * (1 - λ), 0, 2 * Math.PI);
+  ctx.fillStyle = 'rgba(34,197,94,0.3)';
+  ctx.fill();
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  label('λA+(1−λ)B', { x: mx, y: my - 10 }, '#22c55e', 16);
+  // Φ⁻¹ arrows
+  label(`λ = ${λ.toFixed(2)}`, { x: cx, y: H * 0.72 }, '#eab308', 18);
+  label('Φ⁻¹(γ(·)) concave sous Minkowski', { x: cx, y: H * 0.78 }, '#a0a0b0', 15);
+}
+
+function drawUniqueGamesExt(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+  const eps = params.eps ?? 0.1;
+  // Bipartite game graph schematic
+  const leftX = W * 0.28, rightX = W * 0.72;
+  const cy = H * 0.4;
+  const nL = 5, nR = 5;
+  const left = [], right = [];
+  for (let i = 0; i < nL; i++) {
+    const y = cy - 80 + i * 40;
+    left.push({ x: leftX, y });
+    ctx.beginPath(); ctx.arc(leftX, y, 12, 0, 2 * Math.PI);
+    ctx.fillStyle = '#3b82f6'; ctx.fill();
+    label(`x${i+1}`, { x: leftX - 28, y }, '#fff', 13);
+  }
+  for (let j = 0; j < nR; j++) {
+    const y = cy - 80 + j * 40;
+    right.push({ x: rightX, y });
+    ctx.beginPath(); ctx.arc(rightX, y, 12, 0, 2 * Math.PI);
+    ctx.fillStyle = '#a855f7'; ctx.fill();
+    label(`y${j+1}`, { x: rightX + 28, y }, '#fff', 13);
+  }
+  // Permutation constraints (unique labels)
+  ctx.lineWidth = 2;
+  for (let i = 0; i < nL; i++) {
+    const j = (i + Math.floor(t * 0.5)) % nR;
+    const sat = Math.sin(t + i) > -0.3;
+    ctx.strokeStyle = sat ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(left[i].x + 12, left[i].y);
+    ctx.lineTo(right[j].x - 12, right[j].y);
+    ctx.stroke();
+  }
+  // Labels
+  label('Variables', { x: leftX, y: cy - 110 }, '#3b82f6', 16);
+  label('Contraintes (πᵤᵥ permutation)', { x: rightX, y: cy - 110 }, '#a855f7', 14);
+  // Gap box
+  ctx.fillStyle = 'rgba(234,179,8,0.1)';
+  ctx.fillRect(W * 0.2, H * 0.7, W * 0.6, 48);
+  ctx.strokeStyle = '#eab308'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(W * 0.2, H * 0.7, W * 0.6, 48);
+  label(`Completeness 1−ε  |  Soundness δ   (ε=${eps.toFixed(2)})`, { x: W / 2, y: H * 0.73 }, '#eab308', 16);
+  label('Unique Games — input de dureté', { x: W / 2, y: H * 0.12 }, '#fff', 20);
+}
+
+/* ---------- CITED THEOREMS 1.2, 1.7, 2.1, 3.8 ---------- */
+function drawThm12(params) {
+  clearCanvas();
+  const t = view.time;
+  const m = params.m ?? 3;
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#eab308'];
+  const R = 1.2;
+  for (let i = 0; i < m; i++) {
+    const a0 = 2 * Math.PI * i / m - Math.PI / 2 + t * 0.05;
+    const a1 = a0 + 2 * Math.PI / m;
+    const o = project({ x: 0, y: 0, z: 0 });
+    const pts = [o];
+    for (let k = 0; k <= 24; k++) {
+      const a = a0 + (a1 - a0) * (k / 24);
+      pts.push(project({ x: R * Math.cos(a), y: 0.15 * Math.sin(2 * a + t), z: R * Math.sin(a) }));
+    }
+    drawPoly(pts, colors[i % colors.length], 0.35, colors[i % colors.length], 2);
+    const am = (a0 + a1) / 2;
+    const tip = project({ x: 0.55 * R * Math.cos(am), y: 0.05, z: 0.55 * R * Math.sin(am) });
+    drawArrow(o, tip, colors[i % colors.length], 3);
+  }
+  label('Partition conique (span des zᵢ)', project({ x: 0, y: 1.2, z: 0 }), '#fff', 18);
+  label('Khot–Naor Thm 1.2', project({ x: -1.3, y: -1.1, z: 0 }), '#a855f7', 16);
+}
+
+function drawThm17(params) {
+  clearCanvas();
+  const t = view.time;
+  const cells = params.cells ?? 4;
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
+  const R = 1.1;
+  for (let i = 0; i < cells; i++) {
+    const a0 = 2 * Math.PI * i / cells + t * 0.08;
+    const a1 = a0 + 2 * Math.PI / cells;
+    const pts = [];
+    for (let k = 0; k <= 20; k++) {
+      const a = a0 + (a1 - a0) * (k / 20);
+      const elev = 0.35 * Math.sin(Math.PI * k / 20);
+      pts.push(project({
+        x: R * Math.cos(a) * Math.cos(elev),
+        y: R * Math.sin(elev),
+        z: R * Math.sin(a) * Math.cos(elev)
+      }));
+    }
+    pts.push(project({ x: 0, y: 0.4, z: 0 }));
+    drawPoly(pts, colors[i % colors.length], 0.3, colors[i % colors.length], 1.5);
+  }
+  for (let lat = -2; lat <= 2; lat++) {
+    const pts = [];
+    const y = 0.35 * lat;
+    for (let k = 0; k <= 40; k++) {
+      const a = 2 * Math.PI * k / 40;
+      const r = Math.sqrt(Math.max(0.01, R * R - y * y));
+      pts.push(project({ x: r * Math.cos(a), y, z: r * Math.sin(a) }));
+    }
+    drawPoly(pts, 'rgba(255,255,255,0.08)', 0, 'rgba(255,255,255,0.15)', 1);
+  }
+  label('Route conditionnelle (3–4 cellules)', project({ x: 0, y: 1.35, z: 0 }), '#fff', 17);
+  label('Heilman Thm 1.7', project({ x: -1.2, y: -1.15, z: 0 }), '#eab308', 16);
+}
+
+function drawThm21(params) {
+  clearCanvas();
+  const t = view.time;
+  const k = params.k ?? 3;
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#eab308'];
+  const R = 1.0;
+  const o = project({ x: 0, y: 0, z: 0 });
+  for (let i = 0; i < k; i++) {
+    const a = 2 * Math.PI * i / k - Math.PI / 2 + t * 0.1;
+    const v = { x: R * Math.cos(a), y: 0.2 * Math.sin(a * 2 + t), z: R * Math.sin(a) };
+    const tip = project(v);
+    drawArrow(o, tip, colors[i % colors.length], 3);
+    label(`u${i+1}`, { x: tip.x + 12, y: tip.y - 10 }, colors[i % colors.length], 14);
+  }
+  const ga = t * 0.7;
+  const gDir = { x: Math.cos(ga), y: 0.3, z: Math.sin(ga) };
+  const g1 = project({ x: 1.3 * gDir.x, y: 1.3 * gDir.y, z: 1.3 * gDir.z });
+  const g2 = project({ x: -1.3 * gDir.x, y: -1.3 * gDir.y, z: -1.3 * gDir.z });
+  drawLine(g1, g2, 'rgba(234,179,8,0.6)', 2, [6, 4]);
+  label('g ∼ 𝒩(0,I)', { x: g1.x + 10, y: g1.y }, '#eab308', 14);
+  const ak = (8 * Math.PI / 9) * (1 - 1 / k);
+  label(`α_k = (8π/9)(1−1/k) ≈ ${ak.toFixed(3)}`, project({ x: 0, y: -1.25, z: 0 }), '#fff', 18);
+  label('Arrondi gaussien — Thm 2.1', project({ x: 0, y: 1.3, z: 0 }), '#a855f7', 17);
+}
+
+function drawThm38(params) {
+  clearCanvas();
+  const t = view.time;
+  const n = 12;
+  const baseY = -0.6;
+  for (let j = 0; j < n; j++) {
+    const x = -1.4 + (2.8 * j) / (n - 1);
+    const h = 0.08 + 0.7 * Math.abs(Math.sin(j * 1.7 + t * 0.3)) * Math.exp(-j * 0.05);
+    const w = 0.08;
+    const corners = [
+      project({ x: x - w, y: baseY, z: -w }),
+      project({ x: x + w, y: baseY, z: -w }),
+      project({ x: x + w, y: baseY + h, z: -w }),
+      project({ x: x - w, y: baseY + h, z: -w })
+    ];
+    drawPoly(corners, '#a855f7', 0.7, '#a855f7', 1);
+    const corners2 = [
+      project({ x: x - w, y: baseY, z: w }),
+      project({ x: x + w, y: baseY, z: w }),
+      project({ x: x + w, y: baseY + h, z: w }),
+      project({ x: x - w, y: baseY + h, z: w })
+    ];
+    drawPoly(corners2, '#7c3aed', 0.5, '#7c3aed', 1);
+  }
+  const tau = 0.25;
+  const plane = [
+    project({ x: -1.6, y: baseY + tau, z: -0.4 }),
+    project({ x: 1.6, y: baseY + tau, z: -0.4 }),
+    project({ x: 1.6, y: baseY + tau, z: 0.4 }),
+    project({ x: -1.6, y: baseY + tau, z: 0.4 })
+  ];
+  drawPoly(plane, 'rgba(239,68,68,0.2)', 0.25, '#ef4444', 2);
+  label('τ₀', project({ x: 1.7, y: baseY + tau, z: 0 }), '#ef4444', 16);
+  label('Infⱼ(fᵢ) ≤ τ₀  ⇒  OBJ(f) ≤ C_k+η', project({ x: 0, y: 1.2, z: 0 }), '#fff', 16);
+  label('Khot–Naor Thm 3.8', project({ x: -1.2, y: -1.2, z: 0 }), '#eab308', 15);
+}
+
+/* ---------- NEW DRAW FUNCTIONS ---------- */
+function drawDuality(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+  const n = params.n ?? 3;
+  const showList = params.showList !== false;
+  const showPartition = params.showPartition !== false;
+  
+  // Left: score vectors on the sphere
+  const cxL = W * 0.28, cy = H * 0.48, R = Math.min(W, H) * 0.18;
+  ctx.beginPath(); ctx.arc(cxL, cy, R, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(168,85,247,0.5)'; ctx.lineWidth = 2; ctx.stroke();
+  label('∑‖vᵢ‖² = 1', { x: cxL, y: cy - R - 28 }, '#a855f7', 20, true);
+  
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7'];
+  for (let i = 0; i < n; i++) {
+    const a = 2 * Math.PI * i / n + t * 0.3;
+    const len = 0.55 + 0.2 * Math.sin(t + i);
+    const tip = { x: cxL + R * len * Math.cos(a), y: cy + R * len * Math.sin(a) };
+    ctx.beginPath();
+    ctx.moveTo(cxL, cy); ctx.lineTo(tip.x, tip.y);
+    ctx.strokeStyle = colors[i % colors.length]; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(tip.x, tip.y, 6, 0, 2 * Math.PI);
+    ctx.fillStyle = colors[i % colors.length]; ctx.fill();
+    if (showList) label(`v${i+1}`, { x: tip.x + 16, y: tip.y }, colors[i % colors.length], 18);
+  }
+  
+  // Arrow of duality
+  ctx.beginPath();
+  ctx.moveTo(W * 0.42, cy); ctx.lineTo(W * 0.52, cy);
+  ctx.strokeStyle = '#eab308'; ctx.lineWidth = 3; ctx.stroke();
+  label('√C = E max ⟨vᵢ,g⟩', { x: W * 0.47, y: cy - 24 }, '#eab308', 18, true);
+  
+  // Right: score partition / cones
+  const cxR = W * 0.72;
+  if (showPartition) {
+    for (let i = 0; i < n; i++) {
+      const a0 = 2 * Math.PI * i / n - Math.PI / 2;
+      const a1 = a0 + 2 * Math.PI / n;
+      ctx.beginPath(); ctx.moveTo(cxR, cy);
+      for (let k = 0; k <= 30; k++) {
+        const a = a0 + (a1 - a0) * k / 30;
+        ctx.lineTo(cxR + R * 1.1 * Math.cos(a), cy + R * 1.1 * Math.sin(a));
+      }
+      ctx.closePath();
+      ctx.fillStyle = colors[i % colors.length] + '33';
+      ctx.fill();
+      ctx.strokeStyle = colors[i % colors.length]; ctx.lineWidth = 2; ctx.stroke();
+    }
+    label('Partition de scores', { x: cxR, y: cy + R + 36 }, '#fff', 18, true);
+  }
+  label('Lemma 2.1 — Dualité', { x: W / 2, y: 40 }, '#a855f7', 26);
+}
+
+function drawCompleteness(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+  const eps = params.eps ?? 0.1;
+  const k = params.k ?? 3;
+  const colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#eab308'];
+  
+  const cx = W * 0.5, cy = H * 0.42;
+  const leftX = cx - W * 0.18;
+  const rightX = cx + W * 0.18;
+  const nLeft = 5, nRight = 6;
+  
+  // Left nodes (variables)
+  const leftNodes = [];
+  for (let i = 0; i < nLeft; i++) {
+    const y = cy - 90 + i * 45;
+    leftNodes.push({ x: leftX, y });
+    ctx.beginPath(); ctx.arc(leftX, y, 14, 0, 2 * Math.PI);
+    ctx.fillStyle = colors[i % k]; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+    label(`v${i+1}`, { x: leftX - 28, y }, '#fff', 15);
+  }
+  
+  // Right nodes (constraints)
+  const rightNodes = [];
+  for (let j = 0; j < nRight; j++) {
+    const y = cy - 100 + j * 40;
+    rightNodes.push({ x: rightX, y });
+    ctx.beginPath(); ctx.arc(rightX, y, 11, 0, 2 * Math.PI);
+    ctx.fillStyle = '#eab308'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+  }
+  
+  // Satisfied edges (most of them)
+  ctx.lineWidth = 2.5;
+  const edges = [[0,0],[0,1],[1,1],[1,2],[2,2],[2,3],[3,3],[3,4],[4,4],[4,5],[1,3],[2,4]];
+  edges.forEach(([i, j], idx) => {
+    const a = leftNodes[i], b = rightNodes[j];
+    const pulse = 0.45 + 0.25 * Math.sin(t * 2 + idx);
+    ctx.strokeStyle = `rgba(34,197,94,${pulse})`;
+    ctx.beginPath(); ctx.moveTo(a.x + 14, a.y); ctx.lineTo(b.x - 11, b.y); ctx.stroke();
+  });
+  
+  // Green bar at bottom
+  const barY = H * 0.72;
+  ctx.fillStyle = 'rgba(34,197,94,0.12)';
+  ctx.fillRect(W * 0.18, barY, W * 0.64, 42);
+  ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2;
+  ctx.strokeRect(W * 0.18, barY, W * 0.64, 42);
+  label(`Clust ≥ (1−1/k)(1−ε)²   avec ε = ${eps.toFixed(2)}`, { x: W / 2, y: barY + 22 }, '#22c55e', 18);
+}
+
+function drawSoundness(params) {
+  clearCanvas();
+  const t = view.time;
+  const W = view.W, H = view.H;
+  const delta = params.delta ?? 0.05;
+  const eta = params.eta ?? 0.08;
+  
+  // Influence bars that exceed threshold
+  const nBars = 8;
+  const barW = W * 0.06;
+  const baseY = H * 0.7;
+  const maxH = H * 0.4;
+  for (let i = 0; i < nBars; i++) {
+    const h = maxH * (0.2 + 0.7 * Math.abs(Math.sin(t * 0.8 + i * 0.7)));
+    const x = W * 0.15 + i * (barW + 18);
+    const exceeds = h > maxH * 0.45;
+    ctx.fillStyle = exceeds ? 'rgba(239,68,68,0.7)' : 'rgba(168,85,247,0.5)';
+    ctx.fillRect(x, baseY - h, barW, h);
+    if (exceeds) {
+      label('Inf > τ', { x: x + barW / 2, y: baseY - h - 16 }, '#ef4444', 13);
+    }
+  }
+  // Threshold line
+  ctx.beginPath();
+  ctx.moveTo(W * 0.12, baseY - maxH * 0.45);
+  ctx.lineTo(W * 0.85, baseY - maxH * 0.45);
+  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.stroke();
+  ctx.setLineDash([]);
+  label('seuil τ', { x: W * 0.88, y: baseY - maxH * 0.45 }, '#ef4444', 16);
+  
+  // Soundness box
+  ctx.fillStyle = 'rgba(239,68,68,0.12)';
+  ctx.fillRect(W * 0.15, H * 0.8, W * 0.7, 48);
+  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2;
+  ctx.strokeRect(W * 0.15, H * 0.8, W * 0.7, 48);
+  label(`Clust ≤ C* + 2η   (δ = ${delta.toFixed(3)}, η = ${eta.toFixed(2)})`, { x: W / 2, y: H * 0.84 }, '#ef4444', 18);
+  label('Lemma 6.6 — Soundness', { x: W / 2, y: 40 }, '#ef4444', 26);
 }
 
 /* =====================================================================
-   5. SCÈNES (DONNÉES)
+   5. SCÈNES (DONNÉES) & STORYTELLING
    ===================================================================== */
-const SCENES = [
+const STORY = [
   {
-    id: 'prop2d', tag: 'EX', title: "L'hélice 2D",
+    id: 'intro', tag: 'EX', title: "L'hélice 2D",
     tex: String.raw`\int_{P} x\, d\gamma_2(x) = \frac{\sin\alpha}{\sqrt{2\pi}}\,(1,0)`,
     desc: "L'hélice est formée de <strong>m secteurs plans de 2π/m</strong> (3 secteurs de 120° par défaut). Pour m=3 et α = π/3, leurs longueurs de centroïde au carré s'additionnent en 3 sin²(π/3)/(2π) = 9/(8π). C'est la configuration qui <strong>atteint la borne</strong> de la conjecture.",
     draw: drawPropeller2D,
     params: [
       { key: 'm', label: 'Nombre de pales m', min: 3, max: 8, step: 1, value: 3 },
-      { key: 'opacity', label: 'Opacité', min: 0.05, max: 0.9, step: 0.01, value: 0.2 },
+      { key: 'opacity', label: 'Opacité', min: 0.05, max: 0.9, step: 0.01, value: 0.18 },
       { key: 'showCentroids', label: 'Centroïdes ẑᵢ', type: 'bool', value: true },
       { key: 'showLabels', label: 'Étiquettes Sᵢ', type: 'bool', value: true }
     ],
@@ -1453,28 +2207,242 @@ const SCENES = [
     }
   },
   {
-    id: 'prop3d', tag: 'THM', title: "Extension orthogonale en dimension d",
-    tex: String.raw`A_i = S_i \times \mathbb{R}^{d-2} \;\Longrightarrow\; \|z(A_i)\| = \|z(S_i)\|`,
-    desc: "Pour passer en dimension d ≥ 2, on multiplie chaque secteur par le <strong>facteur euclidien orthogonal</strong> ℝ^{d−2}. La composante orthogonale du centroïde est nulle en espérance, donc la <strong>norme du moment est préservée</strong> : la borne 9/(8π) reste atteinte. Les trois cubes tournent sur eux-mêmes et flottent le long de l'axe.",
-    draw: drawPropeller3D,
+    id: 'hjn2013', tag: 'EXT', title: "HJN 2013 — Propeller en R³",
+    tex: String.raw`\sum_{i=1}^{k}\Bigl\|\int_{A_i}x\,d\gamma_3(x)\Bigr\|^2\le\frac{9}{8\pi}`,
+    desc: "Heilman–Jagannath–Naor (Discrete Comput. Geom. 2013) prouvent la borne <strong>9/(8π)</strong> pour toute partition mesurable de <strong>R³</strong>. Preuve assistée par ordinateur : réduction aux configurations coniques à 4 cellules, géométrie sphérique, vérification d'un ε-net. C'est l'input externe majeur du papier (cas d=3, m≤4).",
+    draw: drawHJNPropeller,
     params: [
-      { key: 'height', label: "Hauteur d'extension", min: 20, max: 160, step: 1, value: 80 },
-      { key: 'opacity', label: 'Opacité des cubes', min: 0.2, max: 1, step: 0.01, value: 0.85 }
+      { key: 'showEmpty', label: 'Cellules vides A₄…Aₖ', type: 'bool', value: true }
     ],
     legendLeft: {
-      title: "Formes",
+      title: "Partition propeller",
       items: [
-        { color: '#ef4444', text: "Cube S₁" },
-        { color: '#3b82f6', text: "Cube S₂" },
-        { color: '#22c55e', text: "Cube S₃" }
+        { color: '#ef4444', text: "Secteur S₁ × ℝ" },
+        { color: '#3b82f6', text: "Secteur S₂ × ℝ" },
+        { color: '#22c55e', text: "Secteur S₃ × ℝ" }
+      ],
+      eq: String.raw`A_i=P_i\times\mathbb{R}`
+    },
+    legendRight: {
+      title: "Résultat",
+      items: [
+        { color: '#a855f7', text: "Borne 9/(8π) en R³" },
+        { color: '#eab308', text: "Preuve computer-assisted" },
+        { color: '#fff', text: "Exclut m≤4 comme contre-ex." }
+      ],
+      eq: String.raw`\mathrm{HJN\ [4,\ Thm\ 1.1]}`
+    }
+  },
+  {
+    id: 'ehrhard', tag: 'EXT', title: "Inégalité d'Ehrhard (Borell)",
+    tex: String.raw`\Phi^{-1}(\gamma(\lambda A+(1-\lambda)B))\ge\lambda\Phi^{-1}(\gamma(A))+(1-\lambda)\Phi^{-1}(\gamma(B))`,
+    desc: "Ehrhard (1983) pour ensembles convexes ; Latała (un ensemble convexe) ; <strong>Borell (2003)</strong> pour tous les boréliens. La fonction Φ⁻¹∘γ est concave sous addition de Minkowski. Input géométrique central des bornes de probabilité (Lemme 3.1) et de la structure des centroïdes.",
+    draw: drawEhrhard,
+    params: [
+      { key: 'lambda', label: 'λ (Minkowski)', min: 0.1, max: 0.9, step: 0.05, value: 0.5 }
+    ],
+    legendLeft: {
+      title: "Ensembles",
+      items: [
+        { color: '#ef4444', text: "A — ensemble borélien" },
+        { color: '#3b82f6', text: "B — ensemble borélien" },
+        { color: '#22c55e', text: "λA+(1−λ)B — somme de Minkowski" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Conséquences",
+      items: [
+        { color: '#eab308', text: "Isopérimétrie gaussienne" },
+        { color: '#a855f7', text: "Concavité de Φ⁻¹∘γ" },
+        { color: '#fff', text: "Input du Lemme 3.1" }
+      ],
+      eq: String.raw`\mathrm{Borell\ [1,\ Thm\ 1.1]}`
+    }
+  },
+  {
+    id: 'ugc', tag: 'EXT', title: "Unique Games — input de dureté",
+    tex: String.raw`\mathrm{OPT}\ge 1-\varepsilon\ \Rightarrow\ \mathrm{val}\ge 1-\varepsilon,\quad \mathrm{OPT}\le\delta\ \Rightarrow\ \mathrm{val}\le\delta`,
+    desc: "Le Unique Games Theorem (et la conjecture de Khot) fournit, pour tout ε,δ>0, un jeu biparti à labels uniques avec gap (1−ε vs δ). C'est l'input de complexité du Théorème 6.3 et de la réduction Section 6.5 : sans cet écart, la NP-dureté du kernel-clustering ne suit pas.",
+    draw: drawUniqueGamesExt,
+    params: [
+      { key: 'eps', label: 'ε (complétude)', min: 0.02, max: 0.3, step: 0.02, value: 0.1 }
+    ],
+    legendLeft: {
+      title: "Jeu",
+      items: [
+        { color: '#3b82f6', text: "Variables xᵢ" },
+        { color: '#a855f7', text: "Contraintes (permutations)" },
+        { color: '#22c55e', text: "Arêtes satisfaites" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Gap",
+      items: [
+        { color: '#eab308', text: "Completeness ≥ 1−ε" },
+        { color: '#ef4444', text: "Soundness ≤ δ" },
+        { color: '#fff', text: "→ Thm 6.3 + réduction" }
+      ],
+      eq: String.raw`\mathrm{UGC\ /\ [9,\ Thm\ 1.1]}`
+    }
+  },
+  {
+    id: 'thm12', tag: 'EXT', title: "Thm 1.2 — Partition conique (Khot–Naor)",
+    tex: String.raw`\exists\text{ maximiseur conique dans }\mathrm{span}\{z_i\},\quad C_3=\frac{9}{8\pi}`,
+    desc: "Khot–Naor [5, Thm 1.2 & Cor. 3.4] : un maximiseur de F peut être choisi <strong>conique</strong> dans l'espace engendré par ses centroïdes. La valeur à 3 cellules est 9/(8π). Réduction géométrique fondamentale : on se ramène à des cônes de scores.",
+    draw: drawThm12,
+    params: [
+      { key: 'm', label: 'Nombre de cônes', min: 3, max: 6, step: 1, value: 3 }
+    ],
+    legendLeft: {
+      title: "Cônes",
+      items: [
+        { color: '#ef4444', text: "Cellule conique A₁" },
+        { color: '#3b82f6', text: "Cellule conique A₂" },
+        { color: '#22c55e', text: "Cellule conique A₃" }
+      ],
+      eq: String.raw`A_i=\{x:\langle z_i,x\rangle=\max_j\langle z_j,x\rangle\}`
+    },
+    legendRight: {
+      title: "Résultat",
+      items: [
+        { color: '#a855f7', text: "Maximiseur dans span{zᵢ}" },
+        { color: '#eab308', text: "Valeur 3 cellules = 9/(8π)" },
+        { color: '#fff', text: "Réduction dimensionnelle" }
+      ],
+      eq: String.raw`[5,\ \mathrm{Thm\ 1.2}]`
+    }
+  },
+  {
+    id: 'thm17', tag: 'EXT', title: "Thm 1.7 — Route conditionnelle (Heilman)",
+    tex: String.raw`m\in\{3,4\}\ \Rightarrow\ \text{borne propeller sous hypothèse hyperstable}`,
+    desc: "Heilman [3, Thm 1.7] donne une voie <strong>conditionnelle</strong> vers la borne propeller pour 3 ou 4 cellules en dimension arbitraire, via la notion d'ensembles hyperstables (points critiques de la stabilité au bruit). Complète HJN (d=3) pour les petits m.",
+    draw: drawThm17,
+    params: [
+      { key: 'cells', label: 'Cellules (3 ou 4)', min: 3, max: 4, step: 1, value: 4 }
+    ],
+    legendLeft: {
+      title: "Sphère",
+      items: [
+        { color: '#ef4444', text: "Région sphérique 1" },
+        { color: '#3b82f6', text: "Région sphérique 2" },
+        { color: '#22c55e', text: "Région sphérique 3" },
+        { color: '#a855f7', text: "Région sphérique 4" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Approche",
+      items: [
+        { color: '#eab308', text: "Hyperstabilité" },
+        { color: '#fff', text: "3–4 cellules, toute dimension" },
+        { color: '#a855f7', text: "Complément de HJN" }
+      ],
+      eq: String.raw`[3,\ \mathrm{Thm\ 1.7}]`
+    }
+  },
+  {
+    id: 'thm21', tag: 'EXT', title: "Thm 2.1 — Arrondi gaussien (Khot–Naor)",
+    tex: String.raw`\mathbb{E}\,\mathrm{val}_A(\sigma)\ge\frac{\mathrm{Clust}(A|I_k)}{\alpha_k},\quad\alpha_k=\frac{8\pi}{9}\Bigl(1-\frac1k\Bigr)`,
+    desc: "Khot–Naor [5, Thm 2.1] : l'arrondi gaussien des vecteurs SDP atteint en espérance le clustering optimal divisé par le facteur de perte α_k. Avec la borne propeller (Thm 1.1 du papier), α_k devient le seuil de dureté Unique Games pour le kernel-clustering.",
+    draw: drawThm21,
+    params: [
+      { key: 'k', label: 'Nombre de clusters k', min: 3, max: 8, step: 1, value: 3 }
+    ],
+    legendLeft: {
+      title: "SDP",
+      items: [
+        { color: '#ef4444', text: "Vecteur u₁" },
+        { color: '#3b82f6', text: "Vecteur u₂" },
+        { color: '#22c55e', text: "Vecteur u₃" }
+      ],
+      eq: String.raw`g\sim\mathcal{N}(0,I)`
+    },
+    legendRight: {
+      title: "Garantie",
+      items: [
+        { color: '#eab308', text: "Facteur α_k" },
+        { color: '#a855f7', text: "Arrondi par scores ⟨uᵢ,g⟩" },
+        { color: '#fff', text: "→ seuil de dureté α_k" }
+      ],
+      eq: String.raw`[5,\ \mathrm{Thm\ 2.1}]`
+    }
+  },
+  {
+    id: 'thm38', tag: 'EXT', title: "Thm 3.8 — Low-influence (Khot–Naor)",
+    tex: String.raw`\mathrm{Inf}_j^{\le\log(1/\tau_0)}(f_i)\le\tau_0\ \Rightarrow\ \mathrm{OBJ}(f)\le C_k+\eta`,
+    desc: "Khot–Naor [5, Thm 3.8] : si toutes les influences de Fourier de bas degré sont ≤ τ₀, alors l'objectif de clustering ne dépasse C_k+η. C'est l'input analytique du <strong>Théorème 6.2</strong> du papier (borne de low-influence) et de la soundness de la réduction.",
+    draw: drawThm38,
+    params: [],
+    legendLeft: {
+      title: "Influences",
+      items: [
+        { color: '#a855f7', text: "Barres — Infⱼ(fᵢ)" },
+        { color: '#ef4444', text: "Plan — seuil τ₀" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Conséquence",
+      items: [
+        { color: '#eab308', text: "OBJ(f) ≤ C_k+η" },
+        { color: '#fff', text: "= input du Thm 6.2" },
+        { color: '#22c55e', text: "Invariance / bruit" }
+      ],
+      eq: String.raw`[5,\ \mathrm{Thm\ 3.8}]`
+    }
+  },
+  {
+    id: 'lemma21', tag: 'LEM', title: "Lemme 2.1 — Dualité gaussienne-maximum",
+    tex: String.raw`\sqrt{C} = \max_{\sum\|v_i\|^2=1}\mathbb{E}\max_i\langle v_i,g\rangle`,
+    desc: "La dualité de norme identifie √C avec le plus grand espoir du score maximum sur des listes de vecteurs de norme totale un. L'optimum est atteint par une partition de scores. C'est le point de départ de toute la réduction géométrique.",
+    draw: drawDuality,
+    params: [
+      { key: 'n', label: 'Nombre de vecteurs', min: 2, max: 6, step: 1, value: 3 },
+      { key: 'showList', label: 'Afficher les vᵢ', type: 'bool', value: true },
+      { key: 'showPartition', label: 'Partition de scores', type: 'bool', value: true }
+    ],
+    legendLeft: {
+      title: "Côté dual",
+      items: [
+        { color: '#a855f7', text: "Sphère ∑‖vᵢ‖² = 1" },
+        { color: '#ef4444', text: "Vecteurs vᵢ" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Côté primal",
+      items: [
+        { color: '#22c55e', text: "Cônes de score" },
+        { color: '#eab308', text: "√C = E max ⟨vᵢ,g⟩" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'extrude', tag: 'THM', title: "Extension orthogonale en dimension d",
+    tex: String.raw`A_i = S_i \times \mathbb{R}^{d-2} \;\Longrightarrow\; \|z(A_i)\| = \|z(S_i)\|`,
+    desc: "Pour passer en dimension d ≥ 2, on multiplie chaque secteur par le <strong>facteur euclidien orthogonal</strong> ℝ^{d−2}. La composante orthogonale du centroïde est nulle en espérance, donc la <strong>norme du moment est préservée</strong> : la borne 9/(8π) reste atteinte. Les tranches fantômes illustrent l'extrusion.",
+    draw: drawPropeller3D,
+    params: [
+      { key: 'dim', label: 'Dimension d', min: 2, max: 8, step: 1, value: 3 },
+      { key: 'm', label: 'Nombre de pales m', min: 3, max: 6, step: 1, value: 3 },
+      { key: 'showExtrusion', label: "Afficher l'extrusion", type: 'bool', value: true }
+    ],
+    legendLeft: {
+      title: "Secteurs de base",
+      items: [
+        { color: '#ef4444', text: "Secteur S₁" },
+        { color: '#3b82f6', text: "Secteur S₂" },
+        { color: '#22c55e', text: "Secteur S₃" }
       ],
       eq: ""
     },
     legendRight: {
       title: "Axe",
       items: [
-        { color: '#555', text: "Axe pointillé — extension ℝ^{d−2}" },
-        { color: '#d4af37', text: "Anneaux dorés — guidage" }
+        { color: '#555', text: "Axe pointillé — extension ℝ^{d−2}" }
       ],
       eq: ""
     }
@@ -1482,10 +2450,12 @@ const SCENES = [
   {
     id: 'lemma22', tag: 'LEM', title: "Lemme 2.2 — Structure des centroïdes",
     tex: String.raw`\langle z_i, z_j \rangle < 0,\quad \dim V = m-1,\quad m \geq 5`,
-    desc: "Les centroïdes d'une partition extrémale ont des <strong>produits scalaires strictement négatifs</strong>. Leur span V est de dimension m−1, et les cellules optimales sont les <strong>cônes de score</strong> K_i. Le théorème de Heilman–Jagannath–Naor exclut m ≤ 4, d'où <strong>m ≥ 5</strong>. L'octaèdre rebondit au centre.",
+    desc: "Les centroïdes d'une partition extrémale ont des <strong>produits scalaires strictement négatifs</strong>. Leur span V est de dimension m−1, et les cellules optimales sont les <strong>cônes de score</strong> K_i. Le théorème de Heilman–Jagannath–Naor exclut m ≤ 4, d'où <strong>m ≥ 5</strong>.",
     draw: drawMinimalCells,
     params: [
-      { key: 'm', label: "Nombre de cellules m", min: 5, max: 8, step: 1, value: 5 }
+      { key: 'm', label: "Nombre de cellules m", min: 5, max: 8, step: 1, value: 5 },
+      { key: 'showOcta', label: "Afficher octaèdre", type: 'bool', value: true },
+      { key: 'showCones', label: "Afficher les cônes", type: 'bool', value: true }
     ],
     legendLeft: {
       title: "Cônes K_i",
@@ -1510,7 +2480,7 @@ const SCENES = [
   {
     id: 'scorecones', tag: 'LEM', title: "Cônes de score et partition",
     tex: String.raw`K_i = \{ x : \langle z_i - z_j,\, x\rangle \geq 0 \;\; \forall j \neq i \}`,
-    desc: "La partition optimale coïncide presque partout avec les <strong>cônes où le score ⟨z_i, x⟩ est maximal</strong>. Chaque K_i est un cône convexe fermé, et la somme des scores est nulle, ce qui force K_i ⊆ {X_i ≥ 0} et donc <strong>P_i ≤ 1/2</strong>. Les cônes orbitent autour du tore.",
+    desc: "La partition optimale coïncide presque partout avec les <strong>cônes où le score ⟨z_i, x⟩ est maximal</strong>. Chaque K_i est un cône convexe fermé, et la somme des scores est nulle, ce qui force K_i ⊆ {X_i ≥ 0} et donc <strong>P_i ≤ 1/2</strong>.",
     draw: drawScoreCones,
     params: [
       { key: 'm', label: 'Nombre de cônes', min: 5, max: 7, step: 1, value: 5 },
@@ -1541,7 +2511,7 @@ const SCENES = [
   {
     id: 'lemma31', tag: 'LEM', title: "Lemme 3.1 — Bornes de probabilité",
     tex: String.raw`P_i \geq A r_i^2,\quad P_i \geq 0.415\, r_i + 0.15\, r_i^2,\quad r_i \leq \tfrac{2}{3}`,
-    desc: "Chaque probabilité de cellule est minorée en fonction de son <strong>rayon normalisé</strong> r_i = ‖z_i‖/√C. La borne quadratique vient du réarrangement demi-espace ; la borne linéaire-quadratique combine la perte d'un score (inégalité d'Ehrhard) et la monotonie de G. Pour m = 5, le réarrangement sphérique améliore la constante à <strong>A = 0,929</strong>. L'hélicoïde tourne en arrière-plan.",
+    desc: "Chaque probabilité de cellule est minorée en fonction de son <strong>rayon normalisé</strong> r_i = ‖z_i‖/√C. La borne quadratique vient du réarrangement demi-espace ; la borne linéaire-quadratique combine la perte d'un score (inégalité d'Ehrhard) et la monotonie de G. Pour m = 5, le réarrangement sphérique améliore la constante à <strong>A = 0,929</strong>.",
     draw: drawProbabilityBound,
     params: [
       { key: 'A', label: 'Constante A', min: 0.88, max: 0.94, step: 0.001, value: 0.929 },
@@ -1569,7 +2539,7 @@ const SCENES = [
   {
     id: 'lemma41', tag: 'LEM', title: "Lemme 4.1 — Deux scores concurrents",
     tex: String.raw`D_{jk} \leq \frac{3}{\pi}\, t\,(1+a_j)(1+a_k)`,
-    desc: "En prenant la cellule de <strong>plus petit rayon normalisé</strong> t, on projette les autres scores orthogonalement. Le résidu Y est indépendant de T, et l'intégrale de la partie positive est majorée par la <strong>densité gaussienne maximale</strong> M. Le triangle d'intégration donne un facteur 27/6. Une particule dorée parcourt l'axe T.",
+    desc: "En prenant la cellule de <strong>plus petit rayon normalisé</strong> t, on projette les autres scores orthogonalement. Le résidu Y est indépendant de T, et l'intégrale de la partie positive est majorée par la <strong>densité gaussienne maximale</strong> M. Le triangle d'intégration donne un facteur 27/6.",
     draw: drawTwoScores,
     params: [
       { key: 't', label: 'Plus petit rayon t', min: 0.05, max: 0.2, step: 0.001, value: 0.11 },
@@ -1598,7 +2568,7 @@ const SCENES = [
   {
     id: 'cor42', tag: 'COR', title: "Corollaire 4.2 — Contraintes sur les rayons",
     tex: String.raw`(c - t^2)(L - c - 2t^2) \leq 8\left(\tfrac{3}{\pi}\right)^2 t^2`,
-    desc: "Les covariances négatives empêchent tous les déterminants D_jk d'être petits simultanément. En sommant les inégalités du Lemme 4.1 sur les trois plus grands rayons, on obtient deux <strong>contraintes scalaires</strong> reliant L = r₁² + r₂², c = r₃² et t = r_m. L'icosaèdre tourne, une particule suit e(u).",
+    desc: "Les covariances négatives empêchent tous les déterminants D_jk d'être petits simultanément. En sommant les inégalités du Lemme 4.1 sur les trois plus grands rayons, on obtient deux <strong>contraintes scalaires</strong> reliant L = r₁² + r₂², c = r₃² et t = r_m.",
     draw: drawSmallMin,
     params: [
       { key: 'A', label: 'Constante A', min: 0.88, max: 0.94, step: 0.001, value: 0.929 },
@@ -1625,7 +2595,7 @@ const SCENES = [
   {
     id: 'cor51', tag: 'COR', title: "Corollaire 5.1 — Maximum gaussien",
     tex: String.raw`\mathbb{E}\max_i \langle v_i, g\rangle \leq \frac{3}{2\sqrt{2\pi}}\left(\sum_i \|v_i - \bar v\|^2\right)^{1/2}`,
-    desc: "En centrant les vecteurs par leur moyenne v̄, on obtient une <strong>inégalité sharp pour le maximum gaussien</strong>. La constante est atteinte par les trois vecteurs centroïdes de l'hélice plane. Les vecteurs tournent et l'onde gaussienne pulse.",
+    desc: "En centrant les vecteurs par leur moyenne v̄, on obtient une <strong>inégalité sharp pour le maximum gaussien</strong>. La constante est atteinte par les trois vecteurs centroïdes de l'hélice plane.",
     draw: drawGaussianMax,
     params: [
       { key: 'k', label: 'Nombre de vecteurs k', min: 3, max: 5, step: 1, value: 3 }
@@ -1651,9 +2621,13 @@ const SCENES = [
   {
     id: 'mainthm', tag: 'THM', title: "Théorème 1.1 — Borne universelle",
     tex: String.raw`\sum_{i=1}^{k}\left\|\int_{A_i} x\, d\gamma_d(x)\right\|^2 \leq \frac{9}{8\pi}`,
-    desc: "Pour toute partition mesurable finie de ℝ^d, la somme des carrés des longueurs des premiers moments gaussiens est majorée par <strong>9/(8π)</strong>. La borne est atteinte pour d ≥ 2 et k ≥ 3 par les trois secteurs plans de 120° étendus orthogonalement. Le tore et les trois rubans tournent.",
+    desc: "Pour toute partition mesurable finie de ℝ^d, la somme des carrés des longueurs des premiers moments gaussiens est majorée par <strong>9/(8π)</strong>. La borne est atteinte pour d ≥ 2 et k ≥ 3 par les trois secteurs plans de 120° étendus orthogonalement.",
     draw: drawMainTheorem,
-    params: [],
+    params: [
+      { key: 'showTorus', label: 'Afficher le tore', type: 'bool', value: true },
+      { key: 'showRibbons', label: 'Afficher les rubans', type: 'bool', value: true },
+      { key: 'ribbonWidth', label: 'Largeur des rubans', min: 0.1, max: 0.6, step: 0.05, value: 0.3 }
+    ],
     legendLeft: {
       title: "Rubans",
       items: [
@@ -1727,7 +2701,7 @@ const SCENES = [
     tex: String.raw`\text{3SAT} \longrightarrow \text{Unique Games over } \mathbb{F}_2^s,\quad (1-\varepsilon,\,\delta)`,
     desc: "Pour tous ε, δ ∈ (0, 1/2) fixés, il existe s ≥ 1 et une réduction déterministe polynomiale de 3SAT vers des instances Unique Games bipartites simples non pondérées sur F₂^s. Si la formule est satisfiable, le jeu a un étiquetage satisfaisant ≥ 1 − ε des arêtes ; sinon, tout étiquetage en satisfait ≤ δ.",
     draw: drawUniqueGames,
-    params: [],
+    params: [], // Plus de paramètres pour éviter l'erreur
     legendLeft: {
       title: "Sommets",
       items: [
@@ -1741,6 +2715,58 @@ const SCENES = [
       items: [
         { color: '#22c55e', text: "Satisfaites (≥ 1 − ε)" },
         { color: '#ef4444', text: "Violées (≤ δ)" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'completeness', tag: 'LEM', title: "Lemme 6.5 — Completeness",
+    tex: String.raw`\mathrm{Clust}(A|I_k)\ge\bigl(1-\tfrac1k\bigr)(1-\varepsilon)^2`,
+    desc: "Si un étiquetage du jeu Unique Games satisfait au moins 1−ε des arêtes, alors la matrice construite vérifie <strong>Clust(A|I_k) ≥ (1−1/k)(1−ε)²</strong>. C'est le sens de complétude de la réduction.",
+    draw: drawCompleteness,
+    params: [
+      { key: 'eps', label: 'ε (erreur)', min: 0.02, max: 0.3, step: 0.01, value: 0.1 },
+      { key: 'k', label: 'Nombre de clusters k', min: 3, max: 5, step: 1, value: 3 }
+    ],
+    legendLeft: {
+      title: "Sommets",
+      items: [
+        { color: '#ef4444', text: "Variables vᵢ" },
+        { color: '#eab308', text: "Contraintes wⱼ" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Arêtes",
+      items: [
+        { color: '#22c55e', text: "Satisfaites (≥ 1−ε)" },
+        { color: '#22c55e', text: "Borne de complétude" }
+      ],
+      eq: ""
+    }
+  },
+  {
+    id: 'soundness', tag: 'LEM', title: "Lemme 6.6 — Soundness",
+    tex: String.raw`\mathrm{Clust}(A|I_k)\le C_*+2\eta\quad(\delta<\eta\tau^2/(4kD))`,
+    desc: "Si tout étiquetage satisfait au plus δ des arêtes (avec δ assez petit), alors <strong>Clust(A|I_k) ≤ C* + 2η</strong>. Les barres d'influence qui dépassent le seuil τ forcent l'existence d'un étiquetage de bonne valeur, contredisant l'hypothèse.",
+    draw: drawSoundness,
+    params: [
+      { key: 'delta', label: 'δ (soundness)', min: 0.01, max: 0.15, step: 0.005, value: 0.05 },
+      { key: 'eta', label: 'η', min: 0.02, max: 0.2, step: 0.01, value: 0.08 }
+    ],
+    legendLeft: {
+      title: "Influences",
+      items: [
+        { color: '#a855f7', text: "Inf ≤ τ (OK)" },
+        { color: '#ef4444', text: "Inf > τ (détecté)" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Conclusion",
+      items: [
+        { color: '#ef4444', text: "Clust ≤ C* + 2η" },
+        { color: '#fff', text: "Contradiction si δ trop petit" }
       ],
       eq: ""
     }
@@ -1798,18 +2824,716 @@ const SCENES = [
 ];
 
 /* =====================================================================
-   6. UI LOGIC
+   5b. I18N — French / American English
    ===================================================================== */
-let currentScene = SCENES[0];
+let lang = 'fr'; // 'fr' | 'en'
+
+const UI = {
+  fr: {
+    panel: '☰ Scènes & Paramètres',
+    full: '⛶ Plein écran',
+    params: 'Paramètres de la figure',
+    render: 'Rendu & Physique',
+    damp: 'Inertie',
+    speed: 'Vitesse',
+    light: "Angle d'éclairage",
+    bg: 'Opacité du fond',
+    shapes: 'Polyèdres & Formes (Easter Eggs)',
+    timeline: '⏱ Timeline & Cinéma',
+    cinema: '▶ Lancer le mode cinéma',
+    cinemaStop: '⏸ Arrêter le mode cinéma',
+    record: 'Enregistrement',
+    recordBtn: '● Enregistrer la scène',
+    recTitle: 'Enregistrement Vidéo',
+    recRes: 'Choisir la résolution de la vidéo',
+    recStart: "Démarrer l'enregistrement",
+    recCancel: 'Annuler',
+    step: 'Étape',
+    noParams: 'Aucun paramètre.',
+    auto: '↻ Auto',
+    pause: '⏸ Pause',
+    grid: '# Grille',
+    wire: '🕸 Fil de Fer',
+    labels: '🏷 Labels',
+    particles: '✦ Particules',
+    shapesList: [
+      { key: 'cube', name: 'Cube' },
+      { key: 'octahedron', name: 'Octaèdre' },
+      { key: 'icosahedron', name: 'Icosaèdre' },
+      { key: 'torus', name: 'Tore' },
+      { key: 'helicoid', name: 'Hélicoïde' },
+      { key: 'spiral', name: 'Spirale' },
+      { key: 'tesseract', name: 'Tesseract' },
+      { key: 'gaussianSurface', name: 'Surface Gauss.' },
+      { key: 'convexHull', name: 'Enveloppe Conv.' }
+    ]
+  },
+  en: {
+    panel: '☰ Scenes & Settings',
+    full: '⛶ Fullscreen',
+    params: 'Figure parameters',
+    render: 'Render & Physics',
+    damp: 'Damping',
+    speed: 'Speed',
+    light: 'Light angle',
+    bg: 'Background opacity',
+    shapes: 'Polyhedra & Shapes (Easter Eggs)',
+    timeline: '⏱ Timeline & Cinema',
+    cinema: '▶ Start cinema mode',
+    cinemaStop: '⏸ Stop cinema mode',
+    record: 'Recording',
+    recordBtn: '● Record scene',
+    recTitle: 'Video Recording',
+    recRes: 'Choose video resolution',
+    recStart: 'Start recording',
+    recCancel: 'Cancel',
+    step: 'Step',
+    noParams: 'No parameters.',
+    auto: '↻ Auto',
+    pause: '⏸ Pause',
+    grid: '# Grid',
+    wire: '🕸 Wireframe',
+    labels: '🏷 Labels',
+    particles: '✦ Particles',
+    shapesList: [
+      { key: 'cube', name: 'Cube' },
+      { key: 'octahedron', name: 'Octahedron' },
+      { key: 'icosahedron', name: 'Icosahedron' },
+      { key: 'torus', name: 'Torus' },
+      { key: 'helicoid', name: 'Helicoid' },
+      { key: 'spiral', name: 'Spiral' },
+      { key: 'tesseract', name: 'Tesseract' },
+      { key: 'gaussianSurface', name: 'Gaussian Surface' },
+      { key: 'convexHull', name: 'Convex Hull' }
+    ]
+  }
+};
+
+/* English scene content (keyed by id). French is the default in STORY. */
+const STORY_EN = {
+  intro: {
+    title: "The 2D Propeller",
+    desc: "The propeller is made of <strong>m planar sectors of 2π/m</strong> (3 sectors of 120° by default). For m=3 and α = π/3, the squared centroid lengths sum to 3 sin²(π/3)/(2π) = 9/(8π). This is the configuration that <strong>attains the bound</strong> of the conjecture.",
+    legendLeft: {
+      title: "Sectors & Centroids",
+      items: [
+        { color: '#ef4444', text: "<strong>ẑ₁</strong> — Centroid of sector S₁" },
+        { color: '#3b82f6', text: "<strong>ẑ₂</strong> — Centroid of sector S₂" },
+        { color: '#22c55e', text: "<strong>ẑ₃</strong> — Centroid of sector S₃" }
+      ],
+      eq: String.raw`\sum \hat{z}_i = 0`
+    },
+    legendRight: {
+      title: "Properties",
+      items: [
+        { color: '#a855f7', text: "Angle between sectors: <strong>2π/m</strong>" },
+        { color: '#fff', text: "Attains the upper bound" },
+        { color: '#fff', text: "Invariant in dimension d ≥ 2" }
+      ],
+      eq: String.raw`A_i = S_i \times \mathbb{R}^{d-2}`
+    },
+    paramLabels: { m: 'Number of blades m', opacity: 'Opacity', showCentroids: 'Centroids ẑᵢ', showLabels: 'Labels Sᵢ' }
+  },
+  hjn2013: {
+    title: "HJN 2013 — Propeller in R³",
+    desc: "Heilman–Jagannath–Naor (Discrete Comput. Geom. 2013) prove the bound <strong>9/(8π)</strong> for every measurable partition of <strong>R³</strong>. Computer-assisted proof: reduction to conical 4-cell configurations, spherical geometry, ε-net verification. This is the major external input of the paper (case d=3, m≤4).",
+    legendLeft: {
+      title: "Propeller partition",
+      items: [
+        { color: '#ef4444', text: "Sector S₁ × ℝ" },
+        { color: '#3b82f6', text: "Sector S₂ × ℝ" },
+        { color: '#22c55e', text: "Sector S₃ × ℝ" }
+      ],
+      eq: String.raw`A_i=P_i\times\mathbb{R}`
+    },
+    legendRight: {
+      title: "Result",
+      items: [
+        { color: '#a855f7', text: "Bound 9/(8π) in R³" },
+        { color: '#eab308', text: "Computer-assisted proof" },
+        { color: '#fff', text: "Rules out m≤4 as counterex." }
+      ],
+      eq: String.raw`\mathrm{HJN\ [4,\ Thm\ 1.1]}`
+    },
+    paramLabels: { showEmpty: 'Empty cells A₄…Aₖ' }
+  },
+  ehrhard: {
+    title: "Ehrhard Inequality (Borell)",
+    desc: "Ehrhard (1983) for convex sets; Latała (one convex set); <strong>Borell (2003)</strong> for all Borel sets. The map Φ⁻¹∘γ is concave under Minkowski addition. Central geometric input for the probability bounds (Lemma 3.1) and the structure of centroids.",
+    legendLeft: {
+      title: "Sets",
+      items: [
+        { color: '#ef4444', text: "A — Borel set" },
+        { color: '#3b82f6', text: "B — Borel set" },
+        { color: '#22c55e', text: "λA+(1−λ)B — Minkowski sum" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Consequences",
+      items: [
+        { color: '#eab308', text: "Gaussian isoperimetry" },
+        { color: '#a855f7', text: "Concavity of Φ⁻¹∘γ" },
+        { color: '#fff', text: "Input to Lemma 3.1" }
+      ],
+      eq: String.raw`\mathrm{Borell\ [1,\ Thm\ 1.1]}`
+    },
+    paramLabels: { lambda: 'λ (Minkowski)' }
+  },
+  ugc: {
+    title: "Unique Games — hardness input",
+    desc: "The Unique Games Theorem (and Khot’s conjecture) provides, for every ε,δ>0, a bipartite unique-label game with gap (1−ε vs δ). This is the complexity-theoretic input of Theorem 6.3 and the Section 6.5 reduction: without this gap, NP-hardness of kernel clustering does not follow.",
+    legendLeft: {
+      title: "Game",
+      items: [
+        { color: '#3b82f6', text: "Variables xᵢ" },
+        { color: '#a855f7', text: "Constraints (permutations)" },
+        { color: '#22c55e', text: "Satisfied edges" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Gap",
+      items: [
+        { color: '#eab308', text: "Completeness ≥ 1−ε" },
+        { color: '#ef4444', text: "Soundness ≤ δ" },
+        { color: '#fff', text: "→ Thm 6.3 + reduction" }
+      ],
+      eq: String.raw`\mathrm{UGC\ /\ [9,\ Thm\ 1.1]}`
+    },
+    paramLabels: { eps: 'ε (completeness)' }
+  },
+  thm12: {
+    title: "Thm 1.2 — Conical partition (Khot–Naor)",
+    desc: "Khot–Naor [5, Thm 1.2 & Cor. 3.4]: a maximizer of F can be chosen <strong>conical</strong> in the span of its centroids. The 3-cell value is 9/(8π). Fundamental geometric reduction: one reduces to score cones.",
+    legendLeft: {
+      title: "Cones",
+      items: [
+        { color: '#ef4444', text: "Conical cell A₁" },
+        { color: '#3b82f6', text: "Conical cell A₂" },
+        { color: '#22c55e', text: "Conical cell A₃" }
+      ],
+      eq: String.raw`A_i=\{x:\langle z_i,x\rangle=\max_j\langle z_j,x\rangle\}`
+    },
+    legendRight: {
+      title: "Result",
+      items: [
+        { color: '#a855f7', text: "Maximizer in span{zᵢ}" },
+        { color: '#eab308', text: "3-cell value = 9/(8π)" },
+        { color: '#fff', text: "Dimensional reduction" }
+      ],
+      eq: String.raw`[5,\ \mathrm{Thm\ 1.2}]`
+    },
+    paramLabels: { m: 'Number of cones' }
+  },
+  thm17: {
+    title: "Thm 1.7 — Conditional route (Heilman)",
+    desc: "Heilman [3, Thm 1.7] gives a <strong>conditional</strong> path to the propeller bound for 3 or 4 cells in arbitrary dimension, via hyperstable sets (critical points of noise stability). Complements HJN (d=3) for small m.",
+    legendLeft: {
+      title: "Sphere",
+      items: [
+        { color: '#ef4444', text: "Spherical region 1" },
+        { color: '#3b82f6', text: "Spherical region 2" },
+        { color: '#22c55e', text: "Spherical region 3" },
+        { color: '#a855f7', text: "Spherical region 4" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Approach",
+      items: [
+        { color: '#eab308', text: "Hyperstability" },
+        { color: '#fff', text: "3–4 cells, any dimension" },
+        { color: '#a855f7', text: "Complement of HJN" }
+      ],
+      eq: String.raw`[3,\ \mathrm{Thm\ 1.7}]`
+    },
+    paramLabels: { cells: 'Cells (3 or 4)' }
+  },
+  thm21: {
+    title: "Thm 2.1 — Gaussian rounding (Khot–Naor)",
+    desc: "Khot–Naor [5, Thm 2.1]: Gaussian rounding of the SDP vectors achieves in expectation the optimal clustering divided by the loss factor α_k. With the propeller bound (Thm 1.1 of the paper), α_k becomes the Unique Games hardness threshold for kernel clustering.",
+    legendLeft: {
+      title: "SDP",
+      items: [
+        { color: '#ef4444', text: "Vector u₁" },
+        { color: '#3b82f6', text: "Vector u₂" },
+        { color: '#22c55e', text: "Vector u₃" }
+      ],
+      eq: String.raw`g\sim\mathcal{N}(0,I)`
+    },
+    legendRight: {
+      title: "Guarantee",
+      items: [
+        { color: '#eab308', text: "Factor α_k" },
+        { color: '#a855f7', text: "Rounding by scores ⟨uᵢ,g⟩" },
+        { color: '#fff', text: "→ hardness threshold α_k" }
+      ],
+      eq: String.raw`[5,\ \mathrm{Thm\ 2.1}]`
+    },
+    paramLabels: { k: 'Number of clusters k' }
+  },
+  thm38: {
+    title: "Thm 3.8 — Low-influence (Khot–Naor)",
+    desc: "Khot–Naor [5, Thm 3.8]: if all low-degree Fourier influences are ≤ τ₀, then the clustering objective does not exceed C_k+η. This is the analytic input of the paper’s <strong>Theorem 6.2</strong> (low-influence bound) and of the reduction’s soundness.",
+    legendLeft: {
+      title: "Influences",
+      items: [
+        { color: '#a855f7', text: "Bars — Infⱼ(fᵢ)" },
+        { color: '#ef4444', text: "Plane — threshold τ₀" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Consequence",
+      items: [
+        { color: '#eab308', text: "OBJ(f) ≤ C_k+η" },
+        { color: '#fff', text: "= input of Thm 6.2" },
+        { color: '#22c55e', text: "Invariance / noise" }
+      ],
+      eq: String.raw`[5,\ \mathrm{Thm\ 3.8}]`
+    },
+    paramLabels: {}
+  },
+  lemma21: {
+    title: "Lemma 2.1 — Gaussian-max duality",
+    desc: "Norm duality identifies √C with the largest expected maximum score over lists of vectors of total squared norm one. The optimum is attained by a score partition. This is the starting point of the entire geometric reduction.",
+    legendLeft: {
+      title: "Dual side",
+      items: [
+        { color: '#a855f7', text: "Sphere ∑‖vᵢ‖² = 1" },
+        { color: '#ef4444', text: "Vectors vᵢ" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Primal side",
+      items: [
+        { color: '#22c55e', text: "Score cones" },
+        { color: '#eab308', text: "√C = E max ⟨vᵢ,g⟩" }
+      ],
+      eq: ""
+    },
+    paramLabels: { n: 'Number of vectors', showList: 'Show the vᵢ', showPartition: 'Score partition' }
+  },
+  extrude: {
+    title: "Orthogonal extension in dimension d",
+    desc: "To pass to dimension d ≥ 2, multiply each sector by the <strong>orthogonal Euclidean factor</strong> ℝ^{d−2}. The orthogonal component of the centroid vanishes in expectation, so the <strong>moment norm is preserved</strong>: the bound 9/(8π) remains attained. Ghost slices illustrate the extrusion.",
+    legendLeft: {
+      title: "Base sectors",
+      items: [
+        { color: '#ef4444', text: "Sector S₁" },
+        { color: '#3b82f6', text: "Sector S₂" },
+        { color: '#22c55e', text: "Sector S₃" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Axis",
+      items: [
+        { color: '#555', text: "Dotted axis — extension ℝ^{d−2}" }
+      ],
+      eq: ""
+    },
+    paramLabels: { dim: 'Dimension d', m: 'Number of blades m', showExtrusion: 'Show extrusion' }
+  },
+  lemma22: {
+    title: "Lemma 2.2 — Centroid structure",
+    desc: "Centroids of an extremal partition have <strong>strictly negative inner products</strong>. Their span V has dimension m−1, and optimal cells are the <strong>score cones</strong> K_i. The Heilman–Jagannath–Naor theorem rules out m ≤ 4, hence <strong>m ≥ 5</strong>.",
+    legendLeft: {
+      title: "Cones K_i",
+      items: [
+        { color: '#ef4444', text: "Cone 1" },
+        { color: '#3b82f6', text: "Cone 2" },
+        { color: '#22c55e', text: "Cone 3" },
+        { color: '#a855f7', text: "Cone 4" },
+        { color: '#eab308', text: "Cone 5" }
+      ],
+      eq: String.raw`\langle z_i, z_j \rangle < 0`
+    },
+    legendRight: {
+      title: "Origin",
+      items: [
+        { color: '#ef4444', text: "Octahedron — physical bounce" },
+        { color: '#fff', text: "Arrows z_i — normalized centroids" }
+      ],
+      eq: ""
+    },
+    paramLabels: { m: 'Number of cells m', showOcta: 'Show octahedron', showCones: 'Show cones' }
+  },
+  scorecones: {
+    title: "Score cones and partition",
+    desc: "The optimal partition coincides almost everywhere with the <strong>cones where the score ⟨z_i, x⟩ is maximal</strong>. Each K_i is a closed convex cone, and the sum of scores is zero, which forces K_i ⊆ {X_i ≥ 0} and thus <strong>P_i ≤ 1/2</strong>.",
+    legendLeft: {
+      title: "Cones",
+      items: [
+        { color: '#ef4444', text: "Cone K₁" },
+        { color: '#3b82f6', text: "Cone K₂" },
+        { color: '#22c55e', text: "Cone K₃" },
+        { color: '#a855f7', text: "Cone K₄" },
+        { color: '#eab308', text: "Cone K₅" }
+      ],
+      eq: String.raw`P_i \leq 1/2`
+    },
+    legendRight: {
+      title: "Torus",
+      items: [
+        { color: '#06b6d4', text: "Span V ≅ ℝ^{m−1}" },
+        { color: '#fff', text: "Slow rotation of the cones" }
+      ],
+      eq: ""
+    },
+    paramLabels: { m: 'Number of cones', spread: 'Aperture', coneR: 'Radius', showCones: 'Cones K_i' }
+  },
+  lemma31: {
+    title: "Lemma 3.1 — Probability bounds",
+    desc: "Each cell probability is lower-bounded in terms of its <strong>normalized radius</strong> r_i = ‖z_i‖/√C. The quadratic bound comes from half-space rearrangement; the linear-quadratic bound combines score loss (Ehrhard inequality) and monotonicity of G. For m = 5, spherical rearrangement improves the constant to <strong>A = 0.929</strong>.",
+    legendLeft: {
+      title: "Curves",
+      items: [
+        { color: '#ef4444', text: "<strong>P ≥ A r²</strong> — Quadratic" },
+        { color: '#3b82f6', text: "<strong>P ≥ 0.415r + 0.15r²</strong>" },
+        { color: '#555', text: "<strong>P = r²</strong> — Reference" }
+      ],
+      eq: String.raw`r_i \leq \frac{2}{3}`
+    },
+    legendRight: {
+      title: "Context",
+      items: [
+        { color: '#eab308', text: "Helicoid — reference surface" },
+        { color: '#eab308', text: "Particles — follow the red curve" }
+      ],
+      eq: ""
+    },
+    paramLabels: { A: 'Constant A', showQuad: 'Quadratic bound', showLin: 'Linear bound' }
+  },
+  lemma41: {
+    title: "Lemma 4.1 — Two competing scores",
+    desc: "Taking the cell of <strong>smallest normalized radius</strong> t, one projects the other scores orthogonally. The residual Y is independent of T, and the integral of the positive part is bounded by the <strong>maximal Gaussian density</strong> M. The integration triangle yields a factor 27/6.",
+    legendLeft: {
+      title: "Axes",
+      items: [
+        { color: '#888', text: "<strong>T</strong> — Main score" },
+        { color: '#3b82f6', text: "<strong>Y_j</strong> — Residual j" },
+        { color: '#22c55e', text: "<strong>Y_k</strong> — Residual k" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Regions",
+      items: [
+        { color: '#ef4444', text: "Triangle — T ≥ 0, Y ≤ (1+a)tT" },
+        { color: '#3b82f6', text: "Ellipse — Gaussian density" },
+        { color: '#e67e22', text: "Spiral — guide of the minimal score" }
+      ],
+      eq: ""
+    },
+    paramLabels: { t: 'Smallest radius t', aj: 'Coefficient a_j', ak: 'Coefficient a_k' }
+  },
+  cor42: {
+    title: "Corollary 4.2 — Constraints on radii",
+    desc: "Negative covariances prevent all determinants D_jk from being small simultaneously. Summing the inequalities of Lemma 4.1 over the three largest radii yields two <strong>scalar constraints</strong> relating L = r₁² + r₂², c = r₃² and t = r_m.",
+    legendLeft: {
+      title: "Curve",
+      items: [
+        { color: '#ef4444', text: "e(u) = 0.415u − du²" },
+        { color: '#3b82f6', text: "Point q₀ = 0.066" },
+        { color: '#22c55e', text: "Point t₀ ≈ 0.107" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Context",
+      items: [
+        { color: '#a855f7', text: "Icosahedron — rotation" },
+        { color: '#d4af37', text: "Particle — follows e(u)" }
+      ],
+      eq: ""
+    },
+    paramLabels: { A: 'Constant A', t0: 'Root t₀' }
+  },
+  cor51: {
+    title: "Corollary 5.1 — Gaussian maximum",
+    desc: "Centering the vectors by their mean v̄ yields a <strong>sharp inequality for the Gaussian maximum</strong>. The constant is attained by the three centroid vectors of the planar propeller.",
+    legendLeft: {
+      title: "Vectors",
+      items: [
+        { color: '#ef4444', text: "u₁ — v₁ − v̄" },
+        { color: '#3b82f6', text: "u₂ — v₂ − v̄" },
+        { color: '#22c55e', text: "u₃ — v₃ − v̄" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Mean",
+      items: [
+        { color: '#d4af37', text: "Point v̄" },
+        { color: '#fff', text: "White circle — envelope" }
+      ],
+      eq: ""
+    },
+    paramLabels: { k: 'Number of vectors k' }
+  },
+  mainthm: {
+    title: "Theorem 1.1 — Universal bound",
+    desc: "For every finite measurable partition of ℝ^d, the sum of squared lengths of the Gaussian first moments is at most <strong>9/(8π)</strong>. The bound is attained for d ≥ 2 and k ≥ 3 by the three planar 120° sectors extended orthogonally.",
+    legendLeft: {
+      title: "Ribbons",
+      items: [
+        { color: '#ef4444', text: "Ribbon S₁ — contributes ‖z₁‖²" },
+        { color: '#3b82f6', text: "Ribbon S₂ — contributes ‖z₂‖²" },
+        { color: '#22c55e', text: "Ribbon S₃ — contributes ‖z₃‖²" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Torus",
+      items: [
+        { color: '#d4af37', text: "Torus — ambient space ℝ^d" },
+        { color: '#fff', text: "Sum = 9/(8π)" }
+      ],
+      eq: ""
+    },
+    paramLabels: { showTorus: 'Show torus', showRibbons: 'Show ribbons', ribbonWidth: 'Ribbon width' }
+  },
+  kernel: {
+    title: "Theorem 6.1 — NP-hard clustering",
+    desc: "For fixed k ≥ 3 and 1 ≤ α < α_k, it is <strong>NP-hard</strong> to find a partition σ such that val_A(σ) ≥ Clust(A|I_k)/α. The graph illustrates clusters and intra-cluster edges (gold).",
+    legendLeft: {
+      title: "Clusters",
+      items: [
+        { color: '#ef4444', text: "C₁ (red)" },
+        { color: '#3b82f6', text: "C₂ (blue)" },
+        { color: '#22c55e', text: "C₃ (green)" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Edges",
+      items: [
+        { color: '#eab308', text: "Intra-cluster (strong)" },
+        { color: '#fff', text: "α_k — hardness threshold" }
+      ],
+      eq: ""
+    },
+    paramLabels: { k: 'Number of clusters', N: 'Number of vertices' }
+  },
+  lowinfluence: {
+    title: "Theorem 6.2 — Low-influence bound",
+    desc: "For fixed k and any η > 0, there exists τ₀ such that every function f with Fourier influences Inf_j ≤ τ₀ satisfies OBJ(f) ≤ C_k + η. Purple bars show these influences.",
+    legendLeft: {
+      title: "Influences",
+      items: [
+        { color: '#a855f7', text: "Bars — Inf_j(f_i)" },
+        { color: '#ef4444', text: "Red line — threshold τ" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Bound",
+      items: [
+        { color: '#fff', text: "OBJ(f) ≤ C_k + η" },
+        { color: '#a0a0b0', text: "Invariance principle" }
+      ],
+      eq: ""
+    },
+    paramLabels: {}
+  },
+  uniquegames: {
+    title: "Theorem 6.3 — Unique Games input",
+    desc: "For all ε, δ ∈ (0, 1/2) fixed, there exist s ≥ 1 and a deterministic polynomial reduction from 3SAT to simple unweighted bipartite Unique Games instances over F₂^s. If the formula is satisfiable, the game has a labeling satisfying ≥ 1 − ε of the edges; otherwise every labeling satisfies ≤ δ.",
+    legendLeft: {
+      title: "Vertices",
+      items: [
+        { color: '#22c55e', text: "v_i — Variables" },
+        { color: '#ef4444', text: "w_j — Constraints" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Edges",
+      items: [
+        { color: '#22c55e', text: "Satisfied (≥ 1 − ε)" },
+        { color: '#ef4444', text: "Violated (≤ δ)" }
+      ],
+      eq: ""
+    },
+    paramLabels: {}
+  },
+  completeness: {
+    title: "Lemma 6.5 — Completeness",
+    desc: "If a labeling of the Unique Games instance satisfies at least 1−ε of the edges, then the constructed matrix satisfies <strong>Clust(A|I_k) ≥ (1−1/k)(1−ε)²</strong>. This is the completeness direction of the reduction.",
+    legendLeft: {
+      title: "Vertices",
+      items: [
+        { color: '#ef4444', text: "Variables vᵢ" },
+        { color: '#eab308', text: "Constraints wⱼ" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Edges",
+      items: [
+        { color: '#22c55e', text: "Satisfied (≥ 1−ε)" },
+        { color: '#22c55e', text: "Completeness bound" }
+      ],
+      eq: ""
+    },
+    paramLabels: { eps: 'ε (error)', k: 'Number of clusters k' }
+  },
+  soundness: {
+    title: "Lemma 6.6 — Soundness",
+    desc: "If every labeling satisfies at most δ of the edges (with δ small enough), then <strong>Clust(A|I_k) ≤ C* + 2η</strong>. Influence bars that exceed the threshold τ force the existence of a high-value labeling, contradicting the hypothesis.",
+    legendLeft: {
+      title: "Influences",
+      items: [
+        { color: '#a855f7', text: "Inf ≤ τ (OK)" },
+        { color: '#ef4444', text: "Inf > τ (detected)" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Conclusion",
+      items: [
+        { color: '#ef4444', text: "Clust ≤ C* + 2η" },
+        { color: '#fff', text: "Contradiction if δ too small" }
+      ],
+      eq: ""
+    },
+    paramLabels: { delta: 'δ (soundness)', eta: 'η' }
+  },
+  reduction: {
+    title: "Section 6.5 — Full reduction",
+    desc: "Choose ε, η small so that α < (1 − 1/k)(1 − ε)²/(c* + 2η), then τ, D, δ. Apply Theorem 6.3, then Lemma 6.4. Lemmas 6.5 and 6.6 give the gap H = (1 − 1/k)(1 − ε)² and S = c* + 2η with S < H/α. An algorithm with loss α would decide 3SAT in polynomial time.",
+    legendLeft: {
+      title: "Steps",
+      items: [
+        { color: '#ef4444', text: "3SAT" },
+        { color: '#22c55e', text: "Unique Games" },
+        { color: '#3b82f6', text: "Matrix A" },
+        { color: '#a855f7', text: "Clust(A|I_k)" },
+        { color: '#d4af37', text: "θ" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Gap",
+      items: [
+        { color: '#ef4444', text: "S < H/α — separation" },
+        { color: '#eab308', text: "Particles — propagation" }
+      ],
+      eq: ""
+    },
+    paramLabels: {}
+  },
+  certificates: {
+    title: "Appendix A — Certificates",
+    desc: "All numerical comparisons in the proof are certified by rational enclosures: π via the arctan series, √x by bounding l² ≤ x ≤ u², e^{−y} and Φ(x) by truncated series, arcsin x by the binomial series. No numerical optimization or quadrature is required.",
+    legendLeft: {
+      title: "Enclosures",
+      items: [
+        { color: '#d4af37', text: "π ∈ (3.14159, 3.14160)" },
+        { color: '#22c55e', text: "Lower bound l" },
+        { color: '#ef4444', text: "Upper bound u" }
+      ],
+      eq: ""
+    },
+    legendRight: {
+      title: "Verification",
+      items: [
+        { color: '#eab308', text: "Particle — checks x ∈ [l, u]" },
+        { color: '#fff', text: "Pure rational arithmetic" }
+      ],
+      eq: ""
+    },
+    paramLabels: {}
+  }
+};
+
+function sceneTitle(s) {
+  if (lang === 'en' && STORY_EN[s.id]) return STORY_EN[s.id].title;
+  return s.title;
+}
+function sceneDesc(s) {
+  if (lang === 'en' && STORY_EN[s.id]) return STORY_EN[s.id].desc;
+  return s.desc;
+}
+function sceneLegend(s, side) {
+  if (lang === 'en' && STORY_EN[s.id]) {
+    return side === 'left' ? STORY_EN[s.id].legendLeft : STORY_EN[s.id].legendRight;
+  }
+  return side === 'left' ? s.legendLeft : s.legendRight;
+}
+function paramLabel(s, key, fallback) {
+  if (lang === 'en' && STORY_EN[s.id] && STORY_EN[s.id].paramLabels && STORY_EN[s.id].paramLabels[key]) {
+    return STORY_EN[s.id].paramLabels[key];
+  }
+  return fallback;
+}
+
+function applyLanguage() {
+  const u = UI[lang];
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  set('btn-panel', u.panel);
+  set('btn-full', u.full);
+  set('lbl-params', u.params);
+  set('lbl-render', u.render);
+  set('lbl-damp', u.damp);
+  set('lbl-speed', u.speed);
+  set('lbl-light', u.light);
+  set('lbl-bg', u.bg);
+  set('lbl-shapes', u.shapes);
+  set('lbl-timeline', u.timeline);
+  set('lbl-record', u.record);
+  set('btn-record', u.recordBtn);
+  set('lbl-rec-title', u.recTitle);
+  set('lbl-rec-res', u.recRes);
+  set('btn-start-rec', u.recStart);
+  set('btn-cancel-rec', u.recCancel);
+  set('btn-auto', u.auto);
+  set('btn-pause', u.pause);
+  set('btn-grid', u.grid);
+  set('btn-wireframe', u.wire);
+  set('btn-labels', u.labels);
+  set('btn-particles', u.particles);
+  // Keep cinema button state
+  const cine = document.getElementById('btn-cinema');
+  if (cine) cine.textContent = cinemaMode ? u.cinemaStop : u.cinema;
+  // Language buttons
+  document.getElementById('btn-lang-fr').classList.toggle('on', lang === 'fr');
+  document.getElementById('btn-lang-en').classList.toggle('on', lang === 'en');
+  // Re-render current scene content
+  if (currentScene) {
+    renderSceneList();
+    renderParams();
+    renderLegends();
+    renderShapeToggles();
+    updateTimelineUI();
+    document.getElementById('scene-title').textContent = sceneTitle(currentScene);
+    document.getElementById('description').innerHTML = sceneDesc(currentScene);
+  }
+}
+
+/* =====================================================================
+   6. UI LOGIC & STORYTELLING
+   ===================================================================== */
+let currentScene = STORY[0];
 let currentParams = {};
+let storyIndex = 0;
+let cinemaMode = false;
+let cinemaInterval = null;
 
 function renderSceneList() {
   const ul = document.getElementById('scene-list');
   ul.innerHTML = '';
-  SCENES.forEach((s, i) => {
+  STORY.forEach((s, i) => {
     const li = document.createElement('li');
-    li.innerHTML = `<span class="tag ${s.tag.toLowerCase()}">${s.tag}</span>${s.title}`;
-    li.addEventListener('click', () => selectScene(i));
+    li.innerHTML = `<span class="tag ${s.tag.toLowerCase()}">${s.tag}</span>${sceneTitle(s)}`;
+    li.addEventListener('click', () => {
+      if (cinemaMode) toggleCinema();
+      storyIndex = i;
+      selectScene(i);
+    });
     if (s === currentScene) li.classList.add('active');
     ul.appendChild(li);
   });
@@ -1818,18 +3542,19 @@ function renderSceneList() {
 function renderParams() {
   const box = document.getElementById('param-box');
   box.innerHTML = '';
-  if (currentScene.params.length === 0) {
-    box.innerHTML = '<div style="color:#666;font-style:italic;font-size:0.9rem;">Aucun paramètre.</div>';
+  if (!currentScene.params || currentScene.params.length === 0) {
+    box.innerHTML = `<div style="color:#666;font-style:italic;font-size:1rem;">${UI[lang].noParams}</div>`;
     return;
   }
   currentScene.params.forEach(p => {
     const div = document.createElement('div');
     div.className = 'param';
+    const label = paramLabel(currentScene, p.key, p.label);
     if (p.type === 'bool') {
       const btn = document.createElement('button');
-      btn.textContent = (currentParams[p.key] ? '✓ ' : '✗ ') + p.label;
+      btn.textContent = (currentParams[p.key] ? '✓ ' : '✗ ') + label;
       btn.className = currentParams[p.key] ? 'on' : '';
-      btn.style.cssText = 'width:100%;text-align:left;font-size:0.9rem;padding:8px 12px;border-radius:6px;border:1px solid var(--panel-border);background:' + (currentParams[p.key] ? 'var(--accent-purple)' : 'rgba(255,255,255,0.05)') + ';color:white;cursor:pointer;';
+      btn.style.cssText = 'width:100%;text-align:left;font-size:1rem;padding:10px 14px;border-radius:8px;border:1px solid var(--panel-border);background:' + (currentParams[p.key] ? 'var(--accent-purple)' : 'rgba(255,255,255,0.06)') + ';color:white;cursor:pointer;';
       btn.addEventListener('click', () => {
         currentParams[p.key] = !currentParams[p.key];
         renderParams();
@@ -1838,7 +3563,7 @@ function renderParams() {
       div.appendChild(btn);
     } else {
       const lab = document.createElement('label');
-      lab.innerHTML = `<span>${p.label}</span><span style="color:var(--accent-gold);">${currentParams[p.key]}</span>`;
+      lab.innerHTML = `<span>${label}</span><span style="color:var(--accent-gold);">${currentParams[p.key]}</span>`;
       const inp = document.createElement('input');
       inp.type = 'range';
       inp.min = p.min; inp.max = p.max; inp.step = p.step;
@@ -1858,15 +3583,12 @@ function renderParams() {
 function renderShapeToggles() {
   const grid = document.getElementById('shape-grid');
   grid.innerHTML = '';
-  const shapes = [
-    { key: 'cube', name: 'Cube', color: '#ef4444' },
-    { key: 'octahedron', name: 'Octaèdre', color: '#3b82f6' },
-    { key: 'icosahedron', name: 'Icosaèdre', color: '#a855f7' },
-    { key: 'torus', name: 'Tore', color: '#06b6d4' },
-    { key: 'helicoid', name: 'Hélicoïde', color: '#eab308' },
-    { key: 'spiral', name: 'Spirale', color: '#e67e22' }
-  ];
-  shapes.forEach(s => {
+  const colors = {
+    cube: '#ef4444', octahedron: '#3b82f6', icosahedron: '#a855f7',
+    torus: '#06b6d4', helicoid: '#eab308', spiral: '#e67e22',
+    tesseract: '#a855f7', gaussianSurface: '#a855f7', convexHull: '#ef4444'
+  };
+  UI[lang].shapesList.forEach(s => {
     const lab = document.createElement('label');
     lab.className = 'shape-toggle' + (view.shapes[s.key] ? ' on' : '');
     const cb = document.createElement('input');
@@ -1878,7 +3600,7 @@ function renderShapeToggles() {
     });
     const sw = document.createElement('span');
     sw.className = 'mini';
-    sw.style.cssText = `background:${s.color};`;
+    sw.style.cssText = `background:${colors[s.key] || '#888'};`;
     const txt = document.createElement('span');
     txt.textContent = s.name;
     lab.appendChild(cb);
@@ -1892,44 +3614,139 @@ function renderLegends() {
   const lBox = document.getElementById('legend-left');
   const rBox = document.getElementById('legend-right');
   
-  lBox.innerHTML = `<h4>${currentScene.legendLeft.title}</h4><ul>` + 
-    currentScene.legendLeft.items.map(it => 
+  // Reset positions so legends return to default anchors on scene change
+  lBox.style.left = ''; lBox.style.top = ''; lBox.style.right = ''; lBox.style.transform = '';
+  rBox.style.left = ''; rBox.style.top = ''; rBox.style.right = ''; rBox.style.transform = '';
+  
+  const legL = sceneLegend(currentScene, 'left');
+  const legR = sceneLegend(currentScene, 'right');
+  
+  lBox.innerHTML = `<h4>${legL.title}</h4><ul>` + 
+    legL.items.map(it => 
       `<li><span class="swatch" style="background:${it.color}"></span><span>${it.text}</span></li>`
     ).join('') + `</ul>` +
-    (currentScene.legendLeft.eq ? `<div class="eq" id="eq-left"></div>` : '');
+    (legL.eq ? `<div class="eq" id="eq-left"></div>` : '');
     
-  rBox.innerHTML = `<h4>${currentScene.legendRight.title}</h4><ul>` + 
-    currentScene.legendRight.items.map(it => 
+  rBox.innerHTML = `<h4>${legR.title}</h4><ul>` + 
+    legR.items.map(it => 
       `<li><span class="swatch" style="background:${it.color}"></span><span>${it.text}</span></li>`
     ).join('') + `</ul>` +
-    (currentScene.legendRight.eq ? `<div class="eq" id="eq-right"></div>` : '');
+    (legR.eq ? `<div class="eq" id="eq-right"></div>` : '');
 
   if (window.katex) {
-    if (currentScene.legendLeft.eq) katex.render(currentScene.legendLeft.eq, document.getElementById('eq-left'), {throwOnError: false});
-    if (currentScene.legendRight.eq) katex.render(currentScene.legendRight.eq, document.getElementById('eq-right'), {throwOnError: false});
+    if (legL.eq) katex.render(legL.eq, document.getElementById('eq-left'), {throwOnError: false});
+    if (legR.eq) katex.render(legR.eq, document.getElementById('eq-right'), {throwOnError: false});
   }
+  
+  makeLegendsDraggable();
+}
+
+function updateTimelineUI() {
+  const slider = document.getElementById('timeline-slider');
+  const label = document.getElementById('step-label');
+  slider.value = storyIndex;
+  label.textContent = `${UI[lang].step} ${storyIndex + 1} / ${STORY.length}`;
 }
 
 function selectScene(index) {
-  currentScene = SCENES[index];
+  storyIndex = index;
+  currentScene = STORY[index];
   currentParams = {};
-  currentScene.params.forEach(p => currentParams[p.key] = p.value);
+  if (currentScene.params) {
+    currentScene.params.forEach(p => currentParams[p.key] = p.value);
+  }
   
-  document.getElementById('scene-title').textContent = currentScene.title;
+  document.getElementById('scene-title').textContent = sceneTitle(currentScene);
   
   const eqEl = document.getElementById('scene-eq');
   if (window.katex) katex.render(currentScene.tex, eqEl, {throwOnError: false, displayMode: true});
   else eqEl.textContent = currentScene.tex;
   
-  document.getElementById('description').innerHTML = currentScene.desc;
+  document.getElementById('description').innerHTML = sceneDesc(currentScene);
   
   renderSceneList();
   renderParams();
   renderLegends();
+  updateTimelineUI();
   
   view.yaw = 0.5; view.pitch = 0.3; view.zoom = 1;
   view.vyaw = 0; view.vpitch = 0;
 }
+
+function resetLegendPositions() {
+  const lBox = document.getElementById('legend-left');
+  const rBox = document.getElementById('legend-right');
+  if (!lBox || !rBox) return;
+  // Clear inline styles so CSS anchors (panel-open or default) apply again
+  [lBox, rBox].forEach(el => {
+    el.style.left = '';
+    el.style.right = '';
+    el.style.top = '';
+    el.style.transform = '';
+  });
+}
+
+function togglePanel(force) {
+  const panel = document.getElementById('panel');
+  const stage = document.getElementById('stage');
+  const btn = document.getElementById('btn-panel');
+  const open = force !== undefined ? force : !panel.classList.contains('open');
+  panel.classList.toggle('open', open);
+  stage.classList.toggle('panel-open', open);
+  if (btn) btn.classList.toggle('on', open);
+  // Re-anchor legends to the edges of the right zone + vertical center
+  resetLegendPositions();
+  setTimeout(() => { resizeCanvas(); resizeParticles(); }, 320);
+}
+
+function toggleCinema() {
+  cinemaMode = !cinemaMode;
+  const btn = document.getElementById('btn-cinema');
+  if (cinemaMode) {
+    btn.classList.add('playing');
+    btn.textContent = UI[lang].cinemaStop;
+    // Enter fullscreen on the stage (panel stays available / retractable)
+    const stage = document.getElementById('stage');
+    if (!document.fullscreenElement && stage.requestFullscreen) {
+      stage.requestFullscreen().catch(() => {});
+    }
+    cinemaInterval = setInterval(() => {
+      storyIndex = (storyIndex + 1) % STORY.length;
+      selectScene(storyIndex);
+    }, 5000);
+  } else {
+    btn.classList.remove('playing');
+    btn.textContent = UI[lang].cinema;
+    clearInterval(cinemaInterval);
+    // Leave fullscreen only if we entered it for cinema
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+}
+
+document.getElementById('timeline-slider').addEventListener('input', function() {
+  if (cinemaMode) toggleCinema();
+  const idx = parseInt(this.value);
+  if (idx !== storyIndex) {
+    selectScene(idx);
+  }
+});
+
+document.getElementById('btn-cinema').addEventListener('click', toggleCinema);
+
+// Panel toggle: button already wired below; also keyboard P
+document.addEventListener('keydown', function (e) {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  if (e.key === 'p' || e.key === 'P') {
+    e.preventDefault();
+    togglePanel();
+  }
+  if (e.key === 'Escape' && cinemaMode) {
+    // Escape stops cinema but does not force-close the panel
+    toggleCinema();
+  }
+});
 
 /* =====================================================================
    7. BOUCLE & ÉVÉNEMENTS
@@ -1939,22 +3756,39 @@ function loop(now) {
   try {
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
-    view.time += dt * view.speed;
     
-    if (view.physics) {
-      if (view.autoRotate) {
-        view.vyaw += (0.15 - view.vyaw) * dt * 2;
-      } else {
-        view.vyaw *= Math.pow(view.damping, dt * 60);
-        view.vpitch *= Math.pow(view.damping, dt * 60);
+    if (!view.paused) {
+      view.time += dt * view.speed;
+      if (view.physics) {
+        if (view.autoRotate) {
+          view.vyaw += (0.15 - view.vyaw) * dt * 2;
+        } else {
+          view.vyaw *= Math.pow(view.damping, dt * 60);
+          view.vpitch *= Math.pow(view.damping, dt * 60);
+        }
+        view.yaw += view.vyaw * dt;
+        view.pitch += view.vpitch * dt;
       }
-      view.yaw += view.vyaw * dt;
-      view.pitch += view.vpitch * dt;
     }
     
     if (view.W === 0) resizeCanvas();
     
-    currentScene.draw(currentParams);
+    if (currentScene && currentScene.draw) {
+      // Scènes 2D (Thm 6.2 → Appendix) : zoom molette via scale centré
+      const ZOOM_2D = new Set(['lowinfluence','uniquegames','completeness','soundness','reduction','certificates']);
+      if (ZOOM_2D.has(currentScene.id) && view.zoom !== 1) {
+        const cx = view.W / 2, cy = view.H / 2;
+        const z = view.zoom;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(z, z);
+        ctx.translate(-cx, -cy);
+        currentScene.draw(currentParams);
+        ctx.restore();
+      } else {
+        currentScene.draw(currentParams);
+      }
+    }
     drawParticles();
   } catch (e) {
     console.error("Erreur d'affichage :", e);
@@ -1995,9 +3829,25 @@ document.getElementById('speed').addEventListener('input', function () {
   view.speed = parseFloat(this.value);
   document.getElementById('speed-val').textContent = this.value;
 });
+document.getElementById('light-angle').addEventListener('input', function () {
+  view.lightAngle = parseFloat(this.value) * Math.PI / 180;
+  document.getElementById('light-val').textContent = this.value + '°';
+});
+document.getElementById('bg-opacity').addEventListener('input', function () {
+  view.bgOpacity = parseFloat(this.value);
+  document.getElementById('bg-val').textContent = this.value;
+});
 document.getElementById('btn-auto').addEventListener('click', function () {
   view.autoRotate = !view.autoRotate;
   this.classList.toggle('on', view.autoRotate);
+});
+document.getElementById('btn-pause').addEventListener('click', function () {
+  view.paused = !view.paused;
+  this.classList.toggle('on', view.paused);
+});
+document.getElementById('btn-grid').addEventListener('click', function () {
+  view.grid = !view.grid;
+  this.classList.toggle('on', view.grid);
 });
 document.getElementById('btn-wireframe').addEventListener('click', function () {
   view.wireframe = !view.wireframe;
@@ -2012,16 +3862,7 @@ document.getElementById('btn-particles').addEventListener('click', function () {
   this.classList.toggle('on', particlesActive);
 });
 document.getElementById('btn-panel').addEventListener('click', function () {
-  const panel = document.getElementById('panel');
-  const stage = document.getElementById('stage');
-  panel.classList.toggle('open');
-  stage.classList.toggle('panel-open', panel.classList.contains('open'));
-  this.classList.toggle('on', panel.classList.contains('open'));
-  
-  setTimeout(() => {
-    resizeCanvas();
-    resizeParticles();
-  }, 320);
+  togglePanel();
 });
 document.getElementById('btn-full').addEventListener('click', function () {
   const stage = document.getElementById('stage');
@@ -2103,11 +3944,11 @@ function startRecording(resHeight) {
 }
 
 function buildRecordFrame(RW, RH) {
-  recCtx.fillStyle = '#050508';
+  recCtx.fillStyle = '#000000';
   recCtx.fillRect(0, 0, RW, RH);
   
-  recCtx.fillStyle = '#e8e6f0';
-  recCtx.font = `bold 56px "Times New Roman"`;
+  recCtx.fillStyle = '#ffffff';
+  recCtx.font = `bold 60px "Times New Roman"`;
   recCtx.textAlign = 'center';
   recCtx.textBaseline = 'middle';
   recCtx.fillText(currentScene.title, RW/2, RH*0.1);
@@ -2147,6 +3988,50 @@ function buildRecordFrame(RW, RH) {
 }
 
 /* =====================================================================
+   8b. DRAGGABLE LEGENDS
+   ===================================================================== */
+function makeLegendsDraggable() {
+  const legends = document.querySelectorAll('.floating-legend');
+  legends.forEach(el => {
+    // Avoid attaching multiple listeners
+    if (el._dragReady) return;
+    el._dragReady = true;
+    let isDragging = false, startX = 0, startY = 0, origLeft = 0, origTop = 0;
+    
+    el.addEventListener('pointerdown', e => {
+      if (e.target.closest('button') || e.target.closest('input')) return;
+      isDragging = true;
+      el.setPointerCapture(e.pointerId);
+      startX = e.clientX;
+      startY = e.clientY;
+      const rect = el.getBoundingClientRect();
+      const parent = el.offsetParent || document.body;
+      const parentRect = parent.getBoundingClientRect();
+      origLeft = rect.left - parentRect.left;
+      origTop = rect.top - parentRect.top;
+      el.style.left = origLeft + 'px';
+      el.style.top = origTop + 'px';
+      el.style.right = 'auto';
+      el.style.transform = 'none';
+      e.preventDefault();
+    });
+    
+    el.addEventListener('pointermove', e => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      el.style.left = (origLeft + dx) + 'px';
+      el.style.top = (origTop + dy) + 'px';
+    });
+    
+    el.addEventListener('pointerup', e => {
+      isDragging = false;
+      try { el.releasePointerCapture(e.pointerId); } catch (_) {}
+    });
+  });
+}
+
+/* =====================================================================
    9. BOOT
    ===================================================================== */
 function boot() {
@@ -2154,6 +4039,24 @@ function boot() {
   resizeParticles();
   renderShapeToggles();
   selectScene(0);
+  makeLegendsDraggable();
+  // Update timeline max
+  const slider = document.getElementById('timeline-slider');
+  if (slider) { slider.max = STORY.length - 1; }
+  // Language toggle
+  document.getElementById('btn-lang-fr').addEventListener('click', () => {
+    if (lang === 'fr') return;
+    lang = 'fr';
+    document.documentElement.lang = 'fr';
+    applyLanguage();
+  });
+  document.getElementById('btn-lang-en').addEventListener('click', () => {
+    if (lang === 'en') return;
+    lang = 'en';
+    document.documentElement.lang = 'en';
+    applyLanguage();
+  });
+  applyLanguage();
   requestAnimationFrame(loop);
 }
 
